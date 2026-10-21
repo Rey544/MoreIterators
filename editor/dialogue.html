@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>对话编辑</title>
+  <link rel="stylesheet" href="/dialogue.css">
+<script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"></head>
+<body class="dialogue-studio mi-studio">
+  <header class="studio-header">
+    <strong class="studio-brand">对话编辑</strong>
+    <label class="project-choice">迭代器<select id="projects" aria-label="选择迭代器" disabled></select></label>
+    <div class="header-actions">
+      <span id="saveState" role="status" aria-live="polite">正在加载…</span>
+      <button id="save" type="button" disabled>保存</button>
+      <button id="apply" type="button" class="primary" disabled>应用到游戏</button>
+      <details class="more-menu"><summary>切换页面</summary><nav>
+        <a href="/">外观调整</a><a href="/pearls">珍珠文本</a><a href="/broadcasts">广播编辑</a><a id="projectionStudio" href="/projections">投影编辑</a><a id="roomStudio" href="/rooms">区域连接</a>
+      </nav></details>
+    </div>
+  </header>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <main id="dialogueLayout" class="dialogue-layout">
+    <section id="dialogueEditor" class="editor panel" aria-labelledby="editorHeading" inert>
+      <div class="section-heading visually-hidden"><h1 id="editorHeading">台词编辑</h1><span id="name" class="project-name"></span></div>
+      <details class="compact-options affinity-settings"><summary>好感度</summary><div id="affinityGeneral" class="option-panel">
+        <label class="check-row"><input id="affinityEnabled" type="checkbox">启用好感度</label>
+        <label class="inline-field">初始好感度<input id="affinityInitial" type="number" min="-1" max="1" step=".05"></label>
+        <label class="check-row"><input id="pearlGiftEnabled" type="checkbox">读取珍珠增加好感度</label>
+        <label class="inline-field">每颗珍珠增加<input id="pearlGiftAmount" type="number" min="0" max="2" step=".05"></label>
+      </div>
+      </details>
+      <div class="context-heading"><h2 id="contextHeading">情境</h2><label class="check-row"><input type="checkbox" id="enabled">使用接待流程</label></div>
+      <nav id="categories" class="context-tabs" aria-labelledby="contextHeading" role="tablist"></nav>
+      <div class="context-selectors">
+        <label class="inline-field"><span id="stageFieldLabel">选择剧情</span><select id="stages" aria-label="对话情境"></select></label>
+        <label id="tierField" class="inline-field" hidden>受击前好感层级<select id="affinityTier"><option value="notSpeaking">拒绝交流（−1 ≤ 值 &lt; −0.5）</option><option value="dislikes">反感（−0.5 ≤ 值 &lt; 0）</option><option value="neutral">中立（0 ≤ 值 &lt; 0.5）</option><option value="likes">喜欢（0.5 ≤ 值 ≤ 1）</option></select></label>
+      </div>
+      <div id="storyOptions" class="option-panel" hidden>
+        <div class="story-flow">
+          <label class="inline-field"><span data-i18n="dialogue.ui.playOrder">播放方式</span><select id="storyMode"><option value="sequence">依次播放，结束后按雨循环接待</option><option value="firstThenLoop">只播放初见，之后循环</option></select></label>
+          <button id="addMeeting" type="button" data-i18n="dialogue.ui.addMeeting">新增下一次见面</button>
+        </div>
+        <div id="meetingDetails" class="story-section" hidden>
+          <h3 data-i18n="dialogue.ui.nameAndOrder">名称与顺序</h3>
+          <div class="meeting-name-row"><label id="meetingNameField" class="inline-field" hidden>剧情名称<input id="meetingName" maxlength="80"></label>
+            <details class="action-menu"><summary>操作</summary><div class="menu-content">
+              <button id="meetingUp" type="button" hidden data-i18n="dialogue.ui.moveEarlier">提前播放</button><button id="meetingDown" type="button" hidden data-i18n="dialogue.ui.moveLater">延后播放</button><button id="removeMeeting" type="button" hidden>删除本次剧情</button>
+            </div></details>
+          </div>
+        </div>
+        <div id="meetingCondition" class="meeting-condition">
+          <h3 data-i18n="dialogue.ui.triggerConditions">触发条件</h3>
+          <label class="inline-field"><span data-i18n="dialogue.ui.minimumVisits">至少进入房间几次</span><input id="meetingEntries" type="number" min="0" max="9999" step="1"></label>
+          <label class="inline-field"><span data-i18n="dialogue.ui.earliestCycle">最早雨循环（0 为首轮）</span><input id="meetingCycle" title="从第 0 循环计数" type="number" min="0" max="9999" step="1"></label>
+          <label class="inline-field"><span data-i18n="dialogue.ui.requiredItem">玩家需要携带</span><select id="meetingHeld"><option value="any">不限制</option><option value="items">一般物品</option><option value="weapons">武器</option><option value="pearls">珍珠</option><option value="mixed">珍珠与武器</option><option value="creatures">生物</option><option value="corpses">尸体</option><option value="food">食物</option></select></label>
+        </div>
+      </div>
+      <div id="affinityOptions" class="option-panel" hidden>
+        <label class="inline-field">低于此值拒绝读珍珠<input id="refuseBelow" type="number" min="-1" max="1" step=".05"></label>
+        <label class="inline-field">受击规则<select id="attackMode"><option value="vanilla">原版：受击降至 −1</option><option value="gradual">逐次扣除</option></select></label>
+        <label class="inline-field">石块扣除<input id="rockPenalty" type="number" min="0" max="2" step=".05"></label>
+        <label class="inline-field">矛扣除<input id="spearPenalty" type="number" min="0" max="2" step=".05"></label>
+      </div>
+      <div id="observationOptions" class="option-panel" hidden>
+        <label class="check-row"><input id="observationEnabled" type="checkbox">启用物品观察</label>
+        <label class="inline-field">观察冷却（秒）<input id="observationCooldown" type="number" min="0" max="60" step=".1"></label>
+      </div>
+      <div id="interruptOptions" class="option-panel">
+        <label id="eventToggle" class="check-row"><input type="checkbox" id="eventEnabled">启用此类打断</label>
+        <label class="inline-field">打断冷却（秒）<input type="number" id="cooldown" min="0" max="60" step=".1"></label>
+      </div>
+      <div id="greetingOptions" class="option-panel" hidden>
+        <label class="check-row"><input id="greetingEnabled" type="checkbox">启用日常招呼</label>
+        <details class="timing-advanced"><summary>高级时间设置</summary><label class="inline-field">进房等待（秒）<input id="greetingDelay" type="number" min="0" max="120" step=".1"></label><label class="inline-field">短返时限（秒）<input id="quickReturnWindow" type="number" min="0" max="3600" step=".1"></label><label class="inline-field">返回冷却（秒）<input id="returnCooldown" type="number" min="0" max="3600" step=".1"></label></details>
+      </div>
+      <div id="readingOptions" class="option-panel" hidden><label class="check-row"><input id="extractStomachPearl" type="checkbox">允许取出胃中珍珠</label><button id="readingStillPreset" type="button">预设</button><div id="readingPresentation"></div></div>
+      <div id="pearlRepeatOptions" class="option-panel" hidden><label class="check-row"><input id="preventRepeat" type="checkbox">同一雨循环内不重复读正文</label></div>
+      <div id="pearlManyOptions" class="option-panel" hidden>
+        <label class="check-row"><input id="manyEnabled" type="checkbox">启用多珍珠提示</label>
+        <label class="inline-field">从第几颗不同珍珠开始<input id="manyThreshold" type="number" min="2" max="50" step="1"></label>
+      </div>
+      <div id="pearlLeaveOptions" class="option-panel" hidden><label class="inline-field">中途离开<select id="pearlLeavePolicy"><option value="resume">回来后续读</option><option value="restart">回来后从头读</option><option value="cancel">停止此次读取</option></select></label></div>
+      <div id="poolToolbar" class="pool-toolbar" hidden>
+        <label>随机组<select id="pool" aria-label="随机对话组"></select></label>
+        <label>组名<input id="poolName" aria-label="随机组名称" maxlength="80"></label>
+        <button id="addPool" type="button">新增组</button>
+        <details class="action-menu"><summary>操作</summary><div class="menu-content"><button id="removePool" type="button" class="danger">删除此组</button></div></details>
+      </div>
+      <div id="poolDeleteConfirm" class="delete-confirm" hidden><span>删除当前随机组及其所有台词？</span><button id="cancelPoolDelete" type="button">取消</button><button id="confirmPoolDelete" type="button" class="danger">确认删除</button></div>
+      <details id="groupActionDetails" class="compact-options"><summary>组结束动作</summary><div id="groupActionOptions" class="option-panel group-action"></div></details>
+      <div id="lines" aria-label="台词列表"></div>
+      <button id="addLine" type="button" class="add-line">＋ 新增一句</button>
+      <button id="addAction" type="button" class="add-line">＋ 新增独立动作</button>
+    </section>
+    <div id="splitter" class="splitter" role="separator" aria-label="调整编辑与试播宽度" aria-orientation="vertical" aria-valuemin="30" aria-valuemax="75" aria-valuenow="58" tabindex="0"><span></span></div>
+    <section id="dialoguePreview" class="preview panel" aria-labelledby="previewTitle" inert>
+      <div class="section-heading"><h2 id="previewTitle">迭代器／情境</h2></div>
+      <div class="playback-controls"><label>试播事件<select id="playEvent" aria-label="试播事件"></select></label><button id="play" class="primary" type="button" disabled>播放</button><button id="stop" type="button" disabled>停止</button></div>
+      <div class="preview-options">
+        <label id="previewCarryingField" class="inline-field" hidden>招呼时携带<select id="previewCarrying"><option value="none">无附加物品</option><option value="items">一般物品（A + B）</option><option value="weapons">武器（A + B）</option><option value="pearls">珍珠（A + B）</option><option value="mixed">珍珠与武器（A + B）</option><option value="creatures">生物（A + B）</option><option value="corpses">尸体（A + B）</option><option value="food">食物（A + B）</option></select></label>
+        <label id="previewAffinityField" class="inline-field" hidden>试播好感度<input id="previewAffinity" type="number" min="-1" max="1" step=".05"><button id="resetAffinity" type="button">重置</button></label>
+        <label id="previewFirstReadField" class="check-row" hidden><input id="previewFirstRead" type="checkbox">本循环第一次读珍珠</label>
+        <label id="previewExtractedField" class="check-row" hidden><input id="previewExtracted" type="checkbox">模拟胃中取珠</label><output id="affinityResult" aria-live="polite"></output>
+      </div>
+      <div id="subtitle" aria-live="polite">……</div>
+      <details class="transcript-panel"><summary>已播放台词</summary><ol id="transcript"></ol></details>
+    </section>
+  </main>
+  <script src="/line-actions.js"></script>
+  <script src="/studio-undo.js"></script>
+  <script src="/dialogue.js"></script>
+<script src="/studio-navigation.js"></script><script src="/studio-chrome.js"></script><script src="/studio-about.js"></script></body>
+</html>

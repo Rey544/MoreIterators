@@ -1,0 +1,30 @@
+/* In normal document flow: never covers canvas handles or drawing tools. */
+body.mi-studio .mi-version-footer{display:flex;flex-direction:column;align-items:stretch;gap:14px;width:100%;min-height:32px;margin:0;padding:8px 22px max(20px,env(safe-area-inset-bottom,0px));background:transparent;position:static;clear:both}
+body.mi-studio .mi-footer-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 18px}
+body.mi-studio .mi-community{margin-left:auto;font-size:12px;color:var(--mi-muted);text-align:right}
+body.mi-studio .mi-community a{color:var(--mi-text)}
+body.mi-studio .mi-tool-principles{width:100%;max-width:none;font-size:16px;line-height:1.8;color:#737373;text-align:center;overflow-wrap:anywhere}
+body.mi-studio .mi-tool-principles p{margin:0 0 6px}
+body.mi-studio .mi-tool-principles p:last-child{margin-bottom:0}
+body.mi-studio button.mi-version-link{flex:none;min-height:26px;min-width:0;padding:3px 6px;border:0!important;border-radius:0;background:transparent!important;color:var(--mi-muted,#92979c);font-size:12px;line-height:1.3;white-space:nowrap;animation:none!important}
+body.mi-studio button.mi-version-link:is(:hover,:focus-visible){color:var(--mi-active,#e6e6e6);text-decoration:underline;text-underline-offset:4px}
+body.mi-studio dialog.mi-about{width:min(620px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:min(760px,86dvh);padding:0;overflow:hidden;border:1.5px solid var(--mi-line,#4a4f55);border-image:var(--mi-frame) 5 / 5px / 0 stretch;border-radius:9px;background:var(--mi-bg,#0e0f10);color:var(--mi-text,#c9cccf)}
+body.mi-studio dialog.mi-about[open]{display:flex;flex-direction:column}
+.mi-about-heading,.mi-about-actions{flex:none;padding:16px 20px}
+.mi-about-heading{border:0}
+.mi-about-heading h2{margin:0;font-size:17px;line-height:1.5;font-weight:400}
+.mi-about-body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:18px 20px;scrollbar-gutter:stable;line-height:1.7;overflow-wrap:anywhere}
+.mi-about-body:focus-visible{outline:1px solid var(--mi-line,#4a4f55);outline-offset:-2px}
+.mi-about-body p{margin:0 0 14px}
+.mi-about-body h3{margin:24px 0 8px;font-size:15px;font-weight:400;color:var(--mi-active,#e6e6e6)}
+.mi-about-body h4{margin:0 0 8px;font-size:13px;font-weight:400;color:var(--mi-muted,#92979c)}
+.mi-about-release{display:block;padding:0;margin:0 0 18px;border:0;background:transparent}
+.mi-about-release ul{margin:0;padding-left:20px}
+.mi-about-release li{margin:0 0 8px}
+.mi-about-version{font-size:16px;color:var(--mi-active,#e6e6e6)}
+.mi-about-build{display:inline-block;margin-left:10px;color:var(--mi-muted,#92979c);font-size:12px}
+.mi-about-pending,.mi-about-empty,.mi-about-state{font-size:13px;color:var(--mi-muted,#92979c)}
+.mi-about-thanks{font-size:14px}
+.mi-about-actions{display:flex;justify-content:flex-end;border:0}
+.mi-about-actions button{min-width:92px}
+@media(max-width:620px){body.mi-studio .mi-version-footer{padding-inline:12px}.mi-about-heading,.mi-about-actions{padding:13px 15px}.mi-about-body{padding:15px}}

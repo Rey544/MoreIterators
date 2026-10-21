@@ -1,0 +1,7 @@
+[data-section-id="iteratorVoice"] .voice-actions{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+[data-section-id="iteratorVoice"] .voice-actions button{flex:0 1 auto;min-width:84px;padding:6px 12px}
+[data-section-id="iteratorVoice"] textarea,[data-section-id="iteratorVoice"]>details>select{width:100%;max-width:100%;box-sizing:border-box}
+[data-section-id="iteratorVoice"] textarea{resize:vertical;min-height:78px;line-height:1.5}
+
+body.mi-studio #groups [data-section-id="iteratorVoice"] .voice-name-field{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+body.mi-studio #groups [data-section-id="iteratorVoice"] .voice-name-field input{width:100%;max-width:none}

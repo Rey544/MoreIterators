@@ -1,0 +1,321 @@
+/* Shared MI studio chrome, using the RainocTool 1.1.2 palette and UI font. */
+@font-face{font-family:'Fusion Pixel';src:url('/fonts/fusion-pixel.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Fusion Pixel ja';src:url('/fonts/fusion-pixel-ja.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Fusion Pixel zh_hant';src:url('/fonts/fusion-pixel-zh_hant.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Fusion Pixel zh_hk';src:url('/fonts/fusion-pixel-zh_hk.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Fusion Pixel zh_tw';src:url('/fonts/fusion-pixel-zh_tw.woff2') format('woff2');font-weight:400 700;font-display:swap}
+:root{--mi-ui-font:'Fusion Pixel','Microsoft YaHei',sans-serif;--mi-bg:#0e0f10;--mi-panel:#16181a;--mi-field:#121415;--mi-text:#c9cccf;--mi-muted:#92979c;--mi-line:#4a4f55;--mi-soft:#292d31;--mi-active:#e6e6e6;color-scheme:dark;background:var(--mi-bg)}
+html:lang(ja){--mi-ui-font:'Fusion Pixel ja','Fusion Pixel',sans-serif}
+html:lang(zh-Hant){--mi-ui-font:'Fusion Pixel zh_hant','Fusion Pixel',sans-serif}
+html:lang(zh-HK){--mi-ui-font:'Fusion Pixel zh_hk','Fusion Pixel',sans-serif}
+html:lang(zh-TW){--mi-ui-font:'Fusion Pixel zh_tw','Fusion Pixel',sans-serif}
+body.mi-studio{--page:var(--mi-bg);--bg:var(--mi-bg);--panel:var(--mi-panel);--surface:var(--mi-panel);--raised:#202326;--field:var(--mi-field);--ink:var(--mi-text);--text:var(--mi-text);--muted:var(--mi-muted);--edge:var(--mi-line);--edge-soft:var(--mi-soft);--line:var(--mi-line);--accent:var(--mi-active);--danger:#dfa19c;font-family:var(--mi-ui-font);font-size:14px;line-height:1.55;background:var(--mi-bg);color:var(--mi-text);font-synthesis:none}
+body.mi-studio :is(button,input,select,textarea,summary){font-family:var(--mi-ui-font);letter-spacing:0}
+body.mi-studio :is(h1,h2,h3,h4,strong,summary){font-weight:400}
+body.mi-studio ::selection{background:var(--mi-active);color:var(--mi-bg)}
+body.mi-studio :where(button,select,input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea){border:2px solid var(--mi-line);border-radius:2px;background:var(--mi-field);color:var(--mi-text);line-height:1.5}
+body.mi-studio :is(button,select){min-height:32px;padding:5px 8px}
+body.mi-studio button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;background:transparent}
+body.mi-studio button:hover{background:#202326;border-color:var(--mi-text);color:var(--mi-active)}
+body.mi-studio :is(button.primary,button.accent,#apply){background:transparent;border-color:var(--mi-active);color:var(--mi-active);font-weight:400}
+body.mi-studio :is(button.primary,button.accent,#apply):hover{background:#25292d}
+body.mi-studio :is(button,select,input,textarea):disabled{opacity:.38;cursor:default}
+body.mi-studio :is(button,input,select,textarea,summary,a,[tabindex]):focus-visible{outline:2px solid var(--mi-active);outline-offset:3px}
+body.mi-studio :is(input,textarea,select):focus{border-color:var(--mi-active)}
+body.mi-studio :is(input,textarea)::placeholder{color:var(--mi-muted);opacity:1}
+body.mi-studio input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--mi-active)}
+body.mi-studio :is(input[type=checkbox],input[type=radio]){accent-color:var(--mi-active);flex:none}
+body.mi-studio input[type=color]{border:1px solid var(--mi-line);border-radius:2px;background:var(--mi-field);padding:2px;cursor:pointer}
+body.mi-studio :is(input[type=number],output){font-variant-numeric:tabular-nums}
+body.mi-studio a{color:var(--mi-text);text-underline-offset:4px}
+body.mi-studio a:hover{color:var(--mi-active)}
+body.mi-studio :is(.hint,.muted,.project-name,.field-status,.reader-scope){color:var(--mi-muted);line-height:1.6}
+body.mi-studio>header{gap:12px;padding:12px 18px;min-height:68px;background:var(--mi-bg);border-bottom:1px solid var(--mi-line)}
+body.mi-studio :is(.studio-brand,.studio-title,header>strong,.studio-brand strong){font-size:18px;letter-spacing:0;font-weight:400}
+body.mi-studio header :is(button,select,summary){font-size:12px}
+body.mi-studio .header-actions{gap:8px;flex-wrap:wrap}
+body.mi-studio :is(.project-choice,.current-pearl){border-color:var(--mi-soft)}
+body.mi-studio :is(.studio-menu>summary,.more-menu>summary,.action-menu>summary){border:2px solid var(--mi-line);border-radius:2px;background:transparent;padding:5px 9px;line-height:1.5;font-weight:400}
+body.mi-studio :is(.studio-menu>summary,.more-menu>summary,.action-menu>summary):hover{border-color:var(--mi-text);background:#202326}
+body.mi-studio :is(.studio-menu nav,.more-menu nav,.menu-content,.texture-actions,.background-panel){border:2px solid var(--mi-line);border-radius:2px;background:var(--mi-panel);box-shadow:0 10px 28px #0006}
+body.mi-studio :is(.studio-menu nav,.more-menu nav,.menu-content,.texture-actions) :is(a,button){border:0;border-radius:0;background:transparent;color:var(--mi-text);text-align:left}
+body.mi-studio :is(.studio-menu nav,.more-menu nav,.menu-content,.texture-actions) :is(a,button):hover{background:#25292d}
+body.mi-studio #notice{background:var(--mi-panel);border-color:var(--mi-line);color:var(--mi-text)!important;font-size:12px;padding:9px 18px;min-height:0}
+body.mi-studio #notice:empty{display:none}
+body.mi-studio #notice[data-kind=error]{color:#efb2ac!important;border-color:#a46a65}
+body.mi-studio #saveState{font-size:12px;color:var(--mi-muted)}
+body.mi-studio #saveState:is([data-state=dirty],[data-state=unsaved]){color:var(--mi-active);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px}
+body.mi-studio :is(.panel,main>aside,main>section,#workspace>aside,#workspace>section){border:1px solid var(--mi-soft);border-radius:2px;background:var(--mi-panel)}
+body.mi-studio .panel{padding:16px}
+body.mi-studio :is(h1,h2){font-size:16px;letter-spacing:0}
+body.mi-studio h3{font-size:14px;letter-spacing:0}
+body.mi-studio :is(.section-heading,.panel-heading){margin-bottom:14px}
+body.mi-studio :is(.section-heading,.panel-heading) :is(h1,h2){font-size:14px}
+body.mi-studio :is(.line,.option-panel,.binding-pairs,.preview-pair,.delete-confirm,.cleanup-confirm,.warning-list,.asset-row,.reference-card,.timeline-row){border-color:var(--mi-line);border-radius:2px;background:transparent}
+body.mi-studio .line{padding:12px;background:var(--mi-field)}
+body.mi-studio .line textarea{background:var(--mi-field);font-size:14px}
+body.mi-studio :is(.context-tabs,.reference-tabs){gap:12px}
+body.mi-studio :is(.context-tabs,.reference-tabs) button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--mi-muted)}
+body.mi-studio :is(.context-tabs button.selected,.reference-tabs button[aria-pressed=true]){border-bottom-color:var(--mi-active);color:var(--mi-active);background:transparent}
+body.mi-studio :is(.line.playing,.timeline-row.selected,.frame-list button.selected){border-color:var(--mi-active);background:#202326}
+body.mi-studio :is(#subtitle,#preview){border-color:var(--mi-line);border-radius:2px;background:var(--mi-field)}
+body.mi-studio #preview p{background:transparent}
+body.mi-studio :is(button.danger,.texture-actions .danger){color:var(--danger);border-color:#805b58;border-style:solid}
+body.mi-studio dialog{background:var(--mi-bg);color:var(--mi-text);border:2px solid var(--mi-line);border-radius:3px;max-width:calc(100vw - 24px);max-height:90dvh;overflow:auto;font-family:var(--mi-ui-font)}
+body.mi-studio dialog::backdrop{background:#000a}
+body.mi-studio :is(.preview-stage,.paint-wrap,.viewport,.overseer-preview,.mi-motion-plane){border-color:var(--mi-line);border-radius:2px}
+body.mi-studio :is(.preview canvas,.paint-wrap,#map){border-radius:0}
+body.mi-studio :is(#settings,.timeline,.reference-list,.room-list,.panel){scrollbar-width:thin;scrollbar-color:var(--mi-line) transparent}
+
+/* Compact property hierarchy: section title, shared settings, then side editors. */
+body.mi-studio #groups>.settings-category{padding:12px 0;border-color:var(--mi-line)}
+body.mi-studio .settings-category>summary{font-size:14px;color:var(--mi-active);line-height:1.6}
+body.mi-studio .settings-category>details{margin:10px 0 0;padding:9px 0;border-color:var(--mi-soft)}
+body.mi-studio .settings-category details details{margin:10px 0 0 4px;padding:8px 0;border-color:var(--mi-soft)}
+body.mi-studio .settings-category details summary{line-height:1.6}
+body.mi-studio .setting-dependents{border-left:1px solid var(--mi-line);margin:8px 0 0 2px;padding-left:9px}
+body.mi-studio #groups .field{margin-top:10px;gap:5px 8px}
+body.mi-studio #groups .field>span{font-size:12px;line-height:1.6;color:var(--mi-text)}
+body.mi-studio #groups .field :is(select,input[type=text]){max-width:100%;min-width:0;font-size:12px}
+body.mi-studio #groups .field input[type=number]{width:78px;padding:4px 6px;border-radius:2px}
+body.mi-studio #groups .field output{font-size:12px;color:var(--mi-text)}
+body.mi-studio #groups button{font-size:12px;min-height:30px;white-space:normal;max-width:100%}
+body.mi-studio #groups .tools{gap:6px;margin-top:10px}
+body.mi-studio #groups .tools button{margin-top:0}
+body.mi-studio #groups img{image-rendering:pixelated;object-fit:contain}
+body.mi-studio :is(.setting-actions,.part-texture-actions){display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;min-width:0}
+body.mi-studio #groups :is(.setting-actions,.part-texture-actions) button{margin-top:0;flex:1 1 76px}
+body.mi-studio #groups .part-texture-preview{display:block;width:48px;height:64px;max-width:none;flex:0 0 48px;object-fit:contain;image-rendering:pixelated;border:1px solid var(--mi-line);border-radius:0;background-color:#17191b;background-image:conic-gradient(#25292d 25%,transparent 0 50%,#25292d 0 75%,transparent 0);background-size:12px 12px}
+body.mi-studio #groups .eye-texture-preview{height:48px;margin-top:10px}
+body.mi-studio .enable-field{border-color:var(--mi-soft)}
+body.mi-studio .layer{border-radius:0}
+body.mi-studio .layer.active{background:#22262a;border-color:var(--mi-text)}
+body.mi-studio .layer button{border:0;background:transparent}
+body.mi-studio .paint-tools{border-color:var(--mi-soft)}
+body.mi-studio .workspace-divider:before{background:var(--mi-soft)}
+body.mi-studio .workspace-divider:is(:hover,:focus-visible):before{background:var(--mi-text)}
+
+@media(max-width:1050px){
+ body.mi-studio>header{gap:10px;padding:10px 14px}
+ body.mi-studio .header-actions{margin-left:0}
+ body.mi-studio .studio-header{flex-wrap:wrap}
+ body.mi-studio.appearance-studio #workspace{min-width:0;grid-template-columns:minmax(240px,var(--settings-width,280px)) 12px minmax(300px,1fr);height:auto;min-height:0;align-items:start}
+ body.mi-studio.appearance-studio #workspace>#settings{grid-column:1;grid-row:1/3;position:sticky;top:10px;max-height:calc(100dvh - 30px)}
+ body.mi-studio.appearance-studio #settingsDivider{grid-column:2;grid-row:1/3;align-self:stretch;min-height:600px}
+ body.mi-studio.appearance-studio #workspace>.preview{grid-column:3;grid-row:1;min-height:520px}
+ body.mi-studio.appearance-studio #paintDivider{display:none}
+ body.mi-studio.appearance-studio #workspace>#paintPanel{grid-column:3;grid-row:2;min-height:580px;margin-top:12px}
+}
+@media(max-width:680px){
+ body.mi-studio :is(button,select){min-height:36px}
+ body.mi-studio>header{padding:10px 12px;gap:8px}
+ body.mi-studio :is(.studio-brand,.studio-title,header>strong,.studio-brand strong){font-size:16px}
+ body.mi-studio .panel{padding:12px}
+ body.mi-studio.appearance-studio #workspace{display:flex;flex-direction:column;padding:10px;gap:12px}
+ body.mi-studio.appearance-studio #workspace>#settings{position:static;width:100%;max-height:none}
+ body.mi-studio.appearance-studio #settingsDivider{display:none}
+ body.mi-studio.appearance-studio #workspace>.preview{width:100%;min-height:460px}
+ body.mi-studio.appearance-studio #workspace>#paintPanel{width:100%;margin:0;min-height:560px}
+ body.mi-studio .pack-grid{grid-template-columns:1fr;gap:12px}
+}
+@media(prefers-reduced-motion:reduce){body.mi-studio *{transition:none!important}}
+
+/* Stable viewports: scrollbars never repeatedly steal and return layout space. */
+body.mi-studio.appearance-studio #workspace{height:var(--workspace-height,calc(100dvh - var(--workspace-top,75px) - 2px))}
+body.mi-studio.appearance-studio #paintViewport{overflow:scroll;contain:size layout;scrollbar-gutter:stable}
+body.mi-studio .workspace-height-divider{position:relative;flex:0 0 14px;min-height:14px;cursor:row-resize;touch-action:none;border:0;outline:none;background:transparent}
+body.mi-studio .workspace-height-divider:before{display:none}
+body.mi-studio .workspace-height-divider:after{content:"";position:absolute;left:8px;right:8px;top:50%;height:1px;background:var(--mi-soft);pointer-events:none}
+body.mi-studio .workspace-height-divider:hover:after,body.mi-studio .workspace-height-divider:focus-visible:after{background:var(--mi-text)}
+body.resizing-workspace-height,body.resizing-workspace-height *{cursor:row-resize!important;user-select:none!important}
+@media(max-width:1050px){body.mi-studio.appearance-studio #workspace{height:auto}body.mi-studio.appearance-studio #workspace>.preview,body.mi-studio.appearance-studio #workspace>#paintPanel{height:var(--workspace-height,700px)}}
+
+/* One outline system: transparent controls, inward corners and a border-only pulse. */
+:root{--mi-bg:#101010;--mi-panel:#161616;--mi-field:transparent;--mi-text:#cecece;--mi-muted:#999;--mi-line:#444444;--mi-soft:#303030;--mi-active:#eee;--mi-control-height:32px;--mi-frame:none;--mi-frame-lit:none}
+body.mi-studio{padding-bottom:max(8px,env(safe-area-inset-bottom));scroll-padding-block:12px}
+body.mi-studio .visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+body.mi-studio :where(button,select,input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea){background:transparent!important;box-shadow:none;min-height:var(--mi-control-height);border-radius:0;border-width:1.5px;border-style:solid;border-image:var(--mi-frame) 5 / 5px / 0 stretch;padding-inline:10px}
+body.mi-studio :is(button,select){padding-block:4px}
+body.mi-studio :is(button,select,input,textarea):is(:hover,:focus){background:transparent!important;color:inherit}
+body.mi-studio :is(button.primary,button.accent,#apply){border-image-source:var(--mi-frame-lit)}
+body.mi-studio :is(.studio-menu>summary,.more-menu>summary,.action-menu>summary,.line-actions>summary,.mi-topbar-menu>summary){border:1.5px solid var(--mi-line);border-image:var(--mi-frame) 5 / 5px / 0 stretch;border-radius:0;background:transparent!important;min-height:var(--mi-control-height);padding:4px 10px;box-sizing:border-box}
+body.mi-studio :is(.line,.room-option,#subtitle,.mi-motion-plane){border:1.5px solid var(--mi-line);border-image:var(--mi-frame) 5 / 5px / 0 stretch;border-radius:0;box-shadow:none;background:transparent}
+body.mi-studio :is(.line.playing,.line[open],.room-option:has(input:checked)){border-image-source:var(--mi-frame-lit);background:transparent}
+body.mi-studio :is(.panel,main>aside,main>section,#workspace>aside,#workspace>section,.option-panel,.binding-pairs,.preview-pair,.mi-presentation,.pearl-identity-fields,.transcript-panel){border:0;border-image:none;border-radius:0;background:transparent;box-shadow:none}
+body.mi-studio :is(.option-panel,.group-action){padding:0;margin-block:12px;gap:10px 16px}
+body.mi-studio #affinityGeneral{border:0;padding:0}
+body.mi-studio :is(.compact-options,.mi-presentation,.transcript-panel,.playback-panel,.add-reader){border:0;margin-block:12px;padding:0}
+body.mi-studio .compact-options>summary{width:fit-content;color:var(--mi-muted);cursor:pointer;padding:4px 0}
+body.mi-studio :is(.compact-options[open],.mi-presentation[open])>summary{color:var(--mi-active);margin-bottom:10px}
+body.mi-studio :is(.context-tabs,.reference-tabs,nav#stages){display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin-block:12px}
+body.mi-studio :is(.context-tabs,.reference-tabs,#stages) button{flex:0 1 auto;min-width:0;border:0;border-image:none;border-bottom:1.5px solid transparent;padding:5px 9px;color:var(--mi-muted)}
+body.mi-studio :is(.context-tabs,.reference-tabs,#stages) button:is(.selected,[aria-pressed=true]){border-bottom-color:var(--mi-active);color:var(--mi-active);background:transparent!important}
+body.mi-studio :is(.layer button,.texture-actions button,.menu-content button,.more-menu-content button,.line-menu button,.mi-topbar-menu button,.mi-topbar-menu a,.line-drag-handle,.quiet){border:0;border-image:none;border-radius:0;background:transparent!important;box-shadow:none}
+body.mi-studio :is(.layer button,.texture-actions button,.menu-content button,.more-menu-content button,.line-menu button,.mi-topbar-menu button,.mi-topbar-menu a,.quiet):hover{color:var(--mi-active);text-decoration:underline;text-underline-offset:4px}
+body.mi-studio :is(.studio-menu nav,.more-menu nav,.more-menu-content,.menu-content,.line-menu,.texture-actions,.background-panel,dialog,.mi-topbar-menu-content){background:var(--mi-bg);color:var(--mi-text);border:1.5px solid var(--mi-line);border-image:var(--mi-frame) 5 / 5px / 0 stretch;border-radius:0;padding:10px;box-shadow:0 8px 22px #0006}
+body.mi-studio details:not(.line)>summary:hover{background:transparent}
+body.mi-studio .mi-topbar{display:flex;align-items:center;gap:16px;min-height:70px;padding:18px 18px 12px;border:0;position:sticky;top:0;z-index:30;background:var(--mi-bg)}
+body.mi-studio .mi-topbar-left,body.mi-studio .mi-topbar-actions{display:flex;gap:10px;align-items:center;min-width:0;flex-wrap:wrap}
+body.mi-studio .mi-topbar-actions{margin-left:auto;margin-right:0;justify-content:flex-end;flex-shrink:0}
+body.mi-studio .mi-topbar :is(.studio-brand,.studio-title, strong){font-size:17px;white-space:nowrap;margin:0 8px 0 0;letter-spacing:0}
+body.mi-studio .mi-topbar-left :is(.project-choice,.collection-choice){display:flex;align-items:center;gap:0;margin:0;padding:0;border:0;min-width:0;flex:0 1 auto;font-size:0}
+body.mi-studio .mi-topbar-left :is(.collection-choice label){font-size:0;margin:0}
+body.mi-studio .mi-topbar-left :is(#projects,#collections,#saved){width:clamp(140px,14vw,210px);min-width:100px;max-width:100%;font-size:12px;margin:0;padding-block:4px;color:var(--mi-text)}
+body.mi-studio .mi-topbar-left .current-pearl{flex:0 1 auto;min-width:0;padding:0;border:0}
+body.mi-studio .mi-topbar-left .current-pearl #saved{width:clamp(160px,18vw,280px)}
+body.mi-studio .mi-topbar #collectionActive{font-size:12px;max-width:190px;color:var(--mi-muted)}
+body.mi-studio .mi-topbar #saveState{margin:0;max-width:130px;font-size:12px}
+body.mi-studio .mi-topbar-menu{position:relative;margin:0;padding:0;border:0}
+body.mi-studio .mi-topbar-menu>summary{list-style:none;width:36px;text-align:center;cursor:pointer;font-size:18px;line-height:22px;padding:3px 6px}
+body.mi-studio .mi-topbar-menu>summary::-webkit-details-marker{display:none}
+body.mi-studio .mi-topbar-menu-content{position:absolute;right:0;top:calc(100% + 8px);width:224px;max-height:min(70dvh,620px);overflow:auto;display:flex;flex-direction:column;gap:5px;z-index:50}
+body.mi-studio .mi-topbar-menu-content :is(button,a){display:block;text-align:left;text-decoration:none;width:100%;margin:0;font-size:13px;padding:6px 10px;min-height:32px}
+body.mi-studio .mi-topbar-menu-content .mi-language-choice{margin:4px 10px;display:block}
+body.mi-studio .mi-topbar-menu-content .mi-language-choice select{width:100%}
+body.mi-studio .mi-topbar-menu-content .mi-menu-links{margin-top:8px;padding-top:8px;border-top:1px solid var(--mi-soft)}
+body.mi-studio .mi-topbar-menu-content .mi-old-menu{display:contents}
+body.mi-studio .mi-topbar-menu-content .mi-old-menu>summary{display:none}
+body.mi-studio .mi-topbar-menu-content .mi-old-menu>:is(nav,div){display:contents}
+body.mi-studio .mi-topbar-menu-content hr{display:none}
+body.mi-studio .mi-topbar-menu-content .mi-old-menu nav{border:0;background:transparent;box-shadow:none}
+body.mi-studio :is(.dialogue-layout,.pearl-layout){max-width:1600px;gap:18px;padding:12px 18px max(8px,env(safe-area-inset-bottom));align-items:start}
+body.mi-studio.dialogue-studio .panel{padding:10px 12px}
+body.mi-studio.dialogue-studio .context-selectors{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+body.mi-studio.dialogue-studio .context-selectors>label{flex:0 1 340px;display:flex;flex-direction:column;align-items:stretch}
+body.mi-studio.dialogue-studio #stages{display:block;width:100%;margin:0}
+body.mi-studio.dialogue-studio #storyMode{max-width:280px;flex:none}
+body.mi-studio.dialogue-studio #storyOptions{margin:8px 0 20px}
+body.mi-studio.dialogue-studio .meeting-condition{gap:12px;align-items:end}
+body.mi-studio.dialogue-studio .meeting-condition label{flex-direction:column;align-items:flex-start;gap:5px}
+body.mi-studio.dialogue-studio #meetingHeld{min-width:140px;max-width:190px}
+body.mi-studio.dialogue-studio #meetingNameField{flex:0 1 260px}
+body.mi-studio.dialogue-studio #meetingName{width:190px;min-width:0}
+body.mi-studio.dialogue-studio #interruptOptions{margin:12px 0}
+body.mi-studio.dialogue-studio .playback-controls{align-items:end}
+body.mi-studio.dialogue-studio .playback-controls>label{max-width:300px}
+body.mi-studio.dialogue-studio #subtitle{min-height:130px;padding:18px;margin-block:16px}
+body.mi-studio .mi-action-fields{align-items:end;gap:8px 12px;margin:0}
+body.mi-studio .mi-action-fields select{min-width:130px;max-width:230px}
+body.mi-studio.pearl-studio .pearl-layout{grid-template-columns:minmax(210px,240px) minmax(360px,1fr) minmax(210px,240px)}
+body.mi-studio.pearl-studio .panel{padding:10px}
+body.mi-studio.pearl-studio #preview{border:0;border-image:none;background:transparent;max-height:170px}
+body.mi-studio.pearl-studio .reader-selection{align-items:end;gap:10px;flex-wrap:wrap}
+body.mi-studio.pearl-studio .reader-selection label{flex:0 1 200px}
+body.mi-studio.pearl-studio .reader-selection button{margin-bottom:0}
+body.mi-studio.pearl-studio .reader-scope:empty{display:none}
+body.mi-studio.pearl-studio .reader-scope{margin:8px 0}
+body.mi-studio.pearl-studio #lines .line{background:transparent;margin:8px 0;padding:0}
+body.mi-studio.pearl-studio #lines .line-summary{min-height:46px;padding:10px 12px;border-radius:0}
+body.mi-studio.pearl-studio .line-number,body.mi-studio.pearl-studio .count-badge{border:0;padding:0}
+body.mi-studio.pearl-studio .room-option{background:transparent!important;padding:8px;min-height:42px;margin:6px 0}
+body.mi-studio.pearl-studio #spawn .room-option:has(input:checked){background:transparent}
+body.mi-studio.pearl-studio :is(#addLine,#addAction){width:auto;min-height:32px;margin:8px 8px 0 0;border-style:solid}
+body.mi-studio.pearl-studio .shared{border:0;padding:0;background:transparent;margin:10px 0}
+body.mi-studio.pearl-studio .more-menu-content nav{border:0;padding:0;margin:0}
+body.mi-studio .project-trash-list{min-width:min(360px,70vw)}
+body.mi-studio #workspace{padding-bottom:12px}
+body.mi-studio.appearance-studio #workspace{height:var(--workspace-height,calc(100dvh - var(--workspace-top,75px) - 10px))}
+body.mi-studio.appearance-studio :is(#settings,#paintPanel){padding-bottom:8px;scroll-padding-bottom:12px}
+body.mi-studio :is(.paint-layers,.reference-list,.room-list,.timeline){padding-bottom:8px;scroll-padding-bottom:12px}
+body.mi-studio :is(.paint-tools,.preview-tools){align-items:center}
+@keyframes mi-outline-pulse{0%,100%{border-color:var(--mi-active);box-shadow:0 0 0 2px var(--mi-bg),0 0 0 3.5px #eeeeee70}50%{border-color:var(--mi-active);box-shadow:0 0 0 3px var(--mi-bg),0 0 0 4.5px #eeeeee}}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){
+ body.mi-studio :where(button,select,input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,.studio-menu>summary,.more-menu>summary,.action-menu>summary,.mi-topbar-menu>summary):not(:disabled):not([aria-disabled=true]):hover{animation:mi-outline-pulse 1.5s ease-in-out infinite}
+ body.mi-studio :is(.context-tabs button,.reference-tabs button,#stages button,.layer button,.texture-actions button,.menu-content button,.more-menu-content button,.line-menu button,.mi-topbar-menu button,.line-drag-handle,.quiet):hover{animation:none}
+}
+@media(prefers-reduced-motion:reduce){body.mi-studio *{animation:none!important}body.mi-studio :is(button,select,input,textarea):hover{border-image-source:var(--mi-frame-lit)}}
+@media(max-width:1200px){body.mi-studio .mi-topbar{flex-wrap:wrap;gap:10px}body.mi-studio .mi-topbar-left{flex:1 1 360px}body.mi-studio.pearl-studio .pearl-layout{grid-template-columns:210px minmax(340px,1fr)}body.mi-studio.pearl-studio .spawn-column{grid-column:1/-1}}
+@media(max-width:760px){body.mi-studio .mi-topbar{padding:10px 12px}body.mi-studio .mi-topbar-left{flex-basis:100%;gap:8px}body.mi-studio .mi-topbar-actions{width:100%}body.mi-studio .mi-topbar #saveState{margin-right:auto}body.mi-studio.pearl-studio .pearl-layout{display:flex;flex-direction:column;padding:12px}body.mi-studio.pearl-studio .panel{width:100%}body.mi-studio :is(.dialogue-layout,.pearl-layout){padding-bottom:8px}body.mi-studio.dialogue-studio .meeting-condition{gap:10px}}
+
+/* Native popups retain the same dark palette; the closed control stays clear. */
+body.mi-studio select{color-scheme:dark}
+body.mi-studio select :is(option,optgroup){background-color:var(--mi-bg);color:var(--mi-text)}
+body.mi-studio select option:checked{background-color:#262626;color:var(--mi-active)}
+body.mi-studio.appearance-studio :is(#previewStage,#paintViewport){border:0;border-image:none;border-radius:0;box-shadow:none}
+body.mi-studio.appearance-studio .paint-brush-rails{display:flex;flex-direction:column;flex:0 0 36px;min-height:0;gap:14px;padding-block:3px;overflow:auto;scrollbar-width:none}
+body.mi-studio.appearance-studio .paint-brush-rails .paint-size-rail{flex:1 1 0;min-height:124px;max-height:240px;height:auto;padding:0}
+body.mi-studio.appearance-studio .paint-brush-rails .paint-strength-rail{flex:1 1 0;max-height:170px}
+body.mi-studio.appearance-studio .paint-brush-rails input{height:0;min-height:62px}
+body.mi-studio.appearance-studio .paint-material-row{display:flex;justify-content:flex-end;margin:0;padding:0}
+body.mi-studio.appearance-studio .paint-material-row .texture-menu{position:relative;margin:0;padding:0;border:0}
+body.mi-studio.appearance-studio .paint-material-row .texture-actions{top:calc(100% + 6px);bottom:auto;right:0;max-height:50dvh;overflow:auto}
+body.mi-studio.appearance-studio .paint-tools{border:0;border-image:none;padding-block:4px;margin-bottom:8px}
+body.mi-studio.appearance-studio #groups details{border:0;border-image:none;background:transparent}
+body.mi-studio.appearance-studio .paint-brush-rails .paint-size-rail{border:0;border-image:none;background:transparent}
+body.mi-studio.appearance-studio .layer{border:0;border-left:2px solid transparent;border-image:none;border-radius:0;background:transparent}
+body.mi-studio.appearance-studio .layer.active{border-left-color:var(--mi-active);background:transparent}
+
+/* Quiet surfaces; only controls carry an outline. Selection remains visible. */
+body.mi-studio select{appearance:none;-webkit-appearance:none;background-image:none;padding-right:10px}
+body.mi-studio :is(.studio-menu,.more-menu,.action-menu,.mi-topbar-menu)>summary{list-style:none}
+body.mi-studio :is(.studio-menu,.more-menu,.action-menu,.mi-topbar-menu)>summary::-webkit-details-marker{display:none}
+body.mi-studio :is(.studio-menu,.more-menu,.action-menu,.mi-topbar-menu)>summary::after{content:none}
+body.mi-studio :is(.preview-actions,.paint-material-row)>details>summary{border:0;border-image:none;animation:none!important;padding:4px 0;color:var(--mi-muted)}
+body.mi-studio :is(.preview-actions,.paint-material-row)>details:is(:hover,[open])>summary{color:var(--mi-active)}
+body.mi-studio .mi-topbar-left :is(#projects,#collections,#saved){font-size:16px;height:34px;padding-block:3px;line-height:24px}
+body.mi-studio #projectName{font-size:18px;line-height:24px;font-weight:400}
+body.mi-studio .mi-topbar-menu-content .mi-language-choice{display:flex;align-items:center;gap:10px;margin:6px 10px;padding:0;font-size:12px}
+body.mi-studio .mi-language-choice>span{color:var(--mi-muted)}
+body.mi-studio .mi-language-choice button{width:auto;min-height:28px;padding:2px 0;border:0;border-image:none;animation:none!important;color:var(--mi-muted)}
+body.mi-studio .mi-language-choice button[aria-pressed=true]{color:var(--mi-active);text-decoration:underline;text-underline-offset:5px}
+body.mi-studio .mi-language-choice select[hidden]{display:none!important}
+body.mi-studio .mi-topbar-menu-content .current-page{color:var(--mi-active);text-decoration:underline;text-underline-offset:4px}
+body.mi-studio :is(button,select,input,textarea):focus-visible{outline:0;border-image-source:var(--mi-frame-lit)}
+body.mi-studio :is(a,summary,.quiet,.zoom-step,.layer button,[data-language-choice]):focus-visible{outline:1px solid var(--mi-active);outline-offset:2px}
+body.mi-studio :is(button[aria-pressed=true],button.selected){color:var(--mi-active);border-image-source:var(--mi-frame-lit)}
+body.mi-studio :is(.zoom-step,#zoomValue,#paintZoomValue,#fitPreview,#layerAdd,#layerDelete,#toggleSpawn){border:0;border-image:none;box-shadow:none;animation:none!important;background:transparent!important}
+body.mi-studio :is(.zoom-step,#layerAdd,#layerDelete){width:26px;min-width:26px;min-height:30px;height:30px;padding:0;line-height:30px}
+body.mi-studio :is(.zoom-step,#fitPreview,#layerAdd,#layerDelete,#toggleSpawn):hover{color:var(--mi-active)}
+body.mi-studio .zoom-toolbar{--mi-control-height:30px;gap:6px;align-items:center}
+body.mi-studio .zoom-number{display:flex;align-items:center;gap:1px;flex:0 0 auto}
+body.mi-studio .zoom-number input{width:48px!important;min-height:30px;height:30px;padding:0 2px;appearance:textfield;text-align:right}
+body.mi-studio .zoom-number input::-webkit-inner-spin-button{appearance:none;margin:0}
+body.mi-studio .zoom-number input::-webkit-outer-spin-button{appearance:none;margin:0}
+body.mi-studio #fitPreview{padding:0 4px;font-size:12px;white-space:nowrap;min-height:30px;height:30px}
+body.mi-studio.appearance-studio .paint-material-row{justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 12px}
+body.mi-studio.appearance-studio .paint-toggles{display:flex;align-items:center;gap:8px 12px;margin:0;flex-wrap:wrap}
+body.mi-studio.appearance-studio .paint-material-row .texture-menu{margin-left:auto}
+body.mi-studio.appearance-studio .panel-heading{align-items:center;min-height:32px;margin-bottom:8px}
+body.mi-studio.appearance-studio .panel-heading h2{margin:0}
+body.mi-studio.pearl-studio :is(#lines .line,#lines .line[open],#spawn .room-option,.empty-state,.room-empty,.line-delete-confirm,.affinity-variant-tools,.affinity-remove-confirm,.spawn-position,.room-group){border:0;border-image:none;box-shadow:none;background:transparent!important;border-radius:0;animation:none!important}
+body.mi-studio.pearl-studio :is(#lines .line-summary,#spawn .room-option):hover{background:transparent!important;color:var(--mi-active);animation:none}
+body.mi-studio.pearl-studio #lines .line-summary{padding:8px 0;min-height:38px;gap:10px}
+body.mi-studio.pearl-studio .line-summary::after{content:'▶';font-size:10px;color:var(--mi-muted);transform:none}
+body.mi-studio.pearl-studio .line[open]>.line-summary::after{content:'▼';transform:none;color:var(--mi-active)}
+body.mi-studio.pearl-studio .line-body{padding:0 0 12px 28px}
+body.mi-studio.pearl-studio #lines textarea{min-height:130px;padding:10px 12px;line-height:1.7}
+body.mi-studio.pearl-studio #spawn .room-option{padding:6px 0;min-height:32px;margin:3px 0}
+body.mi-studio.pearl-studio #spawn .room-option:has(input:checked) .room-name{color:var(--mi-active)}
+body.mi-studio.pearl-studio #spawn .room-option:hover .room-name{text-decoration:underline;text-underline-offset:4px}
+body.mi-studio.pearl-studio :is(.line-actions>summary,.line-drag-handle){border:0;border-image:none;animation:none!important}
+body.mi-studio.pearl-studio .line-actions>summary::after{content:none}
+body.mi-studio.pearl-studio .spawn-heading{gap:6px;margin-bottom:10px;align-items:center}
+body.mi-studio.pearl-studio #toggleSpawn{width:28px;min-height:28px;padding:0;font-size:12px}
+body.mi-studio.pearl-studio :is(.empty-state,.room-empty,.line-empty){padding:12px 0;margin:8px 0;text-align:left}
+body.mi-studio.pearl-studio #selectedRooms{margin-bottom:10px;gap:3px}
+body.mi-studio.pearl-studio .spawn-position{margin-top:12px;padding-top:0}
+body.mi-studio.pearl-studio #spawnMap{border:0}
+body.mi-studio.pearl-studio .line-number,body.mi-studio.pearl-studio .count-badge{font-family:var(--mi-ui-font)}
+body.mi-studio.pearl-studio .line-timing{font-size:12px}
+body.mi-studio :is(#subtitle,.mi-motion-plane){border-image:none;border-color:var(--mi-soft);animation:none!important}
+body.mi-studio :is(.preview-stage,.paint-wrap,#preview):hover{animation:none!important}
+body.mi-studio :is(.layer button,.line-drag-handle,.quiet,.mi-topbar-menu button,.mi-topbar-menu a,.context-tabs button,.reference-tabs button,#stages button,.texture-actions button,.line-menu button){border-image:none!important;animation:none!important}
+
+/* Rain World SimpleButton: rounded main frame plus an expanding selection frame. */
+body.mi-studio :is(button,select,input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,.studio-menu>summary,.more-menu>summary,.action-menu>summary,.line-actions>summary,.mi-topbar-menu>summary){border-image:none;border-radius:7px}
+body.mi-studio :is(.studio-menu nav,.more-menu nav,.more-menu-content,.menu-content,.line-menu,.texture-actions,.background-panel,dialog,.mi-topbar-menu-content){border-image:none;border-radius:9px}
+body.mi-studio :is(button,select,input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]),textarea,.studio-menu>summary,.more-menu>summary,.action-menu>summary,.line-actions>summary,.mi-topbar-menu>summary):not(:disabled):not([aria-disabled=true]):is(:hover,:focus-visible){border-color:var(--mi-active);outline:0;box-shadow:0 0 0 3px var(--mi-bg),0 0 0 4.5px var(--mi-active)}
+body.mi-studio :is(button[aria-pressed=true],button.selected){border-color:var(--mi-active)}
+body.mi-studio input[type=color]{border:1.5px solid var(--mi-line);border-radius:7px;background:transparent}
+body.mi-studio input[type=color]:not(:disabled):is(:hover,:focus-visible){border-color:var(--mi-active);outline:0;box-shadow:0 0 0 3px var(--mi-bg),0 0 0 4.5px var(--mi-active)}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){body.mi-studio input[type=color]:not(:disabled):hover{animation:mi-outline-pulse 1.5s ease-in-out infinite}}
+body.mi-studio :is(.layer button,.line-drag-handle,.quiet,.mi-topbar-menu button,.mi-topbar-menu a,.context-tabs button,.reference-tabs button,#stages button,.texture-actions button,.line-menu button,.zoom-step,#zoomValue,#paintZoomValue,#fitPreview,#layerAdd,#layerDelete,#toggleSpawn,.preview-actions>details>summary,.paint-material-row>details>summary,.line-actions>summary,.mi-version-link){box-shadow:none!important;border-radius:0;animation:none!important}
+body.mi-studio.appearance-studio #groups :is(.setting-dependents,.enable-field){border:0;border-image:none}
+body.mi-studio.appearance-studio #groups .setting-dependents{margin-left:0;padding-left:14px}
+body.mi-studio.appearance-studio #groups details> :not(summary){margin-left:14px}
+body.mi-studio.appearance-studio #groups details>details{padding-left:0}
+body.mi-studio.appearance-studio #groups details details details{border:0;margin-left:14px}
+body.mi-studio.appearance-studio #groups .settings-category{border:0}
+@media(prefers-reduced-motion:reduce){body.mi-studio :is(button,select,input,textarea,summary){animation:none!important}}
+body.mi-studio .layer-mask-hint{font-size:11px;line-height:1.6;color:var(--mi-muted);margin:4px 0 10px;overflow-wrap:anywhere}
+@media(max-width:760px){body.mi-studio .mi-topbar{padding-top:16px}}

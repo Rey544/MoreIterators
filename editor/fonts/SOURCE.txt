@@ -1,0 +1,6 @@
+Fusion Pixel by TakWolf.
+https://github.com/TakWolf/fusion-pixel-font
+
+These unmodified WOFF2 fonts are the same UI font assets bundled in the local
+RainocTool 1.1.2 release. They are distributed under SIL Open Font License 1.1;
+see Fusion-Pixel-OFL.txt.

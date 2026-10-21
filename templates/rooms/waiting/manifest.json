@@ -1,0 +1,39 @@
+{
+  "schema": "moreiterators.waiting-template.v1",
+  "id": "mi-waiting",
+  "renderedBase": "entry",
+  "sourceBase": "source/entry",
+  "entryNode": 0,
+  "width": 48,
+  "height": 35,
+  "cameraCount": 1,
+  "lighting": {
+    "palette": 12,
+    "fadePalette": 8,
+    "fadeAmount": 0.9347826,
+    "zeroGravity": 1
+  },
+  "files": {
+    "entry.txt": "66ab39e6525c8751802303cc6632edfe95c8c2d2d2f3442d20ef6405d53ed91b",
+    "entry_1.png": "e04a06ad13a3ed54a8ae892aec18d9195bf6b9bcdf35cc7ef81ffdbcf58c58c7",
+    "entry_settings.txt": "dae5244e89140810e1b6bf8fb1cfa44380ab71054040d9a569ee31716103b353",
+    "source/entry.txt": "a340479a9f0f52e914e8af6b14a7ab5d955ad4f6f5b838bcccece3e09f2c4c86",
+    "source/entry.png": "5022e2b1e56776dc5c122544bdb14876c8dca359b8a30516f9cf57e4eb8b72a3"
+  },
+  "legacy": {
+    "room": "SS_D07",
+    "entryNode": 1,
+    "cameraCount": 4,
+    "geometrySha256": "ccfdfdb58d8a5b9fb693100b3ef5793b34c45a238ed07a0e691e8b2c2c28597b",
+    "geometryBodySha256": "287b70cc64ae2283050fa42b26ea53de1b04add7ab96bc749096646ae2464b3e",
+    "settingsSha256": "b341092716b5e8ea51a5d7aae682d821a8862c5742f5da4552a6b9b7ea25ef43",
+    "settingsNormalizedSha256": "b341092716b5e8ea51a5d7aae682d821a8862c5742f5da4552a6b9b7ea25ef43",
+    "deployedSettingsNormalizedSha256": "00941778bc576ea6522a2d1bcf75f030862ea60523c34539ef7816803a65f697",
+    "cameraSha256": {
+      "1": "9c11c1be4a993edbd27e7ad9227c61806b07e448001ed66dc9c5753e1dc84247",
+      "2": "1811fe1304bf1437a87fcf6837cca98648b36990abd22f5186f8ef2450e8cd82",
+      "3": "5fd784a9900a8b4c2099459c5029697058c333e825d38a5a83b2ffcf4ab39624",
+      "4": "24f9ca15ab3c7660cb7ff2c3726430f66b6f3124159072823b0a7e84bc54fcee"
+    }
+  }
+}

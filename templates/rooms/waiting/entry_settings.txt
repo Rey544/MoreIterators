@@ -1,0 +1,13 @@
+Template: NONE
+DangerType: None
+CeilingDrips: 0
+Clouds: 1
+Grime: 0
+BkgDroneVolume: 0
+RandomItemDensity: 0
+Palette: 12
+Effects: ZeroG-1-20-20,
+PlacedObjects: 
+AmbientSounds: OMNI><AM_IND-SuperStructure.ogg><827.6316><647.9006><0.4021739><0.7456522, OMNI><AM_WIN-StrongWnd2.ogg><648.0505><647.2351><0.3913043><1, 
+Triggers: 
+FadePalette: 8, 0.9347826

@@ -1,0 +1,26 @@
+.project-manage-dialog{width:min(760px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);padding:18px;overflow:auto;box-sizing:border-box}
+.project-manage-form{display:grid;gap:12px;min-width:0}
+.project-manage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.project-manage-heading h2,.project-manage-preview h3{margin:0;font-size:18px}
+.project-manage-identity{margin:0;overflow-wrap:anywhere}
+.project-manage-delete,.project-manage-all,.project-manage-conflict{display:flex;align-items:center;gap:8px}
+.project-manage-note{margin:0;font-size:14px;line-height:1.5;color:var(--muted,#aeb4b9)}
+.project-manage-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.project-manage-all{margin-right:auto}
+.project-manage-items{display:grid;gap:5px}
+.project-manage-item{display:grid;grid-template-columns:20px minmax(0,1fr) 100px;gap:10px;align-items:center;padding:7px 0}
+.project-manage-item-text{display:grid;gap:3px;min-width:0;overflow-wrap:anywhere}
+.project-manage-item-detail,.project-manage-shared{font-size:13px;color:var(--muted,#aeb4b9)}
+.project-manage-item select,.project-manage-target select{width:100%;min-width:0}
+.project-manage-target{display:grid;grid-template-columns:100px minmax(0,1fr);gap:10px;align-items:center}
+.project-manage-preview{display:grid;gap:10px;padding-top:8px}
+.project-manage-preview ul{margin:0;padding-left:20px;line-height:1.6}
+.project-manage-conflict{align-items:flex-start;font-size:14px;line-height:1.5}
+.project-manage-conflict input{flex-shrink:0;margin-top:4px}
+.project-manage-error,.project-manage-conflict-title{color:var(--warning,#e7c978);margin:0}
+.project-manage-footer{display:flex;gap:10px;justify-content:flex-end;padding-top:4px}
+.project-manage-dialog input[type=checkbox]{width:16px;height:16px;flex-shrink:0}
+.project-trash-row{display:flex;align-items:center;gap:12px;margin:12px 0}
+.project-trash-name{display:grid;gap:4px;min-width:0;flex:1;overflow-wrap:anywhere}
+.project-trash-name small{color:var(--muted,#aeb4b9)}
+@media(max-width:520px){.project-manage-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);padding:12px}.project-manage-item{grid-template-columns:18px minmax(0,1fr) 78px;gap:7px}.project-manage-all{width:100%}.project-manage-target{grid-template-columns:1fr}.project-manage-footer>*{flex:1}.project-trash-list>div{flex-wrap:wrap}.project-trash-list>div>span{flex-basis:100%}}

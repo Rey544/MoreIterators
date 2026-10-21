@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>投影编辑</title><link rel="stylesheet" href="/projections.css"><script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"></head>
+<body class="projection-studio mi-studio">
+<header class="studio-header">
+  <strong class="studio-brand"><span class="projection-mark" aria-hidden="true"></span>投影编辑</strong>
+  <label class="project-choice">迭代器<select id="projects" disabled data-i18n-content></select></label>
+  <div class="header-actions"><span id="saveState" role="status" aria-live="polite">正在加载…</span><button id="save" disabled>保存</button><button id="apply" class="primary" disabled>应用到游戏</button>
+    <details class="more-menu"><summary>切换页面</summary><nav><a href="/">外观调整</a><a href="/dialogue">对话编辑</a><a href="/pearls">珍珠文本</a><a href="/broadcasts">广播编辑</a><a href="/rooms">区域连接</a></nav></details>
+  </div>
+</header>
+<p id="notice" role="status" aria-live="polite"></p>
+<main id="studio" inert>
+  <section class="library panel">
+   <div class="group-settings">
+    <div class="section-heading"><h1>动画组</h1><button id="newGroup" class="compact">新建组</button></div>
+    <div class="group-fields"><label>已保存动画<select id="saved" data-i18n-content></select></label>
+    <label>组名<input id="groupName" maxlength="100" autocomplete="off"></label></div>
+    <div class="check-row"><label><input id="enabled" type="checkbox">启用动画组</label><label><input id="loop" type="checkbox">循环</label><label><input id="confineToRoom" type="checkbox">限制在演算室内</label></div>
+    <details class="mask-section"><summary>项目默认蒙版</summary><label class="check-row"><input id="projectMaskEnabled" type="checkbox">启用矩形蒙版</label><div id="projectMaskFields" hidden><div class="field-pair"><label>左侧 %<input id="projectMaskx" type="number" required min="0" max="99.9" step="any"></label><label>顶部 %<input id="projectMasky" type="number" required min="0" max="99.9" step="any"></label><label>宽度 %<input id="projectMaskwidth" type="number" required min="0.1" max="100" step="any"></label><label>高度 %<input id="projectMaskheight" type="number" required min="0.1" max="100" step="any"></label></div></div><label class="check-row"><input id="showMask" type="checkbox" checked>显示蒙版边框</label></details>
+   </div>
+   <section class="binding-section">
+      <div class="section-heading"><h2>触发绑定</h2><button id="refreshSources" class="compact" title="刷新对话来源">刷新</button></div>
+      <label>触发事件<select id="triggerKind"><option value="dialogue">迭代器对话</option><option value="pearl">读取特定珍珠</option><option value="work">工作待机</option></select></label>
+      <div id="sourceFields"><label>对话来源<select id="source" data-i18n-content></select></label>
+        <div class="field-pair"><label>起始句<select id="startLine" data-i18n-content></select></label><label>结束句<select id="endLine" data-i18n-content></select></label></div>
+        <div class="field-pair"><label>开口前播放（秒）<input id="beforeSeconds" type="number" required min="0" max="120" step=".025" value="0"></label><label>结束后保留（秒）<input id="afterSeconds" type="number" required min="0" max="120" step=".025" value="0"></label></div>
+        <div id="bindingText" class="binding-text" data-i18n-content></div>
+      </div>
+      <p id="bindingError" class="field-error" role="status"></p>
+   </section>
+  </section>
+  <section id="projectionWorkspace" class="workspace panel">
+    <div class="section-heading preview-heading"><h2>投影预览</h2><div class="zoom-controls"><label class="sr-only" for="zoom">预览缩放</label><input id="zoom" type="range" min="1" max="200" step="1" value="100"><output id="zoomValue" for="zoom">100%</output><button id="fit" class="compact">适应</button><button id="actualSize" class="compact">1:1</button></div></div>
+    <div id="viewport" class="viewport"><canvas id="preview" width="1000" height="600" tabindex="0" aria-label="拖动选中图层来设置位置"></canvas></div>
+    <div class="playback-controls"><button id="play">播放</button><button id="pause" disabled>暂停</button><button id="stop">停止</button><output id="timeDisplay">0.00 / 0.00 s</output><span id="previewState" class="muted" role="status"></span></div>
+    <label class="sr-only" for="playhead">播放位置</label><input id="playhead" class="playhead" type="range" min="0" max="1" step=".01" value="0">
+    <div class="section-heading timeline-heading"><h2>独立轨道</h2><div class="track-tools"><select id="newKind" aria-label="新轨道类型"><option value="image">PNG 图层</option><option value="circle">圆环</option><option value="line">线段</option><option value="glyph">符号</option><option value="grid">网格</option><option value="cursor">光标框</option><option value="scanline">扫描线</option><option value="matrix">符号矩阵</option></select><button id="addTrack" class="compact">添加轨道</button></div></div>
+    <div id="timeline" class="timeline" aria-label="动画时间轴"></div>
+  </section>
+  <div id="projectionDivider" class="workspace-divider projection-divider" role="separator" tabindex="0" aria-orientation="vertical" aria-controls="projectionWorkspace projectionSidebar" aria-label="调整投影与素材栏宽度" title="拖动调整栏宽，方向键微调，双击恢复默认宽度"><span aria-hidden="true"></span></div>
+  <aside id="projectionSidebar" class="right-sidebar">
+   <section class="media-library panel">
+    <details class="reference-section" open><summary>原版素材与效果</summary><div class="reference-tabs"><button id="refAssets" aria-pressed="true">原版素材</button><button id="refEffects" aria-pressed="false">效果</button></div><div id="references" class="reference-list"></div><p id="referenceState" class="muted" role="status"></p></details>
+    <section class="assets-section"><div class="section-heading"><h2>PNG 素材</h2><button id="upload" class="compact">导入 PNG</button></div><div id="images" class="image-list"></div></section>
+   </section>
+   <section class="inspector panel">
+    <div class="section-heading"><h2>轨道与动作</h2><button id="removeTrack" class="compact quiet">删除轨道</button></div>
+    <div id="trackEditor" hidden>
+      <div class="track-fields">
+       <label class="wide-field"><span>轨道名称</span><input id="trackName" maxlength="80"></label>
+       <label id="trackImageField" class="wide-field"><span>图层素材</span><select id="trackImage" data-i18n-content></select></label>
+       <label><span>开始延迟（秒）</span><input id="trackDelay" type="number" required min="0" max="120" step="any"></label><label id="trackColorField"><span>颜色</span><input id="trackColor" type="color"></label>
+       <label id="trackStyleField" class="wide-field"><span>投影样式</span><select id="trackStyle"><option value="native">原版投影</option><option value="plain">普通透明图层</option></select></label>
+       <label id="glyphIndexField"><span>符号编号</span><input id="glyphIndex" type="number" required min="0" max="49" step="1"></label>
+      </div>
+      <details class="mask-section"><summary>轨道蒙版</summary><label>蒙版来源<select id="trackMaskMode"><option value="inherit">项目默认</option><option value="none">不使用自定义蒙版</option><option value="custom">单独设置</option></select></label><div id="trackMaskFields" hidden><div class="field-pair"><label>左侧 %<input id="trackMaskx" type="number" required min="0" max="99.9" step="any"></label><label>顶部 %<input id="trackMasky" type="number" required min="0" max="99.9" step="any"></label><label>宽度 %<input id="trackMaskwidth" type="number" required min="0.1" max="100" step="any"></label><label>高度 %<input id="trackMaskheight" type="number" required min="0.1" max="100" step="any"></label></div></div></details>
+      <div class="section-heading frame-heading"><h3>关键帧</h3><div class="button-row"><button id="addFrame" class="compact">新增帧</button><button id="removeFrame" class="compact quiet">删除帧</button></div></div>
+      <div id="frameList" class="frame-list" aria-label="关键帧列表"></div>
+      <div class="frame-fields">
+       <label><span id="durationLabel">初始停留（秒）</span><input id="duration" type="number" required min=".02" max="120" step="any"></label>
+       <label><span>横向 %</span><input id="x" type="number" required min="0" max="100" step="any"></label><label><span>纵向 %</span><input id="y" type="number" required min="0" max="100" step="any"></label>
+       <label><span>缩放</span><input id="scale" type="number" required min=".01" max="10" step="any"></label><label><span>旋转（度）</span><input id="rotation" type="number" required min="-3600" max="3600" step="1"></label>
+       <label><span>不透明度 %</span><input id="opacity" type="number" required min="0" max="100" step="1"></label><label><span>亮度</span><input id="brightness" type="number" required min="0" max="2" step="any"></label>
+       <label><span>闪烁强度 %</span><input id="flicker" type="number" required min="0" max="100" step="1"></label>
+       <label class="wide-field"><span>缓动</span><select id="ease"><option value="linear">匀速</option><option value="smooth">平滑</option><option value="step" title="阶梯会保持上一关键帧的状态，在过渡时长结束时瞬间切换。">阶梯（无过渡）</option></select></label>
+      </div>
+      <div class="button-row order-controls"><button id="trackUp" class="compact">图层上移</button><button id="trackDown" class="compact">图层下移</button></div>
+    </div>
+    <p id="trackEmpty" class="muted">添加或选择一条轨道。</p>
+   </section>
+  </aside>
+</main>
+<input id="pngFile" type="file" multiple accept="image/png,.png" hidden>
+<input id="replacePngFile" type="file" accept="image/png,.png" hidden>
+<script src="/projection-depth.js"></script>
+<script src="/studio-undo.js"></script><script src="/projections.js"></script>
+<script src="/studio-navigation.js"></script><script src="/studio-chrome.js"></script><script src="/studio-about.js"></script></body></html>

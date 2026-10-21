@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>珍珠文本</title>
+  <link rel="stylesheet" href="/pearls.css">
+<script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"></head>
+<body class="pearl-studio mi-studio">
+  <header class="studio-header">
+    <div class="studio-brand"><strong>珍珠文本</strong></div>
+    <div class="collection-choice"><label>珍珠项目<select id="collections" data-i18n-content-attributes="title" aria-label="切换珍珠项目" disabled></select></label></div>
+    <div class="current-pearl">
+      <h1 id="pearlTitle" class="visually-hidden">正在打开珍珠…</h1>
+      <select id="saved" aria-label="切换已保存珍珠"></select>
+    </div>
+    <div class="header-actions">
+      <span id="collectionActive" role="status"></span><span id="saveState" role="status" aria-live="polite">正在加载…</span>
+      <button id="save" type="button">保存</button>
+      <button id="apply" class="primary" type="button" title="保存当前珍珠与读取设置，并将此珍珠项目用于游戏。">应用到游戏</button>
+      <details id="moreMenu" class="more-menu">
+        <summary aria-label="更多珍珠操作">更多</summary>
+        <div class="more-menu-content">
+          <button id="newCollection" type="button">新建珍珠项目</button>
+          <button id="renameCollection" type="button">重命名珍珠项目</button>
+          <button id="activateCollection" type="button">启用此珍珠项目</button>
+          <hr>
+          <button id="new" type="button">新建珍珠</button>
+          <button id="import" type="button">导入 JSON</button>
+          <button id="export" type="button">导出 JSON</button>
+          <nav aria-label="切换页面">
+            <a href="/">外观调整</a>
+            <a href="/dialogue">对话编辑</a>
+            <a href="/broadcasts">广播编辑</a><a id="projectionStudio" href="/projections">投影编辑</a><a id="roomStudio" href="/rooms">区域连接</a>
+          </nav>
+        </div>
+      </details>
+    </div>
+  </header>
+  <p id="notice" role="status" aria-live="polite"></p>
+
+  <main id="pearlLayout" class="pearl-layout" aria-labelledby="pearlTitle">
+    <aside id="pearlAppearanceColumn" class="appearance-column panel pearl-column" aria-labelledby="appearanceHeading"><div class="pearl-column-body">
+      <div class="section-heading"><h2 id="appearanceHeading">珍珠外观</h2></div>
+      <canvas id="preview" width="300" height="160" aria-label="珍珠外观预览"></canvas>
+      <div class="pearl-identity-fields">
+        <label>编号<input id="pearlId" placeholder="A01" maxlength="8" pattern="[A-Z]{1,4}[0-9]{2,4}" autocomplete="off" spellcheck="false" required></label>
+        <label>名称<input id="name" maxlength="100" placeholder="大都会-公民服务记录文件" autocomplete="off" required></label>
+      </div>
+      <div id="appearance"></div>
+      <details id="appearanceDetails">
+        <summary>内部信息与备注</summary>
+        <p class="hint" id="identity"></p>
+        <label>作者备注<textarea id="notes" rows="4" placeholder="仅供创作时参考，不显示在游戏中。"></textarea></label>
+      </details>
+    </div><div class="pearl-height-handle" data-column="0" role="separator" aria-orientation="horizontal" aria-label="调整珍珠外观高度" tabindex="0"></div></aside>
+    <div class="pearl-width-handle" data-divider="0" role="separator" aria-orientation="vertical" aria-label="调整珍珠外观与台词宽度" tabindex="0"></div>
+
+    <section id="pearlDialogueColumn" class="dialogue-column panel pearl-column" aria-labelledby="readerTitle"><div class="pearl-column-body">
+      <div class="section-heading reader-heading visually-hidden"><h2 id="readerTitle">当前读取者：未选择</h2></div>
+      <div class="reader-selection">
+        <label>读取者<select id="readers" aria-label="已绑定读取者"></select></label>
+        <label>好感差分<select id="readerAffinity" aria-label="珍珠好感度差分"><option value="general">通用</option><option value="notSpeaking">拒绝交流</option><option value="dislikes">反感</option><option value="neutral">中立</option><option value="likes">喜欢</option></select></label>
+        <button id="unbind" type="button" class="quiet">移除绑定</button>
+      </div>
+      <div id="affinityVariantTools" class="bar affinity-variant-tools" hidden><span id="affinityVariantState"></span><button id="createAffinityVariant" type="button">建立差分</button><button id="removeAffinityVariant" type="button">使用通用</button></div>
+      <div id="removeAffinityConfirm" class="bar affinity-remove-confirm" hidden><span>删除此好感差分并使用通用台词？</span><button id="confirmRemoveAffinity" type="button">确认删除</button><button id="cancelRemoveAffinity" type="button">取消</button></div>
+      <details class="add-reader">
+        <summary>添加读取者</summary>
+        <div class="bar">
+          <select id="candidate" aria-label="可绑定迭代器"></select>
+          <button id="bind" type="button">绑定到这颗珍珠</button>
+        </div>
+      </details>
+      <p id="empty" class="empty-state">添加读取者，开始编写这颗珍珠的台词。</p>
+
+      <div id="readerEditor" hidden>
+        <nav id="stages" aria-label="读取阶段">
+          <button data-stage="read" type="button">首次读取</button>
+          <button data-stage="repeat" type="button">重复交付</button>
+          <button data-stage="leaving" type="button">中途离开</button>
+          <button data-stage="returning" type="button">返回</button>
+          <button data-stage="many" type="button">多颗珍珠</button>
+        </nav>
+        <p id="readerScope" class="reader-scope">首次读取</p>
+        <div id="sharedHelp" class="shared" hidden><a id="dialogueLink" href="/dialogue">编辑迭代器共用对话</a></div>
+        <div id="readerPresentation"></div>
+        <div id="leaveOptions" class="bar option-panel">
+          <label>中途离开<select id="leavePolicy"><option value="resume">暂停，回来后续读</option><option value="restart">回来后从头读</option><option value="cancel">停止此次读取</option></select></label>
+        </div>
+        <div id="repeatOptions" class="bar option-panel" hidden>
+          <label><input id="privateRepeat" type="checkbox">单独设置这颗珍珠的重复读取随机组</label>
+          <label id="prependCommonRepeatField" hidden><input id="prependCommonRepeat" type="checkbox">先播放迭代器通用重复递交组</label>
+          <label><input id="preventRepeat" type="checkbox">同一雨循环内不重复读正文</label>
+        </div>
+        <div id="manyOptions" class="bar option-panel" hidden>
+          <label><input id="manyEnabled" type="checkbox">启用多珍珠提示</label>
+          <label>本循环从第几颗不同珍珠开始提示<input id="threshold" type="number" min="2" max="50" required></label>
+        </div>
+        <div id="poolTools" class="bar pool-tools" hidden>
+          <select id="pool" aria-label="随机组"></select>
+          <input id="poolName" aria-label="随机组名称" maxlength="80" placeholder="随机组名称">
+          <button id="addPool" type="button">添加随机组</button>
+          <button id="removePool" type="button" class="quiet danger">删除本组</button>
+        </div>
+        <details id="pearlActionDetails" class="compact-options"><summary>组结束动作</summary><div id="pearlActionOptions" class="bar option-panel"></div></details>
+        <div id="lines"></div>
+        <button id="addLine" type="button" class="add-line">＋ 新增一句</button>
+        <button id="addAction" type="button" class="add-line">＋ 新增独立动作</button>
+
+        <details class="playback-panel">
+          <summary>网页试播</summary>
+          <div class="bar">
+            <button id="play" type="button">首次读取</button>
+            <button id="playRepeat" type="button">本循环重复交付</button>
+            <button id="playNextCycle" type="button">下个循环再次交付</button>
+            <button id="playMany" type="button">多珍珠提示后读取</button>
+            <button id="leave" type="button">模拟离开</button>
+            <button id="return" type="button">模拟返回</button>
+            <button id="stop" type="button">停止</button>
+          </div>
+          <label class="check-row"><input id="previewStomachPearl" type="checkbox">模拟胃中取珠</label><p id="pearlPresentationState" class="presentation-state" aria-live="polite"></p><p id="subtitle">……</p>
+          <p id="playState" class="hint" role="status">未开始</p>
+        </details>
+      </div>
+    </div><div class="pearl-height-handle" data-column="1" role="separator" aria-orientation="horizontal" aria-label="调整珍珠台词高度" tabindex="0"></div></section>
+    <div class="pearl-width-handle" data-divider="1" role="separator" aria-orientation="vertical" aria-label="调整台词与生成位置宽度" tabindex="0"></div>
+
+    <aside id="pearlSpawnColumn" class="spawn-column panel pearl-column" aria-labelledby="spawnTitle"><div class="pearl-column-body">
+      <div class="section-heading spawn-heading">
+        <h2 id="spawnTitle">生成位置</h2>
+        <span id="spawnCount" class="count-badge">0</span>
+        <button id="toggleSpawn" type="button" class="quiet" aria-expanded="true" aria-controls="spawnPanel">收起</button>
+      </div>
+      <div id="spawnPanel">
+        <div id="spawn">
+          <div id="selectedRooms" aria-label="已选生成位置"></div>
+          <label class="room-search">查找房间<input id="roomSearch" type="search" placeholder="搜索名称或房间编号" autocomplete="off"></label>
+          <button id="refreshRooms" type="button" data-i18n="pearl28.refreshRooms">刷新房间</button>
+          <div id="roomResults" aria-label="可选生成位置"></div>
+        </div>
+      </div>
+    </div><div class="pearl-height-handle" data-column="2" role="separator" aria-orientation="horizontal" aria-label="调整生成位置高度" tabindex="0"></div></aside>
+    <div class="pearl-width-handle" data-divider="2" role="separator" aria-orientation="vertical" aria-label="调整生成位置与定位房间宽度" tabindex="0"></div>
+    <aside id="pearlPositionColumn" class="position-column panel pearl-column" aria-labelledby="positionTitle"><div class="pearl-column-body">
+        <div class="section-heading"><h2 id="positionTitle">定位房间</h2></div>
+        <div id="spawnPositionPanel" class="spawn-position">
+          <select id="positionRoom" aria-label="定位房间"></select>
+          <div class="bar"><button id="refreshPosition" type="button">刷新地形</button><button id="autoPosition" type="button">恢复自动摆放</button></div>
+          <canvas id="spawnMap" width="540" height="340" tabindex="0" aria-label="点击或拖动设置珍珠生成位置"></canvas>
+          <div class="bar position-fields"><label>水平位置（%）<input id="spawnX" type="number" min="0" max="100" step="any"></label><label>垂直位置（%，底部为 0）<input id="spawnY" type="number" min="0" max="100" step="any"></label></div>
+          <p id="spawnPositionState" class="hint" role="status"></p>
+        </div>
+    </div><div class="pearl-height-handle" data-column="3" role="separator" aria-orientation="horizontal" aria-label="调整定位房间高度" tabindex="0"></div></aside>
+  </main>
+  <dialog id="collectionDialog" aria-labelledby="collectionDialogTitle">
+    <form id="collectionForm"><h2 id="collectionDialogTitle">新建珍珠项目</h2><label>项目名称<input id="collectionName" maxlength="100" required autocomplete="off"></label><p id="collectionError" role="alert"></p><div class="bar"><button id="confirmCollection" class="primary" type="submit">保存</button><button id="cancelCollection" type="button">取消</button></div></form>
+  </dialog>
+  <input id="file" type="file" accept="application/json,.json" hidden>
+  <script src="/line-actions.js"></script>
+  <script src="/audio-settings.js"></script>
+<script src="/pearl-icons.js"></script>
+<script src="/pearl-workspace.js"></script>
+<script src="/studio-undo.js"></script>
+<script src="/pearls.js"></script>
+<script src="/studio-navigation.js"></script><script src="/studio-chrome.js"></script><script src="/studio-about.js"></script></body>
+</html>

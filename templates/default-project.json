@@ -1,0 +1,1291 @@
+{
+  "schema": "moreiterators.project.v1",
+  "projectId": "blank-template",
+  "name": "模板2.0",
+  "design": {
+    "headColor": "#fcfdfd",
+    "eyeColor": "#1c1c1c",
+    "clothTopColor": "#707070",
+    "clothMiddleColor": "#6e6e6e",
+    "clothBottomColor": "#636363",
+    "clothGrain": 0,
+    "antennaColor": "#383838",
+    "metalColor": "#303030",
+    "armColor": "#7c8b85",
+    "armShadowStrength": 0.35,
+    "sleeveMapping": "front",
+    "armJointColor": "#414b48",
+    "collarColor": "#98464b",
+    "antennaTint": true,
+    "antennaInnerColor": "#9cafaa",
+    "antennaOuterColor": "#323e3d",
+    "necklaceCount": 0,
+    "necklaces": [],
+    "earTint": false,
+    "earCustom": false,
+    "earInnerColor": "#9cafaa",
+    "earOuterColor": "#323e3d",
+    "roomBrightness": 1,
+    "roomContrast": 1,
+    "roomSaturation": 1,
+    "scarfPanels": 0,
+    "scarfLength": 36,
+    "scarfWidth": 36,
+    "scarfGap": 0.18,
+    "scarfLightness": 0.7,
+    "scarfFringe": false,
+    "scarfFringeLength": 5,
+    "scarfShape": 0,
+    "scarfTopWidth": 10,
+    "scarfTopColor": "#384845",
+    "scarfMiddleColor": "#688479",
+    "scarfBottomColor": "#b5c7bd",
+    "scarfGrain": 0.12,
+    "cableColorA": "#414b48",
+    "cableColorB": "#aab3ab",
+    "headCableRed": "#ff0000",
+    "headCableBlue": "#0000ff",
+    "earWidth": 3,
+    "earHeight": 7,
+    "earOffsetX": 0,
+    "earOffsetY": 0,
+    "antennaHeight": 13,
+    "antennaWidth": 1.1,
+    "antennaSpread": 8.2,
+    "antennaOffsetY": 0,
+    "eyeSpacing": 3.2,
+    "eyeSize": 1.55,
+    "faceScale": 1,
+    "faceOffsetX": 0,
+    "faceOffsetY": 0,
+    "cheekScale": 1,
+    "cheekOffsetX": 0,
+    "cheekOffsetY": 0,
+    "puppetScale": 1,
+    "torsoLength": 1,
+    "armLength": 1,
+    "legLength": 1,
+    "robeLength": 29,
+    "robeHemWidth": 1,
+    "sleeveWidth": 4,
+    "sleeveOwn": false,
+    "collarWidth": 1,
+    "collarHeight": 3,
+    "collarNotch": 0,
+    "neckLength": 1,
+    "collarOffsetY": -2.6,
+    "collarTopNotch": 0,
+    "collarRoundness": 0.5,
+    "collarTaper": 1,
+    "sleeveTopColor": "#813c46",
+    "sleeveMiddleColor": "#b68b8e",
+    "sleeveBottomColor": "#e0dfd8",
+    "sleeveGrain": 0.12,
+    "hemProfile": "1,1,1,1,1,1,1,1,1,1,1",
+    "haloColor": "#83b39e",
+    "haloPreset": "original",
+    "haloScale": 1,
+    "haloOpacity": 0.5,
+    "haloSpeed": 1,
+    "roomPalette": 26,
+    "rearGlowColor": "#98b4a5",
+    "rearGlowOpacity": 0.12,
+    "rearGlowRadius": 250,
+    "rearGlowEnabled": true,
+    "pearlCount": 32,
+    "pearlColor1": "#000000",
+    "pearlColor2": "#658c7b",
+    "pearlColor3": "#a2bfb1",
+    "pearlColor4": "#e5dcca",
+    "pearlGlyphColor": "#acbcb2",
+    "pearlGlyphOpacity": 0.65,
+    "pearlGlyph1": 0,
+    "pearlGlyph2": 3,
+    "pearlGlyph3": 6,
+    "pearlGlyph4": 9,
+    "pearlClusterX": 0.25,
+    "pearlClusterY": 0.18,
+    "pearlCluster2X": 0.75,
+    "pearlCluster2Y": 0.18,
+    "pearlScatter": 1,
+    "pearlFixedCount": 8,
+    "roomWorkColor": "#476d67",
+    "roomReceptionColor": "#bd8152",
+    "roomTransition": 3,
+    "layers": {
+      "neck": true,
+      "head": true,
+      "eyes": true,
+      "face": true,
+      "antenna": true,
+      "ears": true,
+      "robe": true,
+      "sleeves": true,
+      "hands": true,
+      "feet": true,
+      "collar": false,
+      "mechanicalArm": true,
+      "cables": true,
+      "halo": true
+    },
+    "capeLength": 31,
+    "antennaUpperEnabled": true,
+    "earBodyEnabled": true,
+    "antennaLowerEnabled": true,
+    "antennaLowerCustom": false,
+    "antennaLowerTint": false,
+    "antennaLowerColor": "#212121",
+    "antennaLowerInnerColor": "#9cafaa",
+    "antennaLowerOuterColor": "#323e3d",
+    "antennaLowerWidth": 2.4,
+    "antennaLowerHeight": 10,
+    "antennaLowerSpread": 8.2,
+    "antennaLowerOffsetY": 0,
+    "earDecorationEnabled": true,
+    "earDecorationCustom": false,
+    "earDecorationTint": false,
+    "earDecorationColor": "#353131",
+    "earDecorationInnerColor": "#9cafaa",
+    "earDecorationOuterColor": "#323e3d",
+    "earDecorationWidth": 0.8,
+    "earDecorationHeight": 4.1,
+    "earDecorationSpread": 8,
+    "earDecorationOffsetY": -4.4,
+    "sleeveSymmetry": true,
+    "sleeveLeftEnabled": true,
+    "sleeveRightEnabled": true,
+    "sleeveRightTopColor": "#813c46",
+    "sleeveRightMiddleColor": "#b68b8e",
+    "sleeveRightBottomColor": "#e0dfd8",
+    "sleeveRightGrain": 0.12,
+    "frontSymmetry": true,
+    "frontPanels": [
+      {
+        "id": "frontL",
+        "enabled": false,
+        "type": "cloth",
+        "width": 10,
+        "length": 27,
+        "topWidth": 5,
+        "anchor": "shoulders",
+        "anchor2": "shoulders",
+        "u": 0,
+        "v": 0,
+        "u2": 0,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": 0,
+        "sag": 2,
+        "roundness": 0.65,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      },
+      {
+        "id": "frontR",
+        "enabled": false,
+        "type": "cloth",
+        "width": 10,
+        "length": 27,
+        "topWidth": 5,
+        "anchor": "shoulders",
+        "anchor2": "shoulders",
+        "u": 1,
+        "v": 0,
+        "u2": 1,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": 0,
+        "sag": 2,
+        "roundness": 0.65,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      }
+    ],
+    "shawlCount": 0,
+    "shawls": [
+      {
+        "id": "shawl1",
+        "enabled": false,
+        "type": "cloth",
+        "width": 23,
+        "length": 10,
+        "topWidth": 0,
+        "anchor": "sleeveL",
+        "anchor2": "sleeveR",
+        "u": 0.5,
+        "v": 0,
+        "u2": 0.5,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": -1,
+        "sag": 3,
+        "roundness": 0.9,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      },
+      {
+        "id": "shawl2",
+        "enabled": false,
+        "type": "cloth",
+        "width": 23,
+        "length": 12,
+        "topWidth": 0,
+        "anchor": "sleeveL",
+        "anchor2": "sleeveR",
+        "u": 0.5,
+        "v": 0,
+        "u2": 0.5,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": -1,
+        "sag": 3,
+        "roundness": 0.9,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      },
+      {
+        "id": "shawl3",
+        "enabled": false,
+        "type": "cloth",
+        "width": 23,
+        "length": 14,
+        "topWidth": 0,
+        "anchor": "sleeveL",
+        "anchor2": "sleeveR",
+        "u": 0.5,
+        "v": 0,
+        "u2": 0.5,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": -1,
+        "sag": 3,
+        "roundness": 0.9,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      },
+      {
+        "id": "shawl4",
+        "enabled": false,
+        "type": "cloth",
+        "width": 23,
+        "length": 16,
+        "topWidth": 0,
+        "anchor": "sleeveL",
+        "anchor2": "sleeveR",
+        "u": 0.5,
+        "v": 0,
+        "u2": 0.5,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": -1,
+        "sag": 3,
+        "roundness": 0.9,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      },
+      {
+        "id": "shawl5",
+        "enabled": false,
+        "type": "cloth",
+        "width": 23,
+        "length": 18,
+        "topWidth": 0,
+        "anchor": "sleeveL",
+        "anchor2": "sleeveR",
+        "u": 0.5,
+        "v": 0,
+        "u2": 0.5,
+        "v2": 0,
+        "x": 0,
+        "y": 0,
+        "x2": 0,
+        "y2": 0,
+        "midX": 0,
+        "midY": -1,
+        "sag": 3,
+        "roundness": 0.9,
+        "elasticity": 0.65,
+        "gravity": 1,
+        "fringe": false,
+        "fringeLength": 5,
+        "fringeColor": "#bbc4c7",
+        "topColor": "#303a40",
+        "middleColor": "#667079",
+        "bottomColor": "#abb5bc",
+        "grain": 0.1,
+        "mirror": false,
+        "lockGown": false,
+        "rigidRotation": 0,
+        "bindRow": 0,
+        "canvasWidth": 64,
+        "canvasHeight": 96
+      }
+    ],
+    "accessories": [],
+    "renderOrder": [
+      "back",
+      "legs",
+      "body",
+      "neck",
+      "gown",
+      "sleeves",
+      "collar",
+      "shawl1",
+      "shawl2",
+      "shawl3",
+      "shawl4",
+      "shawl5",
+      "frontL",
+      "frontR",
+      "necklaces",
+      "head"
+    ],
+    "straightLegs": false,
+    "thighLength": 10,
+    "shinLength": 13,
+    "legWidth": 2.5,
+    "kneeSize": 3,
+    "legElasticity": 0.7,
+    "legSymmetry": true,
+    "legSpacing": 6,
+    "legLeftOffset": 0,
+    "legRightOffset": 0,
+    "rightLegLength": 1,
+    "rightThighLength": 10,
+    "rightShinLength": 13,
+    "rightLegWidth": 2.5,
+    "rightKneeSize": 3,
+    "rightLegElasticity": 0.7,
+    "pearlAccessories": [],
+    "armGradient": {
+      "enabled": false,
+      "stops": [
+        {
+          "position": 0,
+          "color": "#7c8b85"
+        },
+        {
+          "position": 1,
+          "color": "#7c8b85"
+        }
+      ]
+    },
+    "cableThinGradient": {
+      "enabled": false,
+      "stops": [
+        {
+          "position": 0,
+          "color": "#414b48"
+        },
+        {
+          "position": 1,
+          "color": "#414b48"
+        }
+      ]
+    },
+    "cableThickGradient": {
+      "enabled": false,
+      "stops": [
+        {
+          "position": 0,
+          "color": "#aab3ab"
+        },
+        {
+          "position": 1,
+          "color": "#aab3ab"
+        }
+      ]
+    },
+    "headCableAGradient": {
+      "enabled": false,
+      "stops": [
+        {
+          "position": 0,
+          "color": "#ff0000"
+        },
+        {
+          "position": 1,
+          "color": "#ff0000"
+        }
+      ]
+    },
+    "headCableBGradient": {
+      "enabled": false,
+      "stops": [
+        {
+          "position": 0,
+          "color": "#0000ff"
+        },
+        {
+          "position": 1,
+          "color": "#0000ff"
+        }
+      ]
+    },
+    "roomGradient": {
+      "enabled": false,
+      "direction": "radial",
+      "opacity": 0.18,
+      "ramp": {
+        "enabled": true,
+        "stops": [
+          {
+            "position": 0,
+            "color": "#476d67"
+          },
+          {
+            "position": 1,
+            "color": "#476d67"
+          }
+        ]
+      },
+      "corners": [
+        {
+          "enabled": false,
+          "color": "#ffffff",
+          "opacity": 0.18,
+          "radius": 0.5
+        },
+        {
+          "enabled": false,
+          "color": "#ffffff",
+          "opacity": 0.18,
+          "radius": 0.5
+        },
+        {
+          "enabled": false,
+          "color": "#ffffff",
+          "opacity": 0.18,
+          "radius": 0.5
+        },
+        {
+          "enabled": false,
+          "color": "#ffffff",
+          "opacity": 0.18,
+          "radius": 0.5
+        }
+      ]
+    }
+  },
+  "textures": {
+    "earL": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "earR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "forehead": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "face": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAM0lEQVR4AezXMQ0AAAgDQYJ/0UhgarpcFTS3/U55DhAgQIAAAQIECBAgQIAAAQJxga/+DwAA//+qNO7JAAAABklEQVQDACReAEH+yyG7AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "antennaL": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "antennaR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "gown": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "sleeve": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "collar": {
+      "symmetry": true,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAJElEQVR4AezQMQ0AAADCMIJ/0cjg6RQsbc4ZIECAAAECBO4CAwAA//85/8DdAAAABklEQVQDAJEgACHHursRAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAJElEQVR4AezQMQ0AAADCMIJ/0cjg6RQsbc4ZIECAAAECBO4CAwAA//85/8DdAAAABklEQVQDAJEgACHHursRAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAJElEQVR4AezQMQ0AAADCMIJ/0cjg6RQsbc4ZIECAAAECBO4CAwAA//85/8DdAAAABklEQVQDAJEgACHHursRAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAYAAAB3AH1ZAAAAJElEQVR4AezQMQ0AAADCMIJ/0cjg6RQsbc4ZIECAAAECBO4CAwAA//85/8DdAAAABklEQVQDAJEgACHHursRAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "scarf": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "antennaLowerL": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "antennaLowerR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "earDecorationL": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "earDecorationR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "内层（后）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "外层（前）",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAgCAYAAAAIXrg4AAAAO0lEQVR4AezSsQkAQAgEwef7L9oSNhKTMT4Qhv1v+TxIYESIUiAHKkKUAjlQEaIUyIGKEKVADlR0TzQAAAD///6PsakAAAAGSURBVAMAnE8AQTvpjokAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "sleeveR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAABACAYAAAB7jnWuAAAAS0lEQVR4AezXsQkAAAgDMPH/oz2hk4iQrl1KtnYdxwACBAgQIECAAAECBAgQIEBgXSC9fwMIECBAgAABAgQIECBAgACB/wLp/6d+AAAA///Az1H4AAAABklEQVQDAFD4AIFcB/USAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legThigh": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legKnee": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legShin": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legThighR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legKneeR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAANUlEQVR4AezSsQkAQAgEwef7L9oSNjIQxvhAGPa/5fMggREhSoEcqAhRCuRARYhSIAf3KxoAAAD//44aHwAAAAAGSURBVAMA7HAAMS/k/YQAAAAASUVORK5CYII=",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "legShinR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAwCAYAAAALiLqjAAAATklEQVR4AezSsQkAIBAEQbH/oi1hTAx81nhBfri9Hr8+IHBEEVGAQSuKiAIMWlFEFGDQiiKiAINWFBEFGLSiiCjAYOqKePh9EBGt/ic6AAAA///LcUF3AAAABklEQVQDAI2NAGF6CdyVAAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "frontL": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "frontR": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "shawl1": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "shawl2": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "shawl3": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "shawl4": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    },
+    "shawl5": {
+      "symmetry": false,
+      "layers": [
+        {
+          "name": "底图",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 1",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 2",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        },
+        {
+          "name": "纹理 3",
+          "png": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAABKUlEQVR4AeyVSw7DUAgDo97/0N2zQQgixfZ09/Q+gvHQ/J7wHwDCBXgwAAPCCTAC4QLwJ8gIMALhBBiBcAH4CsSNQDUeAJVI2hoD0hKv/WJAJZK2xoC0xGu/GFCJpK0xIC3x2i8GVCJpawxwT7zrDwM6Qu77GOCecNcfBnSE3PcxwD3hrj8M6Ai572OAe8JdfxjQEXLfxwC3hKf9YMCUmNt5DHBLdNoPBkyJuZ3HALdEp/1gwJSY23kMcEt02g8GTIm5nccA9US39WPAlqD6fQxQT3BbPwZsCarfxwD1BLf1Y8CWoPp9DFBPcFs/BmwJqt/HALUEr+vFgGuiau9hgFpi1/ViwDVRtfcwQC2x63ox4Jqo2nsYoJbYdb0YcE1U7T0M+Hpib9f3BwAA//+3mVatAAAABklEQVQDAObcAMEthkv4AAAAAElFTkSuQmCC",
+          "opacity": 1,
+          "visible": true
+        }
+      ]
+    }
+  },
+  "editor": {}
+}

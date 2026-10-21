@@ -1,0 +1,217 @@
+{
+  "elements": [
+    {
+      "id": "oracle-image",
+      "name": "迭代器图像",
+      "nameEn": "Oracle image",
+      "kind": "image",
+      "style": "native",
+      "description": "原版 ProjectedImage；保留图片颜色，并随房间深度投影、遮挡。",
+      "descriptionEn": "Native ProjectedImage preserves image colors with room-depth projection and occlusion."
+    },
+    {
+      "id": "moon-image",
+      "name": "月亮图像效果",
+      "nameEn": "Moon projection",
+      "kind": "reference",
+      "description": "原版 MoonProjection；噪声、泛白与边缘扰动依赖游戏房间。",
+      "descriptionEn": "Native MoonProjection uses room-dependent noise, whitening and edge distortion.",
+      "referenceOnly": true
+    },
+    {
+      "id": "projection-circle",
+      "name": "投影圆环",
+      "nameEn": "Projection circle",
+      "kind": "circle",
+      "description": "对应原版 ProjectionCircle；可调整半径与线宽。",
+      "descriptionEn": "Based on native ProjectionCircle with radius and thickness."
+    },
+    {
+      "id": "scan-line",
+      "name": "扫描线",
+      "nameEn": "Scan line",
+      "kind": "scanline",
+      "description": "对应 SuperStructureProjector.ScanLine 的横向或纵向扫描线。",
+      "descriptionEn": "Horizontal or vertical scan lines from SuperStructureProjector.ScanLine."
+    },
+    {
+      "id": "glyph-label",
+      "name": "迭代器符文",
+      "nameEn": "Oracle glyphs",
+      "kind": "glyph",
+      "description": "原版 glyphs 图集与 GlyphLabel；支持逐字显示和闪烁。",
+      "descriptionEn": "Original glyphs atlas and GlyphLabel, with reveal and blinking."
+    },
+    {
+      "id": "glyph-matrix",
+      "name": "符文矩阵",
+      "nameEn": "Glyph matrix",
+      "kind": "matrix",
+      "description": "对应 SuperStructureProjector.GlyphMatrix 的成片符文投影。",
+      "descriptionEn": "A field of glyphs from SuperStructureProjector.GlyphMatrix."
+    },
+    {
+      "id": "projection-cursor",
+      "name": "投影光标框",
+      "nameEn": "Projection cursor",
+      "kind": "cursor",
+      "description": "原版 Cursor 的矩形边框与符文填充。",
+      "descriptionEn": "Native Cursor combines a rectangular frame and a glyph fill."
+    },
+    {
+      "id": "overseer-image",
+      "name": "观察者全息图像",
+      "nameEn": "Overseer hologram",
+      "kind": "reference",
+      "description": "HologramImage 使用圆形裁切、琥珀色、噪声扫描线与八边形线框。此项是原版效果参考。",
+      "descriptionEn": "HologramImage combines a circular mask, amber tone, noisy scan lines and an octagonal frame. Reference only."
+    }
+  ],
+  "note": "Metadata only. Source images are read from the user's game installation. No game artwork should be bundled with the mod.",
+  "assets": [
+    {
+      "name": "aiimg1",
+      "id": "aiimg1",
+      "url": "/api/projection-reference-image?id=aiimg1",
+      "width": 520,
+      "height": 680,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg2",
+      "id": "aiimg2",
+      "url": "/api/projection-reference-image?id=aiimg2",
+      "width": 512,
+      "height": 320,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg3",
+      "id": "aiimg3",
+      "url": "/api/projection-reference-image?id=aiimg3",
+      "width": 250,
+      "height": 350,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg3a",
+      "id": "aiimg3a",
+      "url": "/api/projection-reference-image?id=aiimg3a",
+      "width": 250,
+      "height": 350,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg3b",
+      "id": "aiimg3b",
+      "url": "/api/projection-reference-image?id=aiimg3b",
+      "width": 250,
+      "height": 350,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg1_dm",
+      "id": "aiimg1_dm",
+      "url": "/api/projection-reference-image?id=aiimg1_dm",
+      "width": 488,
+      "height": 630,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg1_rivend",
+      "id": "aiimg1_rivend",
+      "url": "/api/projection-reference-image?id=aiimg1_rivend",
+      "width": 780,
+      "height": 596,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg1_rivend2",
+      "id": "aiimg1_rivend2",
+      "url": "/api/projection-reference-image?id=aiimg1_rivend2",
+      "width": 780,
+      "height": 596,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg2_dm",
+      "id": "aiimg2_dm",
+      "url": "/api/projection-reference-image?id=aiimg2_dm",
+      "width": 780,
+      "height": 596,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg2_rivend",
+      "id": "aiimg2_rivend",
+      "url": "/api/projection-reference-image?id=aiimg2_rivend",
+      "width": 488,
+      "height": 630,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg2_rivend2",
+      "id": "aiimg2_rivend2",
+      "url": "/api/projection-reference-image?id=aiimg2_rivend2",
+      "width": 488,
+      "height": 630,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg3b_dm",
+      "id": "aiimg3b_dm",
+      "url": "/api/projection-reference-image?id=aiimg3b_dm",
+      "width": 250,
+      "height": 350,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg3c_dm",
+      "id": "aiimg3c_dm",
+      "url": "/api/projection-reference-image?id=aiimg3c_dm",
+      "width": 250,
+      "height": 350,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg4",
+      "id": "aiimg4",
+      "url": "/api/projection-reference-image?id=aiimg4",
+      "width": 520,
+      "height": 520,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg5a",
+      "id": "aiimg5a",
+      "url": "/api/projection-reference-image?id=aiimg5a",
+      "width": 512,
+      "height": 320,
+      "hasTransparency": true,
+      "kind": "oracle"
+    },
+    {
+      "name": "aiimg5b",
+      "id": "aiimg5b",
+      "url": "/api/projection-reference-image?id=aiimg5b",
+      "width": 512,
+      "height": 320,
+      "hasTransparency": true,
+      "kind": "oracle"
+    }
+  ]
+}

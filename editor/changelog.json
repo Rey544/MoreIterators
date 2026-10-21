@@ -1,0 +1,80 @@
+{
+  "schema": "moreiterators.changelog.v1",
+  "plannedRelease": "0.1.3",
+  "thanks": [
+    "粉笔",
+    "LL77",
+    "DESANTA",
+    "steelmachine",
+    "timerteo",
+    "匿名测试者"
+  ],
+  "entries": [
+    {
+      "version": "0.1.3",
+      "changes": {
+        "zh-CN": [
+          "演算珍珠的堆积位置按室内可活动区域定位，修复贴墙堆积和恢复零重力后不归位的问题。",
+          "撤销和重做绘画时保留当前部件、画布视角和面板滚动位置，包括切换部件后的第一笔。",
+          "选择绘画部件后，自动展开并定位左侧对应参数。",
+          "投影图片可直接替换并撤销替换，保留已有轨道和关键帧；整理素材操作与轨道参数布局。",
+          "支持从画布外起笔，笔划在图像边缘自然裁切；完全未碰到图像的操作不留下编辑记录。"
+        ],
+        "en": [
+          "Align work-pearl pile positions with the chamber’s usable interior and fix pearls collecting against walls or failing to return after zero gravity resumes.",
+          "Keep the selected part, canvas view and panel scroll positions when undoing or redoing paint, including the first stroke after switching parts.",
+          "Selecting a paint part automatically expands and scrolls to its corresponding settings on the left.",
+          "Replace projection images and undo replacements while preserving tracks and keyframes; tidy asset actions and track controls.",
+          "Start strokes outside the canvas and clip them at the image edges; gestures that never touch the image do not create edit history."
+        ]
+      }
+    },
+    {
+      "version": "0.1.2",
+      "changes": {
+        "zh-CN": [
+          "修正演算环背后柔光被原版更新覆盖的问题，颜色、强度、范围和开关按当前项目保持同步。",
+          "统一房间渐变在没有色标时的网页预览与游戏颜色。"
+        ],
+        "en": [
+          "Keep the current project’s rear glow color, intensity, range and visibility synchronized after native light updates.",
+          "Match the room-gradient web preview to the game when no color stops are present."
+        ]
+      }
+    },
+    {
+      "version": "0.1.1",
+      "changes": {
+        "zh-CN": [
+          "新建迭代器使用随模组提供的 Rained 等待房间，修正默认连接出口。",
+          "未编辑过的旧默认等待房间可在再次应用项目时升级；保留自行编辑的房间和外部房间连接。"
+        ],
+        "en": [
+          "New iterator projects use the bundled Rained waiting room with the correct connection exit.",
+          "Reapplying a project upgrades unchanged legacy waiting rooms while preserving custom rooms and external connections."
+        ]
+      }
+    },
+    {
+      "version": "0.1.0",
+      "changes": {
+        "zh-CN": [
+          "首次发布：整合外观、对话与珍珠、广播、投影、区域连接编辑和独立模组导出。",
+          "新增游戏主菜单“更多迭代器”，集中查看演算室、广播和珍珠预览。",
+          "统一网页撤销与重做，整理表单、图层、悬停和可拖动分栏。",
+          "广播支持角色绑定颜色与 RainocTool 1.1.2 JSON 导入；实验语音支持剧情台词试听与自定义声线。",
+          "项目关联内容可预览后选择保留、删除或迁移，保护共享珍珠并保留恢复记录。",
+          "发布包从空作品库开始，包含中英文界面、更新记录、感谢名单和 Discord 反馈入口。"
+        ],
+        "en": [
+          "Initial release with appearance, dialogue and pearl text, broadcast, projection and region-connection editing, plus standalone mod export.",
+          "Added the More Iterators main-menu hub for chamber, broadcast and pearl previews.",
+          "Unified undo and redo, compact forms, texture layers, hover styles and resizable panels.",
+          "Added speaker-bound broadcast colors and RainocTool 1.1.2 JSON import, plus experimental dialogue-based voice previews and custom presets.",
+          "Related project content can be kept, deleted or transferred after a preview, with shared-pearl protection and recovery records.",
+          "The public package starts with an empty library and includes Chinese and English interfaces, update history, acknowledgements and Discord feedback."
+        ]
+      }
+    }
+  ]
+}

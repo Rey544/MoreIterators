@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>区域连接</title><link rel="stylesheet" href="/dialogue.css"><link rel="stylesheet" href="/rooms.css"><script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"></head>
+<body class="mi-studio">
+  <header class="studio-header"><strong class="studio-brand">区域连接</strong><label class="project-choice">迭代器<select id="projects" aria-label="选择迭代器" disabled></select></label><div class="header-actions"><span id="saveState" role="status">正在加载…</span><details class="more-menu"><summary>切换页面</summary><nav><a id="appearanceStudio" href="/">外观调整</a><a id="dialogueStudio" href="/dialogue">对话编辑</a><a id="pearlStudio" href="/pearls">珍珠文本</a><a href="/broadcasts">广播编辑</a><a id="projectionStudio" href="/projections">投影编辑</a></nav></details></div></header>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <main class="room-layout">
+    <section class="panel binding-panel"><div class="section-heading"><h1>房间设置</h1><span id="projectName" class="project-name"></span></div><div id="bindingWarnings" class="warning-list"></div>
+      <dl id="bindingPairs" class="binding-pairs" hidden><div><dt>已应用配对</dt><dd id="appliedPair"></dd></div><div><dt id="livePairLabel">游戏目录配对</dt><dd id="livePair"></dd></div><div id="draftPairRow" hidden><dt>未应用草稿</dt><dd id="draftPair"></dd></div></dl>
+      <form id="bindingForm"><fieldset id="bindingFields" disabled>
+        <label>区域编号<input id="region" maxlength="8" autocomplete="off" spellcheck="false" required></label>
+        <label>演算室编号<input id="ai" maxlength="73" autocomplete="off" spellcheck="false" required></label>
+        <label>迭代器内部编号<input id="oracleId" maxlength="48" autocomplete="off" spellcheck="false" required></label>
+        <label>演算室通道井<select id="aiNode" aria-label="演算室通道井"></select></label>
+        <label>入口模式<select id="entryMode"><option value="copy">复制独立入口房间</option><option value="existing">连接现有房间</option></select></label>
+        <label>入口房间编号<input id="entry" maxlength="73" autocomplete="off" spellcheck="false" required></label>
+        <label>入口房间通道井<select id="entryNode" aria-label="入口房间通道井"></select></label>
+        <p id="entryStatus" class="field-status" role="status"></p>
+      </fieldset><button id="previewBinding" class="primary" type="submit" disabled>预览房间改动</button></form>
+    <section class="panel plan-panel"><div class="section-heading"><h2>改动预览</h2></div><p id="planEmpty" class="field-status">尚未预览</p><div id="planContent" hidden><p id="previewPair" class="preview-pair"></p><div id="planWarnings" class="warning-list"></div><table class="connection-table"><thead><tr><th>房间</th><th>通道井</th><th>原连接</th><th>新连接</th></tr></thead><tbody id="connectionChanges"></tbody></table><ul id="roomCopies"></ul><details id="worldFiles"><summary>世界索引文件</summary><div id="worldFileContent"></div></details><button id="applyBinding" class="primary" type="button" disabled>应用房间设置</button></div></section>
+    </section>
+    <section class="panel catalog-panel"><div class="section-heading"><h2>房间目录</h2><button id="refreshCatalog" type="button">刷新目录</button></div><div class="catalog-state"><strong id="catalogSource"></strong><span id="catalogTime"></span></div><div id="catalogWarnings" class="warning-list"></div><div class="catalog-filters"><label>区域<select id="catalogRegion" aria-label="目录区域"></select></label><label>查找房间<input id="roomSearch" type="search" placeholder="搜索房间编号"></label></div><div class="catalog-scope"><p id="roomCount" class="field-status"></p><button id="projectRegion" type="button">本项目区域</button></div><div id="roomList" class="room-list"></div><button id="showMore" type="button" hidden>显示更多</button></section>
+    <section class="panel overseer-panel"><div class="section-heading"><h2>监视器</h2><span id="overseerState" role="status"></span></div>
+      <form id="overseerForm"><fieldset id="overseerFields" disabled>
+        <div class="overseer-setup">
+        <div class="overseer-profiles"><label>监视器配置<select id="overseerProfiles" aria-label="监视器配置"></select></label><button id="addOverseer" type="button">新增访客监视器</button><button id="removeOverseer" class="danger" type="button" hidden>删除此配置</button></div>
+        <div id="removeOverseerConfirm" class="overseer-remove" hidden><span>删除此监视器配置？</span><button id="confirmRemoveOverseer" type="button">确认删除</button><button id="cancelRemoveOverseer" type="button">取消</button></div>
+        <div class="overseer-profile-identity"><label id="overseerNameField" hidden>配置名称<input id="overseerName"></label><label>所属迭代器<select id="overseerOwnerProject" aria-label="所属迭代器"></select></label></div>
+        <div class="overseer-heading"><label class="check-row"><input id="overseerEnabled" type="checkbox">启用自定义监视器</label><label>所属迭代器缩写<input id="overseerOwner" autocomplete="off" spellcheck="false"></label></div>
+        <div class="overseer-room-settings"><label class="check-row" id="overseerDefaultRoomsField"><input id="overseerDefaultRooms" type="checkbox">跟随本项目默认房间</label><div id="overseerSelectedRooms" class="overseer-selected-rooms"></div><details><summary>添加出现房间</summary><input id="overseerRoomSearch" type="search" placeholder="搜索名称或房间编号" aria-label="搜索监视器房间"><div class="overseer-room-add"><select id="overseerRoomChoice" aria-label="监视器出现房间"></select><button id="addOverseerRoom" type="button">添加房间</button></div><p id="overseerRoomCatalog" class="field-status"></p></details></div>
+        </div>
+        <div class="overseer-editor"><figure class="overseer-preview"><canvas id="overseerCanvas" width="440" height="280" aria-label="监视器颜色预览"></canvas></figure><div class="overseer-settings">
+          <fieldset id="overseerAppearance"><div class="overseer-colors">
+            <div class="overseer-gradient"><span>身体颜色</span><label><input id="overseerBodyGradient" type="checkbox">双色渐变</label><div class="overseer-swatches"><input id="overseerBody1" type="color" aria-label="身体第一种颜色"><input id="overseerBody2" type="color" aria-label="身体第二种颜色"></div></div>
+            <div class="overseer-gradient"><span>尖端颜色</span><label><input id="overseerTipGradient" type="checkbox">双色渐变</label><div class="overseer-swatches"><input id="overseerTip1" type="color" aria-label="尖端第一种颜色"><input id="overseerTip2" type="color" aria-label="尖端第二种颜色"></div></div>
+            <label>瞳孔颜色<input id="overseerPupil" type="color"></label><label>眼白颜色<input id="overseerEyeWhite" type="color"></label>
+          </div><div class="overseer-probability-heading">原生提示与动画概率</div><div id="overseerProbabilities" class="overseer-probabilities"></div></fieldset>
+        </div></div>
+      </fieldset><div class="overseer-actions"><button id="saveOverseer" type="submit" disabled>保存监视器</button><button id="applyOverseer" class="primary" type="button" disabled>应用监视器</button></div><p id="overseerNotice" class="field-status" role="status" aria-live="polite"></p></form>
+    </section>
+    <section class="panel cleanup-panel"><details id="cleanupDetails"><summary>旧房间清理</summary><div class="cleanup-toolbar"><button id="scanCleanup" type="button">检查旧房间</button><span id="cleanupState" role="status"></span></div><div id="cleanupWarnings" class="warning-list"></div><div id="cleanupRooms"></div><p id="cleanupNotice" class="field-status" role="status"></p><button id="prepareCleanup" class="danger" type="button" disabled>清理可确认的旧房间</button><div id="cleanupConfirm" class="cleanup-confirm" hidden><p>将清理以下旧房间的已生成文件：</p><ul id="cleanupConfirmRooms"></ul><p>Rained 源工程保留。</p><div><button id="confirmCleanup" class="danger" type="button">确认清理</button><button id="cancelCleanup" type="button">取消</button></div></div></details></section>
+  </main><script src="/overseer-preview.js"></script><script src="/studio-undo.js"></script><script src="/rooms.js"></script>
+<script src="/studio-navigation.js"></script><script src="/studio-chrome.js"></script><script src="/studio-about.js"></script></body></html>

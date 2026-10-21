@@ -1,0 +1,144 @@
+:root{color-scheme:dark;font:14px/1.6 "Microsoft YaHei UI","Microsoft YaHei",system-ui,sans-serif;background:#111;color:#ededed;--edge:#656565;--edge-soft:#3f3f3f;--muted:#aaa;--surface:#191919;--field:#101010}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit;color:inherit;background:var(--field);border:1px solid var(--edge);border-radius:4px;padding:8px 10px;min-width:0}button,select{min-height:36px}button,summary{cursor:pointer}button:hover,summary:hover{background:#2b2b2b}button:disabled{opacity:.38;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible,canvas:focus-visible{outline:2px solid #ddd;outline-offset:3px}input[type=checkbox],input[type=range]{accent-color:#ccc}input[type=number]{width:100%}input[type=color]{width:100%;height:36px;padding:3px}input[type=range]{padding:0;border:0}a{color:#ddd;text-underline-offset:4px}h1,h2,h3,p{margin:0}h1,h2{font-size:15px;font-weight:600;letter-spacing:.02em}h3{font-size:13px;font-weight:500}label{display:block;color:var(--muted);font-size:12px;margin-top:12px}label>input:not([type=checkbox]),label>select{display:block;width:100%;margin-top:6px}select{text-overflow:ellipsis}input::placeholder{color:#777}[hidden]{display:none!important}.studio-header{display:flex;align-items:center;gap:24px;flex-wrap:wrap;padding:16px 24px;background:#232323;border-bottom:1px solid var(--edge);min-height:94px}.studio-brand{display:flex;gap:12px;align-items:center;font-size:19px;font-weight:500;letter-spacing:.07em;white-space:nowrap}.projection-mark{width:15px;height:15px;border:1px solid #ccc;transform:rotate(45deg);display:inline-block;box-shadow:inset 0 0 0 3px #232323;background:#aaa}.project-choice{margin:0;padding-left:24px;border-left:1px solid var(--edge);max-width:240px;flex:1;min-width:150px}.project-choice select{padding:3px 7px;min-height:28px}.header-actions{display:flex;align-items:center;gap:9px;flex:1;justify-content:flex-end}.primary{background:#ccc;color:#222;font-weight:600;border-color:#ddd}.primary:hover{background:#eee}#saveState{font-size:12px;color:var(--muted);max-width:145px}#saveState[data-state=error]{color:#eee;text-decoration:underline}#notice{background:#282828;border-bottom:1px solid var(--edge);padding:10px 24px;overflow-wrap:anywhere}#notice:empty{display:none}#notice[data-kind=error]{border-color:#bbb}main{display:grid;grid-template-columns:245px minmax(400px,1fr) 284px;gap:16px;padding:18px 20px 24px;align-items:start}.panel{min-width:0;border:1px solid var(--edge-soft);border-radius:5px;background:var(--surface);padding:16px}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.compact{font-size:12px;min-height:29px;padding:4px 8px}.quiet{color:#aaa;background:transparent}.check-row{display:flex;gap:18px;flex-wrap:wrap}.check-row label{display:flex;gap:7px;align-items:center}.check-row input{margin:0}.binding-section,.assets-section,.reference-section{margin-top:20px;padding-top:16px;border-top:1px solid var(--edge-soft)}.field-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}.binding-text{margin-top:12px;font-size:12px;white-space:pre-wrap;max-height:150px;overflow:auto;border-left:1px solid #888;padding-left:10px;color:#ccc}.field-error{color:#ddd;font-size:12px;margin-top:7px}.field-error:empty{display:none}.muted{font-size:12px;color:var(--muted)}.image-list{display:grid;gap:7px;margin-top:12px}.asset-row{display:flex;gap:8px;align-items:center;border:1px solid var(--edge-soft);padding:7px;border-radius:3px}.asset-row img{width:38px;height:38px;object-fit:contain;background:repeating-conic-gradient(#333 0% 25%,#202020 0% 50%) 0/12px 12px}.asset-row .asset-name{font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-row button{min-height:28px;font-size:12px;padding:3px 6px}.workspace{padding:14px}.preview-heading{margin-bottom:12px}.zoom-controls{display:flex;gap:8px;align-items:center}.zoom-controls input{width:96px}.zoom-controls output{font-size:12px;min-width:37px;text-align:right}.viewport{height:clamp(370px,54vh,780px);min-height:270px;max-height:85vh;resize:vertical;overflow:auto;background:#0b0b0b;border:1px solid #555;position:relative;display:grid;place-items:start center;scrollbar-color:#666 #111}.viewport canvas{display:block;touch-action:none;flex-shrink:0;image-rendering:auto;margin:auto;cursor:crosshair;background:#131313;outline-offset:-3px}.playback-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.playback-controls button{min-width:53px;font-size:12px;min-height:31px;padding:4px 10px}.playback-controls output{font-variant-numeric:tabular-nums;font-size:12px;min-width:113px;margin-left:4px}.playback-controls .muted{margin-left:auto}.playhead{width:100%;margin:12px 0 6px;display:block}.timeline-heading{border-top:1px solid var(--edge-soft);padding-top:13px;margin-top:7px}.track-tools{display:flex;gap:7px}.track-tools select{max-width:110px;min-height:29px;font-size:12px;padding:4px 6px}.timeline{margin-top:12px;max-height:295px;overflow:auto}.timeline-row{display:grid;grid-template-columns:115px minmax(100px,1fr);border:1px solid var(--edge-soft);margin-top:6px;border-radius:3px;min-height:42px;overflow:hidden}.timeline-row.selected{border-color:#c0c0c0;background:#292929}.track-label{border:0;border-right:1px solid var(--edge-soft);text-overflow:ellipsis;overflow:hidden;white-space:nowrap;text-align:left;font-size:12px;border-radius:0;padding:6px 8px;background:transparent}.track-lane{position:relative;background:repeating-linear-gradient(to right,transparent 0,transparent calc(10% - 1px),#4445 calc(10% - 1px),#4445 10%);min-width:0;margin:0 12px}.track-bar{height:5px;background:#888;position:absolute;top:19px;pointer-events:none}.frame-dot{position:absolute;min-height:0;width:10px;height:10px;background:#b7b7b7;border:1px solid #ddd;padding:0;border-radius:1px;top:16px;transform:translateX(-50%) rotate(45deg);z-index:2}.frame-dot.selected{background:#fff;outline:2px solid #fff;outline-offset:2px}.lane-playhead{position:absolute;top:0;bottom:0;width:1px;background:#ddd8;pointer-events:none}.frame-heading{margin-top:20px;padding-top:16px;border-top:1px solid var(--edge-soft)}.frame-list{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.frame-list button{font-size:12px;padding:4px 8px;min-height:29px}.frame-list button.selected{border-color:#eee;background:#393939}.button-row{display:flex;gap:6px;flex-wrap:wrap}.order-controls{margin-top:18px;border-top:1px solid var(--edge-soft);padding-top:15px}#trackEmpty{margin-top:18px}.reference-section summary{font-size:13px;color:#ccc}.reference-tabs{display:flex;gap:6px;margin:12px 0}.reference-tabs button{font-size:12px;min-height:30px;padding:4px 9px}.reference-tabs [aria-pressed=true]{border-color:#ddd;background:#363636}.reference-list{max-height:350px;overflow:auto;display:grid;gap:8px}.reference-card{border:1px solid var(--edge-soft);padding:8px;font-size:12px}.reference-card img{width:100%;height:105px;object-fit:contain;background:#080808}.reference-card .reference-name{display:block;margin:6px 0;overflow-wrap:anywhere}.reference-card p{color:#aaa;font-size:11px;margin:5px 0}.reference-card a{font-size:11px}.reference-card button{margin-top:7px}#referenceState{margin-top:8px}.more-menu{position:relative}.more-menu summary{list-style:none;border:1px solid var(--edge);border-radius:4px;padding:7px 10px;font-size:13px;white-space:nowrap}.more-menu summary::-webkit-details-marker{display:none}.more-menu summary::after{content:'⌄';margin-left:8px}.more-menu nav{position:absolute;right:0;top:calc(100% + 8px);display:grid;padding:7px;min-width:175px;background:#242424;border:1px solid #666;border-radius:4px;z-index:30;box-shadow:0 10px 30px #0006}.more-menu a{padding:8px 10px;white-space:nowrap;text-decoration:none}.more-menu a:hover{background:#383838}.mi-language-choice{margin:0!important}.mi-language-choice select{width:83px;margin:0;font-size:12px}header>.mi-language-choice+button{font-size:12px}.mi-diagnostics{background:#191919;color:#eee;max-width:900px;width:90%;border:1px solid #666}.mi-diagnostics pre{max-height:35vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(min-width:1750px){main{grid-template-columns:280px minmax(600px,1fr) 310px;gap:20px}.viewport{height:62vh}}@media(max-width:1180px){main{grid-template-columns:220px minmax(330px,1fr);gap:12px}.inspector{grid-column:1/-1}.inspector #trackEditor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 15px}.inspector .frame-heading,.inspector .frame-list,.inspector .order-controls{grid-column:1/-1}.studio-header{gap:14px}.header-actions{flex-wrap:wrap}.viewport{height:480px}}@media(max-width:760px){main{display:flex;flex-direction:column;padding:10px}.panel{width:100%}.library{display:grid;grid-template-columns:1fr 1fr;gap:0 15px}.library>.section-heading,.library>.reference-section,.library>.assets-section{grid-column:1/-1}.library>.binding-section{grid-column:1/-1}.studio-header{padding:13px}.studio-brand{font-size:17px}.project-choice{border:0;padding:0}.header-actions{justify-content:flex-start}.viewport{height:390px}.inspector #trackEditor{grid-template-columns:1fr 1fr}.zoom-controls{gap:5px}.zoom-controls input{width:64px}.timeline-row{grid-template-columns:95px 1fr}.workspace{order:-1}}
+.reference-card canvas{display:block;width:100%;height:auto;background:#090b0d}.reference-card button{display:block}.reference-card a{display:inline-block}
+
+.mask-section{margin-top:16px;padding-top:12px;border-top:1px solid var(--edge-soft)}.mask-section summary{font-size:13px;color:#ccc}.mask-section .field-pair{gap:6px 10px}.mask-section label{margin-top:8px}@media(max-width:1180px){.inspector .mask-section{grid-column:1/-1}}@media(max-width:760px){.library>.mask-section{grid-column:1/-1}}
+
+/* Group setup stays above the editor; the reference shelf never sits below
+   the trigger form. Only the artwork shelf and track lists scroll internally. */
+body.mi-studio.projection-studio #studio{
+ display:grid;grid-template-columns:minmax(500px,1fr) 330px;
+ gap:12px;padding:10px 12px;align-items:start;
+}
+body.mi-studio.projection-studio #studio .panel{padding:8px;min-width:0}
+body.mi-studio.projection-studio #studio>.right-sidebar{display:grid;gap:10px;min-width:0;padding:0}
+body.mi-studio.projection-studio #studio .section-heading{margin-bottom:8px}
+body.mi-studio.projection-studio #studio .library{
+ grid-column:1/-1;display:grid;grid-template-columns:minmax(280px,340px) minmax(0,1fr);
+ gap:24px;padding:4px 8px 8px;
+}
+body.mi-studio.projection-studio #studio .group-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+body.mi-studio.projection-studio #studio .library label{margin:0;min-width:0}
+body.mi-studio.projection-studio #studio .library label>input:not([type=checkbox]),
+body.mi-studio.projection-studio #studio .library label>select{margin-top:4px}
+body.mi-studio.projection-studio #studio .group-settings>.check-row{gap:8px 12px;margin-top:9px}
+body.mi-studio.projection-studio #studio .group-settings>.check-row label{gap:5px;white-space:nowrap}
+body.mi-studio.projection-studio #studio .binding-section{
+ display:grid;grid-template-columns:minmax(125px,1.1fr) minmax(155px,1.5fr) repeat(2,minmax(100px,1fr));
+ gap:8px 10px;margin:0;padding:0;border:0;align-content:start;
+}
+body.mi-studio.projection-studio #studio .binding-section>.section-heading,
+body.mi-studio.projection-studio #studio .binding-section>.field-error{grid-column:1/-1;margin:0}
+body.mi-studio.projection-studio #sourceFields,
+body.mi-studio.projection-studio #sourceFields>.field-pair{display:contents}
+body.mi-studio.projection-studio #bindingText{
+ grid-column:span 2;align-self:end;max-height:50px;min-height:0;margin:0;padding:0;
+ border:0;white-space:pre-wrap;overflow-wrap:anywhere;
+}
+body.mi-studio.projection-studio #bindingText:empty{display:none}
+body.mi-studio.projection-studio #studio .mask-section{border:0;padding:0;margin-top:10px}
+body.mi-studio.projection-studio #studio .mask-section[open]{padding-bottom:4px}
+body.mi-studio.projection-studio #studio .mask-section label{margin-top:7px}
+body.mi-studio.projection-studio #studio .mask-section>summary,
+body.mi-studio.projection-studio #studio .reference-section>summary{padding:0;border:0;border-image:none;background:transparent}
+body.mi-studio.projection-studio #studio .media-library{position:static}
+body.mi-studio.projection-studio #studio .reference-section{margin:0;padding:0;border:0}
+body.mi-studio.projection-studio #studio .reference-tabs{margin:8px 0;gap:7px}
+body.mi-studio.projection-studio #studio .reference-tabs button{flex:1;min-width:0}
+body.mi-studio.projection-studio #studio .reference-list{max-height:184px;gap:12px;overscroll-behavior:contain}
+body.mi-studio.projection-studio #studio .reference-card{display:grid;grid-template-columns:96px minmax(0,1fr);gap:4px 10px;align-items:center;border:0;padding:0 2px 4px 0;background:transparent}
+body.mi-studio.projection-studio #studio .reference-card :is(img,canvas){grid-column:1;grid-row:1/span 3;width:96px;height:72px;object-fit:contain;background:transparent}
+body.mi-studio.projection-studio #studio .reference-card .reference-name{grid-column:2;margin:0;font-size:11px}
+body.mi-studio.projection-studio #studio .reference-card :is(a,button,p){grid-column:2;justify-self:start;margin:0;max-width:100%}
+body.mi-studio.projection-studio #studio .assets-section{margin:14px 0 0;padding:0;border:0}
+body.mi-studio.projection-studio #studio .image-list{margin-top:8px;max-height:96px;overflow:auto;overscroll-behavior:contain}
+body.mi-studio.projection-studio #studio .asset-row{border:0;padding:3px 0}
+body.mi-studio.projection-studio #studio .asset-row img{width:32px;height:32px}
+body.mi-studio.projection-studio #studio .viewport{height:clamp(240px,calc(100dvh - 458px),600px);min-height:220px;max-height:85dvh}
+body.mi-studio.projection-studio #studio .playback-controls{gap:7px;margin-top:8px}
+body.mi-studio.projection-studio #studio .playhead{margin:8px 0}
+body.mi-studio.projection-studio #studio .timeline-heading{border:0;padding-top:0;margin-top:8px}
+body.mi-studio.projection-studio #studio .timeline{margin-top:8px;max-height:190px}
+body.mi-studio.projection-studio #studio .frame-heading,
+body.mi-studio.projection-studio #studio .order-controls{border:0;padding-top:0;margin-top:14px}
+body.mi-studio.projection-studio #studio .inspector label{margin-top:8px}
+body.mi-studio.projection-studio #studio .inspector label>input:not([type=checkbox]),
+body.mi-studio.projection-studio #studio .inspector label>select{margin-top:4px}
+@media(min-width:1750px){
+ body.mi-studio.projection-studio #studio{grid-template-columns:minmax(500px,1fr) 350px;gap:16px}
+ body.mi-studio.projection-studio #studio .library{grid-template-columns:380px minmax(0,1fr)}
+}
+@media(max-width:1180px){
+ body.mi-studio.projection-studio #studio{grid-template-columns:minmax(0,1fr) 300px}
+ body.mi-studio.projection-studio #studio .library{grid-template-columns:280px minmax(0,1fr);gap:16px}
+ body.mi-studio.projection-studio #studio .binding-section{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.mi-studio.projection-studio #studio .inspector{grid-column:auto}
+ body.mi-studio.projection-studio #studio .inspector #trackEditor{display:block}
+}
+@media(max-width:760px){
+ body.mi-studio.projection-studio #studio{display:flex;flex-direction:column;gap:12px;padding:8px 10px 10px}
+ body.mi-studio.projection-studio #studio .panel{width:100%;padding:4px}
+ body.mi-studio.projection-studio #studio>.right-sidebar{display:contents}
+ body.mi-studio.projection-studio #studio .library{order:0}
+ body.mi-studio.projection-studio #studio .media-library{order:1}
+ body.mi-studio.projection-studio #studio .workspace{order:2}
+ body.mi-studio.projection-studio #studio .inspector{order:3}
+ body.mi-studio.projection-studio #studio .library{display:grid;grid-template-columns:1fr;gap:14px}
+ body.mi-studio.projection-studio #studio .library>.group-settings,
+ body.mi-studio.projection-studio #studio .library>.binding-section{grid-column:1/-1}
+ body.mi-studio.projection-studio #studio .media-library{position:static;display:grid;grid-template-columns:1fr;gap:14px}
+ body.mi-studio.projection-studio #studio .reference-list{grid-template-columns:1fr;max-height:170px;gap:10px}
+ body.mi-studio.projection-studio #studio .assets-section{margin:0}
+ body.mi-studio.projection-studio #studio .image-list:empty{display:none}
+ body.mi-studio.projection-studio #studio .viewport{height:300px;min-height:220px}
+ body.mi-studio.projection-studio #studio .preview-heading{align-items:flex-start;flex-wrap:wrap;gap:8px}
+ body.mi-studio.projection-studio #studio .zoom-controls{flex:1;justify-content:flex-end;gap:6px}
+ body.mi-studio.projection-studio #studio .zoom-controls input{width:72px}
+ body.mi-studio.projection-studio #studio .inspector #trackEditor{display:grid;grid-template-columns:1fr 1fr}
+ body.mi-studio.projection-studio #studio .track-tools{min-width:0}
+ body.mi-studio.projection-studio #studio .track-tools select{max-width:120px}
+}
+
+/* The divider changes only column width; viewport zoom remains independent. */
+body.mi-studio.projection-studio #studio{
+ grid-template-columns:minmax(0,1fr) 10px var(--projection-sidebar-width,330px);column-gap:6px;
+}
+body.mi-studio.projection-studio #projectionWorkspace{grid-column:1;min-width:0}
+body.mi-studio.projection-studio #projectionSidebar{grid-column:3;min-width:0}
+body.mi-studio.projection-studio #projectionDivider{
+ grid-column:2;align-self:stretch;min-height:240px;position:relative;cursor:col-resize;
+ touch-action:none;outline:none;background:transparent;border:0;
+}
+body.mi-studio.projection-studio #projectionDivider:before{
+ content:"";position:absolute;top:8px;bottom:8px;left:50%;width:1px;background:var(--mi-soft,var(--edge-soft));pointer-events:none;
+}
+body.mi-studio.projection-studio #projectionDivider>span{display:none}
+body.mi-studio.projection-studio #projectionDivider:is(:hover,:focus-visible):before{
+ background:var(--mi-text,currentColor);
+}
+body.mi-studio.projection-studio.resizing-projection-columns,
+body.mi-studio.projection-studio.resizing-projection-columns *{cursor:col-resize!important;user-select:none!important}
+/* Short parameter fields stay short when the user widens the inspector. */
+body.mi-studio.projection-studio #studio .inspector #trackEditor{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+body.mi-studio.projection-studio #studio :is(.track-fields,.frame-fields){display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:7px 12px;min-width:0}
+body.mi-studio.projection-studio #studio :is(.track-fields,.frame-fields)>label{display:grid;grid-template-columns:minmax(0,1fr) 76px;align-items:center;gap:6px;margin:0;min-width:0;line-height:1.35}
+body.mi-studio.projection-studio #studio :is(.track-fields,.frame-fields)>label>span{overflow-wrap:anywhere}
+body.mi-studio.projection-studio #studio :is(.track-fields,.frame-fields)>label>:is(input,select){margin:0;min-height:32px;height:32px;padding:3px 6px;max-width:100%}
+body.mi-studio.projection-studio #studio :is(.track-fields,.frame-fields)>.wide-field{grid-column:1/-1;grid-template-columns:84px minmax(0,1fr)}
+body.mi-studio.projection-studio #studio .inspector :is(#trackStyle,#ease){max-width:260px}
+body.mi-studio.projection-studio #studio .inspector :is(.frame-heading,.frame-list,.order-controls,.mask-section){margin:0}
+body.mi-studio.projection-studio #studio .inspector .frame-heading{margin-top:3px;flex-wrap:wrap}
+body.mi-studio.projection-studio #studio .inspector .frame-list{gap:5px}
+body.mi-studio.projection-studio #studio .inspector .order-controls{margin-top:2px}
+body.mi-studio.projection-studio #studio .inspector .mask-section summary{line-height:26px}
+body.mi-studio.projection-studio #studio .asset-row{gap:7px;min-height:36px}
+body.mi-studio.projection-studio #studio .asset-row .asset-name{min-width:0}
+body.mi-studio.projection-studio #studio .asset-add{margin-left:auto;flex:0 0 28px;width:28px;height:28px;padding:0}
+body.mi-studio.projection-studio #studio .asset-menu{position:relative;flex:none;margin:0}
+body.mi-studio.projection-studio #studio .asset-menu>summary{width:28px;min-height:28px;height:28px;padding:0;text-align:center;line-height:25px;font-size:17px}
+body.mi-studio.projection-studio #studio .asset-menu-actions{position:fixed;z-index:1100;display:grid;gap:5px;width:205px;max-width:calc(100vw - 16px);padding:8px;background:var(--mi-bg,#191919);border:1px solid var(--mi-line);border-radius:7px;box-shadow:0 10px 25px #0006}
+body.mi-studio.projection-studio #studio .asset-menu-actions button{text-align:left;min-height:32px;width:100%;white-space:normal}
+@media(max-width:760px){
+ body.mi-studio.projection-studio #projectionDivider{display:none}
+ body.mi-studio.projection-studio #projectionWorkspace,
+ body.mi-studio.projection-studio #projectionSidebar{grid-column:auto}
+}
