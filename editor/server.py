@@ -29,6 +29,7 @@ import voice_samples
 import room_editor
 import room_bindings
 import room_migration
+import project_purge
 import room_cleanup
 import waiting_room
 import overseers
@@ -671,6 +672,10 @@ class Handler(BaseHTTPRequestHandler):
             n=int(self.headers.get('Content-Length','0'))
             if not 0<n<16000000:raise ValueError('项目体积超限')
             data=json.loads(self.rfile.read(n));path=self.path
+            if path in ('/api/project-purge-plan','/api/project-purge'):
+                action=project_purge.plan if path.endswith('-plan') else project_purge.apply
+                with LOCK:result=action(data,sys.modules[__name__])
+                return self.reply(200,result)
             if path=='/api/project-associations-restore':
                 with LOCK:result=project_associations.restore(data,sys.modules[__name__])
                 return self.reply(200,result)
@@ -720,8 +725,16 @@ class Handler(BaseHTTPRequestHandler):
             if path in ('/api/projection-save','/api/projection-apply'):
                 with LOCK:p=projections.apply(data,roomnames) if path.endswith('apply') else projections.save(data,roomnames)
                 return self.reply(200,dict(ok=True,projection=p))
-            if path=='/api/open-room':return self.reply(200,room_editor.open_room(data['projectId'],data['kind'],roomnames))
-            if path=='/api/sync-room':return self.reply(200,sync_rained(data['projectId'],data['kind']))
+            if path=='/api/open-room':
+                with LOCK:
+                    project_lifecycle.assert_active(data['projectId'])
+                    result=room_editor.open_room(data['projectId'],data['kind'],roomnames)
+                return self.reply(200,result)
+            if path=='/api/sync-room':
+                with LOCK:
+                    project_lifecycle.assert_active(data['projectId'])
+                    result=sync_rained(data['projectId'],data['kind'])
+                return self.reply(200,result)
             if path=='/api/dialogue':
                 with LOCK:
                     project_lifecycle.assert_active(data['projectId'])
@@ -746,11 +759,16 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/deploy':return self.reply(200,deploy(data))
             if path=='/api/control':
                 if data.get('mode','silent') not in ('silent','story','read') or data.get('behavior','work') not in ('work','reception'):raise ValueError('状态无效')
-                atomic(DESIGNS/'creator/control.json',data);legacy_control(data);return self.reply(200,{'ok':True})
+                with LOCK:
+                    if data.get('projectId'):project_lifecycle.assert_active(data['projectId'])
+                    atomic(DESIGNS/'creator/control.json',data);legacy_control(data)
+                return self.reply(200,{'ok':True})
             if path=='/api/launch':
-                p=validate(data['project']);r=deploy(p);control=data.get('control',{});atomic(DESIGNS/'creator/control.json',control);atomic(DESIGNS/'creator/launch.json',dict(entry=r['entry'],mode=control.get('mode','silent'),hasMark=control.get('hasMark',True),reset=data.get('reset',True)))
-                legacy_control(dict(control,projectId=p['projectId']));
-                atomic_text(DESIGNS/'launch-room.txt',r['entry']);return self.reply(200,r)
+                with LOCK:
+                    p=validate(data['project']);r=deploy(p);control=dict(data.get('control',{}),projectId=p['projectId']);atomic(DESIGNS/'creator/control.json',control);atomic(DESIGNS/'creator/launch.json',dict(projectId=p['projectId'],entry=r['entry'],mode=control.get('mode','silent'),hasMark=control.get('hasMark',True),reset=data.get('reset',True)))
+                    legacy_control(control)
+                    atomic_text(DESIGNS/'launch-room.txt',r['entry'])
+                return self.reply(200,r)
             if path=='/api/export':
                 with LOCK:result=export(data['project'],data['parts'])
                 return self.reply(200,{'ok':True,'url':result})

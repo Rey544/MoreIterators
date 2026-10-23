@@ -1,6 +1,6 @@
 {
   "schema": "moreiterators.changelog.v1",
-  "plannedRelease": "0.1.3",
+  "plannedRelease": "0.2.0",
   "thanks": [
     "粉笔",
     "LL77",
@@ -10,6 +10,35 @@
     "匿名测试者"
   ],
   "entries": [
+    {
+      "version": "0.2.0",
+      "changes": {
+        "zh-CN": [
+          "修复游戏内头后线颜色同步。",
+          "F8 面板新增迭代器语音总开关。",
+          "修复新旧项目语音无法播放的问题。",
+          "演算室预览支持临时忽略交流印记试听语音。",
+          "语音音量上限提高至原来的两倍。",
+          "修复网页与游戏作品库不同步的问题。",
+          "优化游戏内的菜单 UI。",
+          "优化了删除功能。",
+          "优化 Discord 图标。",
+          "修复预览重置与好感数据读取异常。"
+        ],
+        "en": [
+          "Fix in-game head-cable color synchronization.",
+          "Add an iterator voice master switch to the F8 panel.",
+          "Fix voices not playing in new and existing projects.",
+          "Allow chamber previews to temporarily ignore the Mark of Communication for voice testing.",
+          "Double the maximum voice volume setting.",
+          "Fix project libraries being out of sync between the web editor and the game.",
+          "Improve the in-game menu UI.",
+          "Improve project deletion.",
+          "Improve the Discord icon.",
+          "Fix preview reset and affinity data reading errors."
+        ]
+      }
+    },
     {
       "version": "0.1.3",
       "changes": {

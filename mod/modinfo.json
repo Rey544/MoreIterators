@@ -1,7 +1,7 @@
 {
   "id": "moreiterators.core",
   "name": "更多迭代器",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "authors": "REC.434",
   "description": "这个模组可以创建新的迭代器并调整迭代器的外观与贴图，编写多次见面的剧情和珍珠文本，编辑广播与投影动画，配置房间连接，并将自己的作品导出为独立模组。",
   "target_game_version": "v1.11.8",

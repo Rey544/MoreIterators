@@ -75,8 +75,12 @@ def register_game_launcher():
     config=storage.GAME/'BepInEx/config/moreiterators.paths.json'
     if not config.parent.is_dir():return
     with startup_lock():
+        # The earlier startup check may already be stale. Never replace a game's
+        # registration with paths from a different editor occupying this port.
+        if not online():raise RuntimeError(text('startup.failed',path=storage.archive_root()/'logs/server-startup.log'))
         value=json.loads(config.read_text('utf-8-sig')) if config.exists() else {}
-        value.update(editorDirectory=str(ROOT),pythonExecutable=sys.executable)
+        if not isinstance(value,dict):raise ValueError(text('startup.config'))
+        value.update(editorDirectory=str(ROOT),pythonExecutable=sys.executable,runtimeDirectory=str(storage.RUNTIME.resolve()))
         temporary=config.with_name(config.name+'.'+str(os.getpid())+'.tmp')
         temporary.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
         os.replace(temporary,config)

@@ -97,8 +97,8 @@
   "game.gallery.back": "Back to chamber",
   "game.gallery.previous_page": "Previous",
   "game.gallery.next_page": "Next",
-  "game.gallery.previous_text": "Previous text",
-  "game.gallery.next_text": "Next text",
+  "game.gallery.previous_text": "Previous page",
+  "game.gallery.next_text": "Next page",
   "game.gallery.blank": "(Blank)",
   "game.gallery.page_heading": "[Page {0}]",
   "game.gallery.pearl.title": "Pearls",
@@ -161,5 +161,7 @@
   "game.studio_menu.on": "On",
   "game.studio_menu.enter": "Enter preview",
   "game.studio_menu.local_not_enabled": "Local content is disabled",
-  "game.studio_menu.enable_local_in_remix": "Enable moreiterators.local in Remix.\nApply the changes and restart the game."
+  "game.studio_menu.enable_local_in_remix": "Enable moreiterators.local in Remix.\nApply the changes and restart the game.",
+  "game.panel.voice_on": "Voice: On",
+  "game.panel.voice_off": "Voice: Off"
 }

@@ -16,7 +16,14 @@ public static class StudioLauncher {
   string script=Path.Combine(editor,LauncherFileName);
   if(!File.Exists(script))throw Visible(new FileNotFoundException(UiText.Get("game.studio.launcher_missing")));
   if(!File.Exists(python))throw Visible(new FileNotFoundException(UiText.Get("game.studio.python_missing")));
-  return new ProcessStartInfo(python,"-B \""+script+"\" --page "+page+(String.IsNullOrEmpty(project)?"":" --project "+project)){WorkingDirectory=editor,UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};
+  var start=new ProcessStartInfo(python,"-B \""+script+"\" --page "+page+(String.IsNullOrEmpty(project)?"":" --project "+project)){WorkingDirectory=editor,UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};
+  // The game and browser must read one library even when the configured editor
+  // points at a development checkout or has moved since its last registration.
+  // This core-only launcher is deliberately excluded from standalone exports.
+  var data=Directory.GetParent(Path.GetFullPath(RuntimePaths.DataDirectory));
+  if(data==null)throw new InvalidOperationException("The editor runtime directory must have a parent data directory.");
+  start.EnvironmentVariables["MORE_ITERATORS_DATA"]=data.FullName;
+  return start;
  }
  public static void Open(Menu.MainMenu menu,string page,string project=""){
   UiText.Use(menu==null?null:menu.manager.rainWorld);

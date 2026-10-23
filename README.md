@@ -2,7 +2,7 @@
 
 MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通过本地网页调整迭代器的外观、编写剧情、制作珍珠与广播、编辑投影动画，再到游戏中检查效果。完成的作品可以导出为独立游玩模组。
 
-当前版本：**0.1.3**。模组面向 Rain World **v1.11.8**；目前仍在开发与测试中。
+当前版本：**0.2.0**。模组面向 Rain World **v1.11.8**；目前仍在开发与测试中。
 
 [Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510) · [必要依赖：Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893) · [Rained 房间编辑器](https://github.com/pkhead/rained/releases) · [Discord](https://discord.gg/JBNxgz7E4h)
 
@@ -16,17 +16,22 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 - **房间与导出**：管理演算室、等待房间及连接，配合 Rained 制作自定义房间，将选定的作品内容导出为独立游玩模组。
 - **本地预览与管理**：提供网页预览、游戏内测试入口、保存历史及关联内容迁移。迭代器语音属于实验性功能。
 
-## 0.1.3 更新
+## 0.2.0 更新
 
-- 演算珍珠的堆积位置按室内可活动区域定位，修复贴墙堆积和恢复零重力后不归位的问题。
-- 撤销和重做绘画时保留当前部件、画布视角和面板滚动位置，包括切换部件后的第一笔。
-- 选择绘画部件后，自动展开并定位左侧对应参数。
-- 投影图片可直接替换并撤销替换，保留已有轨道和关键帧；整理素材操作与轨道参数布局。
-- 支持从画布外起笔，笔划在图像边缘自然裁切；完全未碰到图像的操作不留下编辑记录。
+- 修复游戏内头后线颜色同步。
+- F8 面板新增迭代器语音总开关。
+- 修复新旧项目语音无法播放的问题。
+- 演算室预览支持临时忽略交流印记试听语音。
+- 语音音量上限提高至原来的两倍。
+- 修复网页与游戏作品库不同步的问题。
+- 优化游戏内的菜单 UI。
+- 优化了删除功能。
+- 优化 Discord 图标。
+- 修复预览重置与好感数据读取异常。
 
 ## 下载与反馈
 
-目前工坊仍为好友可见测试；无法打开工坊条目时，请先联系作者。
+目前工坊为非公开测试；无法打开工坊条目时，请先联系作者。
 
 游玩和创作请使用 [Steam 创意工坊版本](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510)，并启用必要依赖 [Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893)。制作自定义房间可使用 [Rained 官方版本](https://github.com/pkhead/rained/releases)。
 
@@ -235,7 +240,7 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 ## 从源码构建
 
-普通创作者使用上面的工坊配置流程即可。这个仓库是 0.1.3 源码，不附带已编译 DLL；不要把 GitHub 的 Source code ZIP 当作可直接安装的工坊包。
+普通创作者使用上面的工坊配置流程即可。这个仓库是 0.2.0 源码，不附带已编译 DLL；不要把 GitHub 的 Source code ZIP 当作可直接安装的工坊包。
 
 开发者需要 Windows 的 .NET Framework C# 编译器，以及自己的 Rain World v1.11.8 安装和其自带 BepInEx/游戏程序集。在仓库根目录打开 PowerShell，运行下面整段后输入包含 RainWorld.exe 的文件夹：
 
@@ -252,10 +257,9 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 ---
 
-## English
 MoreIterators is a free, open-source OC creation tool for **Rain World**. Use its local web editor to customize iterators, write dialogue, create pearls and broadcasts, and animate projections, then check the results in the game. Finished creations can be exported as standalone playable mods.
 
-Current version: **0.1.3**. The mod targets Rain World **v1.11.8** and is still in development and testing.
+Current version: **0.2.0**. The mod targets Rain World **v1.11.8** and is still in development and testing.
 
 [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510) · [Required: Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893) · [Rained room editor](https://github.com/pkhead/rained/releases) · [Discord](https://discord.gg/JBNxgz7E4h)
 
@@ -269,17 +273,22 @@ Current version: **0.1.3**. The mod targets Rain World **v1.11.8** and is still 
 - **Rooms and export:** Manage iterator chambers, waiting rooms, and their connections. Use Rained for custom rooms and export selected creations as standalone playable mods.
 - **Local preview and project management:** Use browser previews, in-game testing, save history, and tools for transferring associated content. Iterator voice is an experimental feature.
 
-### What's new in 0.1.3
+### What's new in 0.2.0
 
-- Align work-pearl pile positions with the chamber’s usable interior and fix pearls collecting against walls or failing to return after zero gravity resumes.
-- Keep the selected part, canvas view and panel scroll positions when undoing or redoing paint, including the first stroke after switching parts.
-- Selecting a paint part automatically expands and scrolls to its corresponding settings on the left.
-- Replace projection images and undo replacements while preserving tracks and keyframes; tidy asset actions and track controls.
-- Start strokes outside the canvas and clip them at the image edges; gestures that never touch the image do not create edit history.
+- Fix in-game head-cable color synchronization.
+- Add an iterator voice master switch to the F8 panel.
+- Fix voices not playing in new and existing projects.
+- Allow chamber previews to temporarily ignore the Mark of Communication for voice testing.
+- Double the maximum voice volume setting.
+- Fix project libraries being out of sync between the web editor and the game.
+- Improve the in-game menu UI.
+- Improve project deletion.
+- Improve the Discord icon.
+- Fix preview reset and affinity data reading errors.
 
 ### Download and feedback
 
-The Workshop item is currently in friends-only testing. Contact the author if you cannot access it.
+The Workshop item is currently in non-public testing. Contact the author if you cannot access it.
 
 For playing and creating, use the [Steam Workshop version](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510) and enable its required dependency, [Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893). For custom rooms, download [Rained from its official releases](https://github.com/pkhead/rained/releases).
 
@@ -488,7 +497,7 @@ For GitHub source users: this guide primarily covers the Workshop package. The p
 
 ### Build from source
 
-Creators can use the Workshop setup above. This repository contains the 0.1.3 source without a precompiled DLL; GitHub’s Source code ZIP is not a ready-to-install Workshop package.
+Creators can use the Workshop setup above. This repository contains the 0.2.0 source without a precompiled DLL; GitHub’s Source code ZIP is not a ready-to-install Workshop package.
 
 Developers need the Windows .NET Framework C# compiler, their own Rain World v1.11.8 installation, and its BepInEx/game assemblies. Open PowerShell in the repository root, paste this block, and enter the folder containing RainWorld.exe:
 

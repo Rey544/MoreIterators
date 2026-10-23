@@ -75,21 +75,23 @@ public sealed class CreatorDialogueState {
 public sealed class CreatorDialogue {
  sealed class Session {public CreatorDialogueState state=new CreatorDialogueState();public bool entered,firstComplete;public RainWorldGame game;public Oracle owner;}
  static readonly Dictionary<string,Session> sessions=new Dictionary<string,Session>();
- readonly CreatorSpeech speech;readonly Oracle oracle;Session session;CreatorDialogueState state;readonly HashSet<DataPearl> held=new HashSet<DataPearl>();
+ readonly CreatorSpeech speech;readonly CreatorVoice unmarkedVoice;readonly Oracle oracle;Session session;CreatorDialogueState state;readonly HashSet<DataPearl> held=new HashSet<DataPearl>();
+ int unmarkedIndex,unmarkedGap;bool unmarkedFinished,voicePreview;
  Player listener;int cooldown,lastPickup=-1,lastLeaving=-1,lastReturning=-1;bool present,entryPresent,walkedIn,departed,markAttempted,firstAwaitingMark;string mode="",config="";int restart;
- public bool Speaking{get{return state.Pending&&!state.Away||state.Current!=null;}}
+ public bool Speaking{get{return state.Pending&&!state.Away||state.Current!=null||unmarkedVoice.Playing||unmarkedGap>0;}}
  public string CurrentText{get{return !state.CurrentPresented?"":state.Current.text;}}
  public bool AwaitingReturn{get{return state.Away;}}
  public bool InitialStoryComplete{get{return session.firstComplete;}}
  public static void Reset(string id){sessions.Remove(id);}
- public CreatorDialogue(Oracle o){oracle=o;speech=new CreatorSpeech(o);Attach();restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=IteratorDesign.ForRoom(o.room).dialogueJson;}
+ public CreatorDialogue(Oracle o){oracle=o;speech=new CreatorSpeech(o);unmarkedVoice=new CreatorVoice(o);Attach();restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=IteratorDesign.ForRoom(o.room).dialogueJson;voicePreview=CreatorVoicePreview.WithoutMark;}
  void Attach(){string id=IteratorDesign.ForRoom(oracle.room).oracleId;if(!sessions.TryGetValue(id,out session)||session.game!=oracle.room.game){session=new Session{game=oracle.room.game,firstComplete=CreatorPearlReader.CompletedStory(oracle,id)};sessions[id]=session;}if(session.owner!=oracle){session.state=new CreatorDialogueState();session.entered=session.firstComplete;session.owner=oracle;}state=session.state;state.BeforeAction=delegate(CreatorGroupAction action,Action<bool> finished,Action<int> steps){CreatorDialogueActions.For(oracle).Schedule(action,listener,finished,steps);};state.LineCompleted=delegate(CreatorDialogueLine line){if(CreatorGroupAction.GrantsMark(line.action)&&!HasMark())markAttempted=true;var action=CreatorDialogueActions.For(oracle).Completed(line.action,listener);if(action!=null)action();};}
  void StopHUD(){speech.Clear();}
- public void Suspend(){state.Interrupt(new CreatorDialogueLine[0]);StopHUD();}
+ public void Suspend(){state.Interrupt(new CreatorDialogueLine[0]);StopHUD();ResetUnmarkedVoice();}
  // Sample departure before speech/action/reception gates. Clearing a dead player's
  // HUD must not count as finishing the interrupted line.
  public void ObservePresence(Player player){
   if(player!=null&&!player.dead&&!player.slatedForDeletetion&&player.room==oracle.room)return;
+  ResetUnmarkedVoice();
   present=false;entryPresent=false;walkedIn=false;
   if(state.MainPending){state.Away=true;departed=true;}
   if(state.Current!=null){state.Interrupt(new CreatorDialogueLine[0]);StopHUD();}
@@ -132,15 +134,53 @@ public sealed class CreatorDialogue {
  void Depart(List<CreatorDialogueLine> group,Player player){state.Depart(group,CreatorDialogueActions.For(oracle).Completed(group,player));}
  void Interrupt(List<CreatorDialogueLine> group,Player player){CreatorDialogueActions.For(oracle).Cancel();state.Interrupt(group,CreatorDialogueActions.For(oracle).Completed(group,player));}
  List<CreatorDialogueLine> Pick(List<List<CreatorDialogueLine>> pool,ref int last){if(pool.Count==0)return new List<CreatorDialogueLine>();int i=pool.Count==1?0:last<0?UnityEngine.Random.Range(0,pool.Count):(last+1+UnityEngine.Random.Range(0,pool.Count-1))%pool.Count;last=i;return pool[i];}
- bool HasMark(){var game=oracle.room.game;return MoreIteratorsPlugin.Active?CreatorRuntime.Mark:(game.IsStorySession&&game.GetStorySession.saveState.deathPersistentSaveData.theMark);}
+ bool HasMark(){return IteratorBehavior.HasCommunicationMark(oracle);}
+ void ResetUnmarkedVoice(){unmarkedVoice.Stop();unmarkedIndex=unmarkedGap=0;unmarkedFinished=false;}
+ IEnumerable<CreatorDialogueLine> UnmarkedLines(CreatorDialogueProfile p){
+  // Reuse authored words as sound material only. Hearing untranslated speech
+  // must not consume a meeting, run an action, or start a line-bound projection.
+  if(!session.firstComplete&&p.first.Exists(CreatorDialogueLine.HasText))return p.first;
+  if(p.loop.Exists(CreatorDialogueLine.HasText))return p.loop;
+  if(p.repeat.Exists(CreatorDialogueLine.HasText))return p.repeat;
+  foreach(var meeting in p.meetings)if(meeting!=null&&meeting.lines!=null&&Array.Exists(meeting.lines,CreatorDialogueLine.HasText))return meeting.lines;
+  return p.first;
+ }
+ void SpeakUnmarked(Player player,CreatorDialogueProfile p){
+  if(player==null||player.dead||player.slatedForDeletetion||player.room!=oracle.room||!unmarkedVoice.CanStart){ResetUnmarkedVoice();return;}
+  unmarkedVoice.Tick(true,CreatorRuntime.Paused);
+  if(CreatorRuntime.Paused||unmarkedVoice.Playing||unmarkedFinished)return;
+  if(unmarkedGap>0){unmarkedGap--;return;}
+  int index=0;
+  foreach(var line in UnmarkedLines(p)){
+   if(!CreatorDialogueLine.HasText(line))continue;
+   if(index++<unmarkedIndex)continue;
+   unmarkedIndex++;unmarkedGap=Math.Max(0,(int)(line.gap*40));
+   unmarkedVoice.Begin(line,true);
+   MiDiagnostics.Info("voice.unmarked","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" line="+unmarkedIndex+" playing="+unmarkedVoice.Playing);
+   return;
+  }
+  unmarkedFinished=true;
+ }
  public void ObserveHeld(List<CreatorWorkPearl> pearls){foreach(var pearl in pearls){if(pearl.room==oracle.room&&pearl.grabbedBy.Exists(g=>g.grabber is Player))held.Add(pearl);else held.Remove(pearl);}}
  public void Update(Player player,List<CreatorWorkPearl> pearls,IteratorDesign d){
+  // Clear any translated/delayed line before it can tick under the new policy.
+  if(voicePreview!=CreatorVoicePreview.WithoutMark){
+   voicePreview=CreatorVoicePreview.WithoutMark;StopHUD();speech.Finish();ResetUnmarkedVoice();
+   // Suspend the interrupted main line, retaining completed action children and
+   // the remaining meeting. Auditioning is not a new visit or a completion.
+   if(voicePreview){CreatorDialogueActions.For(oracle).Cancel();state.Interrupt(new CreatorDialogueLine[0]);}
+   if(!session.firstComplete&&!state.MainPending)session.entered=false;
+   present=false;departed=false;markAttempted=false;firstAwaitingMark=false;
+  }
   speech.Tick();listener=player;var p=CreatorDialogueProfile.For(d);bool enabled=p.enabled&&CreatorRuntime.Mode=="story";
   if(mode!=CreatorRuntime.Mode||restart!=CreatorEncounter.Restart||config!=d.dialogueJson){
-   bool hard=restart!=CreatorEncounter.Restart;StopHUD();speech.Finish();if(hard){Reset(d.oracleId);CreatorPearlReader.ResetForReplay(d.oracleId);Attach();entryPresent=false;}else {state.Clear();if(!session.firstComplete)session.entered=false;}present=false;departed=false;walkedIn=false;markAttempted=false;firstAwaitingMark=false;held.Clear();mode=CreatorRuntime.Mode;restart=CreatorEncounter.Restart;config=d.dialogueJson;
+   bool hard=restart!=CreatorEncounter.Restart;StopHUD();speech.Finish();ResetUnmarkedVoice();if(hard){Reset(d.oracleId);CreatorPearlReader.ResetForReplay(oracle,d.oracleId);Attach();entryPresent=false;}else {state.Clear();if(!session.firstComplete)session.entered=false;}present=false;departed=false;walkedIn=false;markAttempted=false;firstAwaitingMark=false;held.Clear();mode=CreatorRuntime.Mode;restart=CreatorEncounter.Restart;config=d.dialogueJson;
   }
-  if(!enabled){if(state.Pending){state.Clear();StopHUD();}speech.Finish();return;}
-  bool allowed=PlaybackMode.Enabled||!p.requireMark||HasMark()||!session.firstComplete&&GrantsMark(p);if(!allowed){if(state.Pending){state.Clear();StopHUD();}if(!session.firstComplete)session.entered=false;speech.Finish();present=false;return;}
+  if(!enabled){if(state.Pending){state.Clear();StopHUD();}speech.Finish();ResetUnmarkedVoice();return;}
+  // An audition reuses words without consuming meetings or running authored
+  // actions, even when the first meeting would normally grant the mark.
+  bool allowed=!CreatorVoicePreview.WithoutMark&&(!p.requireMark||HasMark()||!session.firstComplete&&GrantsMark(p));if(!allowed){if(!CreatorVoicePreview.WithoutMark){if(state.Pending){state.Clear();StopHUD();}if(!session.firstComplete)session.entered=false;}speech.Finish();present=false;SpeakUnmarked(player,p);return;}
+  ResetUnmarkedVoice();
   // A cancelled grant must leave another opportunity to obtain the mark. Its
   // hidden sentence may already be consumed, so replay the unfinished prelude.
   if(markAttempted&&!CreatorDialogueActions.For(oracle).Active){

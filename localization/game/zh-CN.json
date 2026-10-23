@@ -97,8 +97,8 @@
   "game.gallery.back": "返回演算室",
   "game.gallery.previous_page": "上一页",
   "game.gallery.next_page": "下一页",
-  "game.gallery.previous_text": "前段",
-  "game.gallery.next_text": "后段",
+  "game.gallery.previous_text": "上一页",
+  "game.gallery.next_text": "下一页",
   "game.gallery.blank": "（留白）",
   "game.gallery.page_heading": "〔第 {0} 页〕",
   "game.gallery.pearl.title": "珍珠",
@@ -161,5 +161,7 @@
   "game.studio_menu.on": "开",
   "game.studio_menu.enter": "进入预览",
   "game.studio_menu.local_not_enabled": "本地作品未启用",
-  "game.studio_menu.enable_local_in_remix": "在“拓展”启用“更多迭代器 · 本地作品”。\n应用修改并重启游戏。"
+  "game.studio_menu.enable_local_in_remix": "在“拓展”启用“更多迭代器 · 本地作品”。\n应用修改并重启游戏。",
+  "game.panel.voice_on": "语音：开启",
+  "game.panel.voice_off": "语音：关闭"
 }

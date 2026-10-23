@@ -147,6 +147,8 @@
             {
                 Visits.Remove(Id(entry));
                 CreatorDialogue.Reset(Id(entry));
+                // No game exists yet: discard preview-only history, never queue
+                // a progress deletion that another campaign could consume.
                 CreatorPearlReader.Reset(Id(entry));
             }
             Directory.CreateDirectory(Root);

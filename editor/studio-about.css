@@ -1,8 +1,13 @@
 /* In normal document flow: never covers canvas handles or drawing tools. */
 body.mi-studio .mi-version-footer{display:flex;flex-direction:column;align-items:stretch;gap:14px;width:100%;min-height:32px;margin:0;padding:8px 22px max(20px,env(safe-area-inset-bottom,0px));background:transparent;position:static;clear:both}
-body.mi-studio .mi-footer-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 18px}
-body.mi-studio .mi-community{margin-left:auto;font-size:12px;color:var(--mi-muted);text-align:right}
+body.mi-studio .mi-footer-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 18px}
+body.mi-studio .mi-community{display:flex;margin-left:auto;color:var(--mi-muted)}
 body.mi-studio .mi-community a{color:var(--mi-text)}
+body.mi-studio a.mi-discord-link{display:inline-flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border:1px solid var(--mi-line,#4a4f55);border-radius:8px;background:transparent;text-decoration:none}
+body.mi-studio a.mi-discord-link:is(:hover,:focus-visible){color:var(--mi-active,#fff);border-color:currentColor;background:#ffffff0a}
+body.mi-studio a.mi-discord-link:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+/* Discord mark from Simple Icons (CC0); embedded so the button works offline. */
+.mi-discord-icon{display:block;width:22px;height:22px;background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z'/%3E%3C/svg%3E") center/contain no-repeat}
 body.mi-studio .mi-tool-principles{width:100%;max-width:none;font-size:16px;line-height:1.8;color:#737373;text-align:center;overflow-wrap:anywhere}
 body.mi-studio .mi-tool-principles p{margin:0 0 6px}
 body.mi-studio .mi-tool-principles p:last-child{margin-bottom:0}

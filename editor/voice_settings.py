@@ -17,7 +17,7 @@ def validate(raw):
     for key in ('enabled','unmarkedOnly','repeat','reverse','split'):
         if type(value[key]) is not bool:raise ValueError('语音开关必须为开启或关闭')
     if value['bank'] not in ('pebbles','moon'):raise ValueError('请选择原版迭代器声音库')
-    for key,low,high in (('speed',.25,3),('pitch',.2,3),('volume',0,1),('echo',0,1),('muffle',0,1),('electric',0,1),('chaos',0,1)):
+    for key,low,high in (('speed',.25,3),('pitch',.2,3),('volume',0,2),('echo',0,1),('muffle',0,1),('electric',0,1),('chaos',0,1)):
         item=value[key]
         if type(item) not in (int,float) or not math.isfinite(item) or not low<=item<=high:raise ValueError('语音参数超出范围：'+key)
     for key in ('shortWeight','mediumWeight','longWeight'):

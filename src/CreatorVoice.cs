@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
  public static CreatorVoiceDesign Safe(CreatorVoiceDesign source){
   if(source==null)return new CreatorVoiceDesign();
   return new CreatorVoiceDesign{enabled=source.enabled,unmarkedOnly=source.unmarkedOnly,bank=source.bank=="moon"?"moon":"pebbles",
-   speed=Number(source.speed,.25f,3f,1),pitch=Number(source.pitch,.2f,3f,1),volume=Number(source.volume,0,1,.35f),
+   speed=Number(source.speed,.25f,3f,1),pitch=Number(source.pitch,.2f,3f,1),volume=Number(source.volume,0,2,.35f),
    echo=Number(source.echo,0,1,0),muffle=Number(source.muffle,0,1,0),electric=Number(source.electric,0,1,0),chaos=Number(source.chaos,0,1,0),repeat=source.repeat,reverse=source.reverse,split=source.split,
    shortWeight=Math.Max(0,Math.Min(100,source.shortWeight)),mediumWeight=Math.Max(0,Math.Min(100,source.mediumWeight)),longWeight=Math.Max(0,Math.Min(100,source.longWeight))};
  }
@@ -35,12 +35,14 @@ public sealed class CreatorVoice {
  CreatorVoiceDesign source,settings;ChunkSoundEmitter emitter;
  Room speakingRoom;Guard guard;int lastTick;
  readonly CreatorVoiceEffects effects=new CreatorVoiceEffects();CreatorVoiceSequence sequence;CreatorVoiceNote note;
- int elapsed,index;bool unmarked,active;
+ int elapsed,index;bool active;
+ public bool Playing{get{return active;}}
+ public bool CanStart{get{if(oracle==null||oracle.slatedForDeletetion||oracle.room==null||oracle.room.game==null)return false;Refresh();return Enabled;}}
  public CreatorVoice(Oracle oracle):this(oracle,Environment.TickCount){}
  internal CreatorVoice(Oracle oracle,int seed){this.oracle=oracle;}
  public void Begin(CreatorDialogueLine line,bool withoutMark){
   Stop();if(line==null||String.IsNullOrWhiteSpace(line.text)||oracle==null||oracle.slatedForDeletetion||oracle.room==null||oracle.room.game==null)return;
-  unmarked=withoutMark;settings=null;Refresh();if(!Enabled)return;
+  settings=null;Refresh();if(!Enabled)return;
   var slot=slots.GetValue(oracle,delegate(Oracle key){return new Slot();});
   if(slot.owner!=null&&slot.owner!=this)slot.owner.Stop();slot.owner=this;
   // Do not keep babbling throughout a long post-line hold. At most twelve
@@ -53,7 +55,10 @@ public sealed class CreatorVoice {
   var design=IteratorDesign.ForRoom(oracle.room);var next=design==null?null:design.voice;
   if(settings==null||!Object.ReferenceEquals(next,source)){source=next;settings=CreatorVoiceDesign.Safe(next);}
  }
- bool Enabled{get{return settings!=null&&settings.enabled&&(!settings.unmarkedOnly||unmarked)&&settings.volume>0;}}
+ // Always query the current mark, including while a line or pre-action is running.
+ // The legacy unmarkedOnly field remains readable in old projects, but translated
+ // dialogue never emits babble. A hide flag is not proof that the player lacks it.
+ bool Enabled{get{return settings!=null&&settings.enabled&&CreatorVoiceControl.Enabled&&!IteratorBehavior.HasCommunicationMark(oracle)&&settings.volume>0;}}
  bool Available(){
   if(oracle==null||oracle.slatedForDeletetion||oracle.room==null||oracle.room!=speakingRoom||oracle.room.game==null){Stop();return false;}
   Refresh();if(!Enabled||!Visible()){Stop();return false;}return true;

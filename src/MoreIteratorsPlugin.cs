@@ -113,6 +113,7 @@
             removeHooks.Add(delegate { On.RainWorld.PostModsInit-=revivifyReady; });
             if(ModManager.InitializationScreenFinished)RevivifyCompatibility.Install();
             CreatorOracleLifecycle.Install(removeHooks);
+            CreatorNativeVoiceGuard.Install(removeHooks);
             CreatorOverseers.Install(removeHooks);
             CreatorPearlOffers.Install(removeHooks);
             WarpRoomLabels.Install(removeHooks);
@@ -1297,14 +1298,11 @@
         }
         void ColorCord(FSprite sprite,Color c)
         {
-            sprite.color=c;
-            var mesh=sprite as TriangleMesh;
-            if(mesh!=null&&mesh.verticeColors!=null){for(int j=0;j<mesh.verticeColors.Length;j++)mesh.verticeColors[j]=mesh.customColor?c:Color.white;mesh.Refresh();}
+            CreatorCableColors.Solid(sprite,c);
         }
         void TintCords(OracleGraphics g,RoomCamera.SpriteLeaser s,IteratorDesign d)
         {
-            Color dark=IteratorDesign.C(d.cableColorA),light=IteratorDesign.C(d.cableColorB),metal=IteratorDesign.C(d.metalColor);
-            Color red=Color.Lerp(IteratorDesign.C(d.headCableRed),metal,.5f),blue=Color.Lerp(IteratorDesign.C(d.headCableBlue),metal,.5f);
+            Color dark=IteratorDesign.C(d.cableColorA),light=IteratorDesign.C(d.cableColorB);
             if(g.umbCord!=null)
             {
                 var c=g.umbCord;
@@ -1317,12 +1315,12 @@
                     Color color=d.cableThickGradient.Sample(i/(float)Math.Max(1,c.coord.GetLength(0)-1),light);
                     if(d.cableThickGradient.enabled){ColorCord(s.sprites[c.SegmentSprite(i,0)],color);ColorCord(s.sprites[c.SegmentSprite(i,1)],Color.Lerp(color,Color.white,.17f));}
                 }
-                for(int i=0;i<c.smallCords.GetLength(0);i++){Color solid=c.smallCoordColors[i]==1?red:c.smallCoordColors[i]==2?blue:metal;var gradient=c.smallCoordColors[i]==1?d.headCableAGradient:c.smallCoordColors[i]==2?d.headCableBGradient:null;ColorCord(s.sprites[c.SmallCordSprite(i)],solid);CreatorColorGradient.Paint(s.sprites[c.SmallCordSprite(i)],gradient,solid,0,1,1);}
+                for(int i=0;i<c.smallCords.GetLength(0);i++)CreatorCableColors.Head(s.sprites[c.SmallCordSprite(i)],d,c.smallCoordColors[i]);
             }
             if(g.discUmbCord!=null)
             {
                 var c=g.discUmbCord;
-                for(int i=0;i<c.smallCords.GetLength(0);i++){Color solid=c.smallCoordColors[i]==1?red:c.smallCoordColors[i]==2?blue:metal;var gradient=c.smallCoordColors[i]==1?d.headCableAGradient:c.smallCoordColors[i]==2?d.headCableBGradient:null;ColorCord(s.sprites[c.SmallCordSprite(i)],solid);CreatorColorGradient.Paint(s.sprites[c.SmallCordSprite(i)],gradient,solid,0,1,1);}
+                for(int i=0;i<c.smallCords.GetLength(0);i++)CreatorCableColors.Head(s.sprites[c.SmallCordSprite(i)],d,c.smallCoordColors[i]);
             }
         }
         void ShowRange(RoomCamera.SpriteLeaser s,int start,int count,bool show)
@@ -1400,9 +1398,11 @@
         static Room nativePaletteUpdateRoom;
         public static bool HasCommunicationMark(Oracle oracle)
         {
-            if(MoreIteratorsPlugin.Active)return CreatorRuntime.Mark;
             var game=oracle==null||oracle.room==null?null:oracle.room.game;
-            return game!=null&&game.IsStorySession&&game.GetStorySession!=null&&game.GetStorySession.saveState!=null&&game.GetStorySession.saveState.deathPersistentSaveData!=null&&game.GetStorySession.saveState.deathPersistentSaveData.theMark;
+            if(game!=null&&CreatorVoicePreview.WithoutMark)return false;
+            // Story/co-op players share this save flag. Another grant path can set
+            // it before the preview control file has refreshed its cached mark.
+            return MoreIteratorsPlugin.Active&&CreatorRuntime.Mark||CreatorMarkGuard.HasMarkV1(game);
         }
         public static bool SuppressNativePalette(Room room,int first,int second)
         {

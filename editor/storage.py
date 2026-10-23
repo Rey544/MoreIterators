@@ -58,7 +58,14 @@ def project_files():
             if f.exists():result.append(f)
     return sorted(result,key=lambda f:f.parent.name)
 
-def load_project(pid):return json.loads(project_file(pid).read_text('utf-8'))
+def purge_marker(pid):return DATA/'project-tombstones'/(valid_id(pid)+'.json')
+
+def assert_not_purged(pid):
+    if purge_marker(pid).exists():raise ValueError('此项目已永久删除；旧页面不能恢复，请新建项目')
+
+def load_project(pid):
+    assert_not_purged(pid)
+    return json.loads(project_file(pid).read_text('utf-8'))
 
 def target_mod(pid):
     v=link(pid)

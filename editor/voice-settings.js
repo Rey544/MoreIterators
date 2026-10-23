@@ -25,10 +25,9 @@ const VoiceSettings=(()=>{
  function settings(parent,d,options={}){
   stopPreview();const session=generation,voice=d.voice??=blank();voice.templates??=[];
   const current=()=>session===generation&&(!options.getProject||options.getProject()?.design===d);
-  const part=garmentSection(parent,'迭代器语音（实验）');part.dataset.sectionId='iteratorVoice';
+  const part=garmentSection(parent,'迭代器语音');part.dataset.sectionId='iteratorVoice';
   const commit=()=>{stopPreview();options.changed?.();options.rebuild?.();};
-  const note=document.createElement('p');note.className='hint';note.textContent=t('实验功能；台词转成音节，不改动原文');part.append(note);
-  garmentField(part,voice,'enabled','在游戏中启用','checkbox');garmentField(part,voice,'unmarkedOnly','仅无印记时发声','checkbox');
+  garmentField(part,voice,'enabled','在游戏中启用','checkbox');
   const choices={pebbles:'五块卵石',moon:'仰望皓月',...Object.fromEntries(voice.templates.map(p=>[p.id,p.name]))};
   const select=garmentField(part,voice,'templateId','声音模板','select',choices,null,null,()=>{apply(voice,voice.templateId);options.rebuild?.();});
   if(select)for(const option of select.options||[])if(option.value.startsWith('voice-'))MI18n.content?.(option);
@@ -40,7 +39,7 @@ const VoiceSettings=(()=>{
   const body=garmentSection(part,'声线参数');body.open=true;
   const live=()=>{if(typeof VoiceAudio!=='undefined'&&VoiceAudio.active){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{if(current())play();},140);}};
   garmentField(body,voice,'bank','原始声音','select',{pebbles:'五块卵石',moon:'仰望皓月'},null,null,live);
-  for(const [key,label,min,max,step]of [['speed','语速',.25,3,.05],['pitch','音高',.2,3,.05],['volume','语音音量',0,1,.01],['echo','回声',0,1,.01],['muffle','朦胧程度',0,1,.01],['electric','电流感',0,1,.01],['chaos','混乱程度',0,1,.01]])garmentField(body,voice,key,label,'range',min,max,step,live);
+  for(const [key,label,min,max,step]of [['speed','语速',.25,3,.05],['pitch','音高',.2,3,.05],['volume','语音音量',0,2,.01],['echo','回声',0,1,.01],['muffle','朦胧程度',0,1,.01],['electric','电流感',0,1,.01],['chaos','混乱程度',0,1,.01]])garmentField(body,voice,key,label,'range',min,max,step,live);
   for(const [key,label]of [['repeat','重复片段'],['reverse','颠倒顺序'],['split','拆分音节']])garmentField(body,voice,key,label,'checkbox',null,null,null,live);
   const weights=garmentSection(body,'音节比例');for(const [key,label]of [['shortWeight','短音节权重'],['mediumWeight','中音节权重'],['longWeight','长音节权重']])garmentField(weights,voice,key,label,'range',0,100,1,live);
   const preview=garmentSection(part,'语音试听');preview.open=true;
@@ -56,7 +55,7 @@ const VoiceSettings=(()=>{
     const lines=dialogueLines(data);source.replaceChildren();const empty=document.createElement('option');empty.value='';empty.textContent=t('选择剧情台词');source.append(empty);
     for(let i=0;i<lines.length;i++){const item=document.createElement('option');item.value=String(i);item.textContent=(i+1)+'. '+lines[i].label;MI18n.content?.(item);source.append(item);}
     source.onchange=()=>{if(source.value!==''){text.value=lines[+source.value].text.slice(0,600);live();}};
-    if(!text.value&&lines.length){source.value='0';text.value=lines[0].text.slice(0,600);}if(!lines.length)status.textContent=t('暂无剧情台词，可以输入一句试听');
+    if(!text.value&&lines.length){source.value='0';text.value=lines[0].text.slice(0,600);}
    }catch(error){if(current())status.textContent=t(error.message);}}
   garmentButton(buttons,'刷新剧情台词',loadLines);loadLines();text.oninput=live;
  }

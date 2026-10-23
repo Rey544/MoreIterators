@@ -49,6 +49,7 @@ def archived(pid):
     return next((v for v in _records() if v['projectId']==pid),None)
 
 def assert_active(pid):
+    storage.assert_not_purged(pid)
     if archived(pid):raise ValueError('此项目已删除，请先从最近删除中恢复')
 
 def reference_project(pid):
@@ -183,6 +184,7 @@ def delete(data,server,transaction=None):
 
 def restore(token,server):
     value=_read(_token(token));pid=value['projectId'];_editable(pid,value['project'])
+    storage.assert_not_purged(pid)
     if value.get('state') not in ACTIVE_STATES:raise ValueError('此删除记录已恢复')
     current=storage.project_file(pid)
     if current.exists() and value['state']=='deleted':raise ValueError('同名项目编号已被占用，不能覆盖恢复')

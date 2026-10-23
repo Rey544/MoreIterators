@@ -314,6 +314,8 @@ def operations():
 def restore(data,server):
     token=life._token(data.get('operationToken'));file=_op_path(token);value=_json(file)
     if value.get('schema')!=SCHEMA or value.get('token')!=token or value.get('state')!='applied':raise ValueError('此关联操作已恢复或记录无效')
+    for key in ('sourceProjectId','targetProjectId'):
+        if value.get(key):storage.assert_not_purged(value[key])
     staged=[]
     for item in value['files']:
         target=_resolve(item)

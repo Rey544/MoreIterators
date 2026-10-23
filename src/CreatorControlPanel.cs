@@ -71,6 +71,7 @@ namespace MoreIterators
         static void Apply(string command)
         {
             if(command=="draw-state"){OracleSpriteDiagnostics.OpenReport(CreatorRuntime.Id(CreatorRuntime.CurrentRoom));return;}
+            if(command=="voice"){CreatorVoiceControl.Toggle();return;}
             if(command=="affinity-"||command=="affinity+"){CreatorAffinity.Adjust(game,room,command=="affinity-"?-.1f:.1f);return;}
             if(command=="pause")CreatorRuntime.Paused=!CreatorRuntime.Paused;
             else if(command=="work"||command=="reception")
@@ -90,7 +91,7 @@ namespace MoreIterators
                 string id=CreatorRuntime.Id(CreatorRuntime.CurrentRoom);
                 CreatorRuntime.Visits.Remove(id);
                 CreatorDialogue.Reset(id);
-                CreatorPearlReader.Reset(id);
+                CreatorPearlReader.Reset(game,id);
                 CreatorEncounter.Restart++;
                 CreatorRuntime.Mode="story";
                 CreatorRuntime.Behavior="work";
@@ -124,6 +125,7 @@ namespace MoreIterators
                 case "reception":return UiText.Get("game.panel.reception_motion");
                 case "mode":return UiText.Format("game.menu.mode_label",UiText.Get(CreatorRuntime.Mode=="silent"?"game.menu.silent":CreatorRuntime.Mode=="story"?"game.menu.story":"game.menu.read"));
                 case "replay":return UiText.Get("game.panel.replay");
+                case "voice":return UiText.Get(CreatorVoiceControl.Enabled?"game.panel.voice_on":"game.panel.voice_off");
                 case "glow":return ToggleLabel(UiText.Get("game.panel.glow"),CreatorRuntime.RearGlow);
                 case "lightning":return ToggleLabel(UiText.Get("game.panel.lightning"),CreatorRuntime.Lightning);
                 case "pearls":return ToggleLabel(UiText.Get("game.panel.pearls"),CreatorRuntime.Pearls);
@@ -212,7 +214,7 @@ namespace MoreIterators
                 }
                 :tab==1?new[]
                 {
-                    "glow","lightning","pearls","glyphs","draw-state"
+                    "voice","glow","lightning","pearls","glyphs","draw-state"
                 }
                 :Array.ConvertAll(layerIds,x=>"layer:"+x);
                 for(int i=0;i<commands.Length;i++)
@@ -255,7 +257,7 @@ namespace MoreIterators
                     }
                     PlaySound(SoundID.MENU_Button_Standard_Button_Pressed);
                 }
-                foreach(var b in controls){b.menuLabel.text=Label(b.signalText);if(b.signalText.StartsWith("affinity"))b.buttonBehav.greyedOut=!CreatorAffinity.CanAdjust(game,room);}
+                foreach(var b in controls){b.menuLabel.text=Label(b.signalText);if(b.signalText=="voice")b.toggled=CreatorVoiceControl.Enabled;if(b.signalText.StartsWith("affinity"))b.buttonBehav.greyedOut=!CreatorAffinity.CanAdjust(game,room);}
                 affinity.text=CreatorAffinity.Label(game,room);
                 status.text=error.Length>0?error:CreatorRuntime.Paused?UiText.Get("game.panel.paused"):CreatorRuntime.Behavior=="reception"?UiText.Get("game.panel.reception"):UiText.Get("game.panel.active");
             }

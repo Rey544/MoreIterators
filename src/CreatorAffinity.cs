@@ -19,15 +19,18 @@ public sealed class CreatorAffinityState {
 }
 public static class CreatorAffinity {
  static readonly ConditionalWeakTable<RainWorldGame,Dictionary<string,CreatorAffinityState>> all=new ConditionalWeakTable<RainWorldGame,Dictionary<string,CreatorAffinityState>>();
+ // Keep an unreadable record intact for recovery instead of replacing it with
+ // defaults when the UI, cycle update, or a gameplay event asks for its state.
+ static readonly ConditionalWeakTable<RainWorldGame,HashSet<string>> unreadable=new ConditionalWeakTable<RainWorldGame,HashSet<string>>();
  static string Key(string id){return "MORE_ITERATORS_AFFINITY_"+Convert.ToBase64String(Encoding.UTF8.GetBytes(RuntimePaths.ModId+":"+id))+":";}
  static int Cycle(Oracle o){return o.room.game.IsStorySession?o.room.game.GetStorySession.saveState.cycleNumber:0;}
  public static CreatorAffinityState Get(Oracle o,IteratorDesign design){
   var map=all.GetOrCreateValue(o.room.game);CreatorAffinityState state;if(map.TryGetValue(design.oracleId,out state))return state;
   var rules=CreatorDialogueProfile.For(design).affinity;state=new CreatorAffinityState(rules.initial,Cycle(o));
-  if(o.room.game.IsStorySession&&!MoreIteratorsPlugin.Active){string key=Key(design.oracleId);foreach(string record in o.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings)if(record.StartsWith(key,StringComparison.Ordinal)){try{state=CreatorAffinityState.Load(Json.Deserialize(Encoding.UTF8.GetString(Convert.FromBase64String(record.Substring(key.Length)))) as Dictionary<string,object>,rules.initial,Cycle(o));}catch(Exception e){MiDiagnostics.Report("MI-AFFINITY-READ","CreatorAffinity.Get",e,design.oracleId);}break;}}
+  if(o.room.game.IsStorySession&&!MoreIteratorsPlugin.Active){string key=Key(design.oracleId);foreach(string record in o.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings)if(record.StartsWith(key,StringComparison.Ordinal)){try{var data=Json.Deserialize(Encoding.UTF8.GetString(Convert.FromBase64String(record.Substring(key.Length)))) as Dictionary<string,object>;if(data==null)throw new FormatException("Affinity state must be a JSON object.");state=CreatorAffinityState.Load(data,rules.initial,Cycle(o));}catch(Exception e){unreadable.GetOrCreateValue(o.room.game).Add(design.oracleId);MiDiagnostics.Report("MI-AFFINITY-READ","CreatorAffinity.Get",e,design.oracleId);}break;}}
   map[design.oracleId]=state;Save(o,design,state);return state;
  }
- static void Save(Oracle o,IteratorDesign d,CreatorAffinityState state){if(!o.room.game.IsStorySession||MoreIteratorsPlugin.Active)return;string key=Key(d.oracleId);var records=o.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings;records.RemoveAll(x=>x.StartsWith(key,StringComparison.Ordinal));records.Add(key+Convert.ToBase64String(Encoding.UTF8.GetBytes(Json.Serialize(state.Data()))));}
+ static void Save(Oracle o,IteratorDesign d,CreatorAffinityState state){if(!o.room.game.IsStorySession||MoreIteratorsPlugin.Active||unreadable.GetOrCreateValue(o.room.game).Contains(d.oracleId))return;string key=Key(d.oracleId);var records=o.room.game.GetStorySession.saveState.miscWorldSaveData.unrecognizedSaveStrings;records.RemoveAll(x=>x.StartsWith(key,StringComparison.Ordinal));records.Add(key+Convert.ToBase64String(Encoding.UTF8.GetBytes(Json.Serialize(state.Data()))));}
  public static void Update(Oracle o,IteratorDesign d){var rules=CreatorDialogueProfile.For(d).affinity;if(!rules.enabled)return;var state=Get(o,d);if(state.Advance(Cycle(o)))Save(o,d,state);}
  public static string Hit(Oracle o,IteratorDesign d,bool spear){var state=Get(o,d);string tier=state.Hit(CreatorDialogueProfile.For(d).affinity,spear);Save(o,d,state);return tier;}
  public static bool Refuses(Oracle o,IteratorDesign d){var rules=CreatorDialogueProfile.For(d).affinity;return rules.enabled&&Get(o,d).value<rules.refuseBelow;}

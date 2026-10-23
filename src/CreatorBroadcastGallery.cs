@@ -22,17 +22,14 @@ public static class CreatorBroadcastGallery {
   int size=Math.Max(3,(int)((h-290)/27));textPage=Mathf.Clamp(textPage,0,Math.Max(0,(lines.Count-1)/size));for(int i=0;i<size&&textPage*size+i<lines.Count;i++)Label(lines[textPage*size+i],295,h-202-i*27,w-330);
    Button(UiText.Get("game.gallery.previous_text"),"TEXT_PREV",465,25,110);Button(UiText.Get("game.gallery.next_text"),"TEXT_NEXT",585,25,110);Label((textPage+1)+" / "+Math.Max(1,(lines.Count+size-1)/size),710,28,100);
  }
-  internal static List<string> TextLines(BroadcastProject project){
+  internal static List<string> TextLines(BroadcastProject project,int selectedPage=-1){
    var result=new List<string>();bool invalid=false;
    if(project.pages==null){MiDiagnostics.Warn("MI_BROADCAST_NULL_TEXT","CreatorBroadcastGallery.TextLines","Null broadcast pages were treated as empty.",project.id);return result;}
-   for(int i=0;i<project.pages.Length;i++){
-    result.Add(UiText.Format("game.gallery.page_heading",i+1));var page=project.pages[i];
-    if(page==null||page.lines==null)invalid=true;
-    else foreach(var line in page.lines){
-     if(line==null||line.text==null){invalid=true;continue;}
-     foreach(string part in line.text.Replace("<LINE>","\n").Split('\n'))for(int j=0;j<part.Length;j+=36)result.Add(part.Substring(j,Math.Min(36,part.Length-j)));
-    }
-    result.Add("");
+   int first=selectedPage<0?0:selectedPage,last=selectedPage<0?project.pages.Length:Math.Min(project.pages.Length,selectedPage+1);
+   for(int i=first;i<last;i++){
+    var page=project.pages[i];if(page==null||page.lines==null)invalid=true;
+    else foreach(var line in page.lines){if(line==null||line.text==null){invalid=true;continue;}result.AddRange(line.text.Replace("<LINE>","\n").Split('\n'));}
+    if(selectedPage<0&&i+1<last)result.Add("");
    }
    if(invalid)MiDiagnostics.Warn("MI_BROADCAST_NULL_TEXT","CreatorBroadcastGallery.TextLines","Null broadcast text was treated as empty.",project.id);
    return result;

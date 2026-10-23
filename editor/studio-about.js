@@ -15,8 +15,8 @@
   community.replaceChildren();
   const url=safeLink(data?.community?.discordUrl,/^(discord\.gg|discord\.com)$/i);
   if(url){
-   community.append(node('span',english?'In development and testing. Join us on ':'目前处于开发测试阶段，欢迎来 '));
-   const link=authored(node('a','Discord'));link.href=url;link.target='_blank';link.rel='noopener noreferrer';community.append(link,node('span',english?' to discuss ideas and report problems.':' 讨论和反馈问题。'));
+   const link=authored(node('a',undefined,'mi-discord-link'));link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.title='Discord';link.setAttribute('aria-label','Discord');
+   const icon=node('span',undefined,'mi-discord-icon');icon.setAttribute('aria-hidden','true');link.append(icon);community.append(link);
   }
   const intro=english?'MoreIterators is a completely free, open-source OC creation tool for creators with no coding experience.':'MoreIterators 是完全免费、开源的 OC 制作工具，希望帮助没有编程基础的创作者实现自己的想法。';
   const source=english?'If someone charges you to provide or install this tool, please subscribe to the official version for free on Steam Workshop and notify the creator.':'如果有人收费提供或代装本工具，请到 Steam 创意工坊免费订阅官方版本，并告知创作者。';
