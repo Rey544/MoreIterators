@@ -40,11 +40,21 @@ import project_associations
 import local_content
 import studio_drafts
 import action_presets
+import install_picker
+import default_text
 PROJECTS=storage.PROJECTS; EXPORTS=storage.EXPORTS
 GAME=storage.GAME
 ASSETS=GAME/'RainWorld_Data/StreamingAssets'; MOD=storage.DATA/'local-mod'; DESIGNS=storage.RUNTIME
 PORT=storage.STUDIO_PORT; LOCK=threading.RLock()
 LIVE_CACHE={}
+
+def installation_paths(changes=None):
+    global GAME, ASSETS
+    with LOCK:
+        result=storage.installation_paths() if changes is None else storage.configure_installation_paths(changes)
+        GAME=storage.GAME
+        ASSETS=GAME/'RainWorld_Data/StreamingAssets'
+        return result
 
 def live_snapshot(path):
     # The game replaces frame files and writes status during the web poll.
@@ -68,7 +78,7 @@ def atomic_text(path,text):
     with LOCK:
         tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(text,encoding='utf-8');os.replace(tmp,path)
 def default():
-    return dict(schema='moreiterators.project.v1',projectId='oc-'+datetime.datetime.now().strftime('%y%m%d%H%M%S'),name='新的迭代器',design=dict(
+    return dict(schema='moreiterators.project.v1',projectId='oc-'+datetime.datetime.now().strftime('%y%m%d%H%M%S'),name=default_text.text('default.project_name'),design=dict(
       headColor='#a6aaa9',eyeColor='#fbf5df',clothTopColor='#813c46',clothMiddleColor='#b68b8e',clothBottomColor='#e0dfd8',clothGrain=.12,
       antennaColor='#7fad99',metalColor='#323e3d',armColor='#7c8b85',armShadowStrength=.35,sleeveMapping='front',armJointColor='#414b48',collarColor='#98464b',
       antennaTint=True,antennaInnerColor='#9cafaa',antennaOuterColor='#323e3d',
@@ -83,7 +93,7 @@ def default():
       hemProfile='1,1,1,1,1,1,1,1,1,1,1',haloColor='#83b39e',haloPreset='original',haloScale=1,haloOpacity=.5,haloSpeed=1,roomPalette=26,rearGlowColor='#98b4a5',rearGlowOpacity=.12,rearGlowRadius=250,rearGlowEnabled=True,
       pearlCount=32,pearlColor1='#000000',pearlColor2='#658c7b',pearlColor3='#a2bfb1',pearlColor4='#e5dcca',pearlGlyphColor='#acbcb2',pearlGlyphOpacity=.65,
       pearlGlyph1=0,pearlGlyph2=3,pearlGlyph3=6,pearlGlyph4=9,pearlClusterX=.25,pearlClusterY=.18,pearlCluster2X=.75,pearlCluster2Y=.18,pearlScatter=1,pearlFixedCount=8,
-      roomWorkColor='#476d67',roomReceptionColor='#bd8152',roomTransition=3,firstDialogue='……你好。',repeatDialogue='又见面了。',unmarkedDialogue='……',pearlDialogue='……让我看看。',
+      roomWorkColor='#476d67',roomReceptionColor='#bd8152',roomTransition=3,firstDialogue=default_text.text('default.dialogue.hello'),repeatDialogue=default_text.text('default.dialogue.repeat'),unmarkedDialogue='……',pearlDialogue=default_text.text('default.dialogue.pearl'),
       layers={k:True for k in ['head','body','neck','eyes','face','antenna','ears','robe','sleeves','hands','feet','collar','mechanicalArm','cables','halo']}),textures={},editor={},overseer=overseers.defaults(),overseerRevision=0)
 LIMITS={'puppetScale':(.65,1.6),'torsoLength':(.7,1.4),'armLength':(.7,1.4),'legLength':(.7,1.4),'earWidth':(1,12),'earHeight':(2,18),'earOffsetX':(-4,6),'earOffsetY':(-8,8),'antennaHeight':(3,32),'antennaWidth':(.3,5),'antennaSpread':(5,14),'antennaOffsetY':(-8,8),'robeLength':(18,45),'robeHemWidth':(.45,2.2),'sleeveWidth':(2,8),'collarWidth':(.5,1.8),'collarHeight':(0,8),'collarNotch':(-4,4),'pearlCount':(0,80),'pearlScatter':(0,3),'pearlFixedCount':(0,40),'roomTransition':(.2,15),'haloOpacity':(0,1),'haloScale':(.3,2),'haloSpeed':(0,3)}
 TEXTURES={'earL':(24,32),'earR':(24,32),'forehead':(32,32),'face':(32,32),'antennaL':(24,48),'antennaR':(24,48),'gown':(64,96),'sleeve':(32,64),'collar':(32,16),'scarf':(64,96)}
@@ -202,7 +212,7 @@ def project_association(pid):
     pid=storage.valid_id(pid);owner=storage.link(pid);fixed=storage.binding(pid)
     project=storage.load_project(pid) if storage.project_file(pid).exists() else dict(projectId=pid)
     current=room_bindings.binding(project)
-    return dict(linked=bool(fixed),owner=Path(owner['workspace']).name if owner else '原版 · 矛大师时间线' if fixed else '',
+    return dict(linked=bool(fixed),owner=Path(owner['workspace']).name if owner else '原版矛大师时间线' if fixed else '',
                 region=current['region'],ai=current['ai'],entry=current['entry'])
 
 def sync_project_name(p):
@@ -369,6 +379,8 @@ def update_version():
 def write_project_worlds(items):
     members=[x for x in items if x.get('ownerMod')=='moreiterators.local']
     if not members:return
+    installation_paths()
+    storage.require_game_root()
     result=room_bindings.write_worlds(items)
     installed=ASSETS/'mods/more_iterators_local'
     for relative in result['removed']:
@@ -376,9 +388,11 @@ def write_project_worlds(items):
         if not target.is_relative_to(installed.resolve()):raise ValueError('已管理房间输出路径越界')
         target.unlink(missing_ok=True)
     info=MOD/'modinfo.json'
-    if not info.exists():atomic(info,dict(id='moreiterators.local',name='更多迭代器 · 本地作品',version='0.1.0',authors='Local',description='本机作品。不要上传。',requirements=['moreiterators.core'],requirements_names=['更多迭代器'],tags=['Regions'],target_game_version='v1.11.8',checksum_override_version=False))
+    if not info.exists():atomic(info,dict(id='moreiterators.local',name='更多迭代器 本地作品',version='0.1.0',authors='Local',description='本机作品。不要上传。',requirements=['moreiterators.core'],requirements_names=['更多迭代器'],tags=['Regions'],target_game_version='v1.11.8',checksum_override_version=False))
 
 def sync_local_world():
+    installation_paths()
+    storage.require_game_root()
     destination=ASSETS/'mods/more_iterators_local'
     shutil.copytree(MOD,destination,dirs_exist_ok=True)
 
@@ -436,6 +450,7 @@ def deploy(p):
     with LOCK:return _deploy(p)
 
 def _deploy(p):
+    storage.require_game_root()
     p=save(p);d=compile_design(p);p=waiting_room.prepare(p);ai,entry,oid=roomnames(p)
     audio_assets.copy_referenced([d],storage.target_mod(p['projectId']))
     audio_assets.copy_referenced([d],storage.installed_mod(p['projectId']))
@@ -522,11 +537,13 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def reply(self,status,data,ctype='application/json; charset=utf-8'):
         b=data if isinstance(data,bytes) else json.dumps(data,ensure_ascii=False).encode();self.send_response(status);self.send_header('Content-Type',ctype);self.send_header('Content-Length',str(len(b)));self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(b)
+    @default_text.request_language
     def do_GET(self):
         if self.headers.get('Host') not in (f'127.0.0.1:{PORT}',f'localhost:{PORT}'):return self.reply(403,{'error':'仅限本机'})
         path=urllib.parse.urlparse(self.path).path
         try:
             if path=='/api/health':return self.reply(200,dict(service='more-iterators-studio',protocol=1,pid=os.getpid(),dataDirectory=str(storage.DATA.resolve()),editorDirectory=str(ROOT)))
+            if path=='/api/install-paths':return self.reply(200,installation_paths())
             if path.startswith('/api/audio/') and path.endswith('.mp3'):
                 return self.reply(200,audio_assets.asset_path(path[len('/api/audio/'):-4]).read_bytes(),'audio/mpeg')
             if path=='/api/export-settings':
@@ -666,12 +683,25 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(404,{'error':'未找到'})
         except (OSError,ValueError,KeyError,TypeError) as e:self.reply(400,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
         except Exception as e:self.reply(500,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
+    @default_text.request_language
     def do_POST(self):
         if self.headers.get('Origin') not in (f'http://127.0.0.1:{PORT}',f'http://localhost:{PORT}'):return self.reply(403,{'error':'拒绝外部来源'})
         try:
             n=int(self.headers.get('Content-Length','0'))
             if not 0<n<16000000:raise ValueError('项目体积超限')
             data=json.loads(self.rfile.read(n));path=self.path
+            if path=='/api/install-paths':
+                if not isinstance(data,dict):raise ValueError('Installation settings must be an object.')
+                return self.reply(200,installation_paths(data))
+            if path=='/api/install-paths/select':
+                if not isinstance(data,dict):raise ValueError('Installation settings must be an object.')
+                kind=data.get('kind')
+                if kind not in ('game','rained'):raise ValueError('Unknown installation path.')
+                current=installation_paths()[kind]
+                selected=install_picker.choose(kind,current.get('path',''))
+                if not selected:return self.reply(200,dict(cancelled=True))
+                key='gameRoot' if kind=='game' else 'rainedExecutable'
+                return self.reply(200,installation_paths({key:selected}))
             if path in ('/api/project-purge-plan','/api/project-purge'):
                 action=project_purge.plan if path.endswith('-plan') else project_purge.apply
                 with LOCK:result=action(data,sys.modules[__name__])

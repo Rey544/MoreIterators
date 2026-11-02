@@ -34,7 +34,7 @@ def status(project):
     pid=project['projectId']
     if storage.binding(pid):return dict(state='not-required')
     installed=storage.installed_mod(pid)
-    result=dict(modId='moreiterators.local',name='更多迭代器 · 本地作品',installed=(installed/'modinfo.json').is_file(),state='unknown')
+    result=dict(modId='moreiterators.local',name='更多迭代器 本地作品',installed=(installed/'modinfo.json').is_file(),state='unknown')
     # MultiFolderLoader's enabledMods.txt lists DLL-loading folders, not every
     # enabled content mod. Only the native options EnabledMods IDs are suitable.
     selected=enabled_mods(options_path())

@@ -7,6 +7,7 @@ import re
 import threading
 import uuid
 import storage
+from default_text import text
 
 SCHEMA = 'moreiterators.pearl-projects.v1'
 LEGACY = 'legacy'
@@ -114,11 +115,11 @@ def _ensure():
                 atomic(destination, item)
         if data is None:
             data = dict(schema=SCHEMA, activeId=LEGACY, projects=[])
-        data['projects'].append(_entry(LEGACY, '已有珍珠'))
+        data['projects'].append(_entry(LEGACY, text('default.pearl_collection.legacy')))
         atomic(file, data)
     if data is None:
         cid = uuid.uuid4().hex
-        data = dict(schema=SCHEMA, activeId=cid, projects=[_entry(cid, '珍珠项目 1')])
+        data = dict(schema=SCHEMA, activeId=cid, projects=[_entry(cid, text('default.pearl_collection.name'))])
         atomic(file, data)
     return data
 
@@ -142,7 +143,7 @@ def ensure_legacy():
     with LOCK:
         data = _ensure()
         if not any(p['id'] == LEGACY for p in data['projects']):
-            data['projects'].append(_entry(LEGACY, '已有珍珠'))
+            data['projects'].append(_entry(LEGACY, text('default.pearl_collection.legacy')))
             atomic(metadata_path(), data)
         return LEGACY
 

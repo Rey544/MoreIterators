@@ -2,6 +2,7 @@
 from pathlib import Path
 import copy, datetime, hashlib, json, math, os, re, uuid
 import storage,dialogue,pearl_projects,audio_assets
+from default_text import text
 
 SCHEMA='moreiterators.pearl.v1'
 
@@ -30,7 +31,7 @@ def listing(collection_id=None):
 def list_all():
     return [item for project in pearl_projects.catalog()['projects'] for item in listing(project['id'])]
 def lines(text):return [dict(lineId=uuid.uuid4().hex,text=s,hold=2.5,gap=.6) for s in text.split('\n') if s.strip()]
-def reader(pid):return dict(projectId=pid,requireMark=True,repeatEnabled=False,repeatPrependCommon=False,presentation=dialogue.presentation_defaults(),repeat=[],leavePolicy='resume',read=lines('……让我看看。'),leaving=[],returning=[])
+def reader(pid):return dict(projectId=pid,requireMark=True,repeatEnabled=False,repeatPrependCommon=False,presentation=dialogue.presentation_defaults(),repeat=[],leavePolicy='resume',read=lines(text('default.dialogue.pearl')),leaving=[],returning=[])
 def default(collection_id=None):
     cid=pearl_projects.resolve(collection_id);used={p['id'] for p in listing(cid)}
     pid=next(chr(65+i//99)+str(i%99+1).zfill(2) for i in range(26*99) if chr(65+i//99)+str(i%99+1).zfill(2) not in used)

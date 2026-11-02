@@ -59,8 +59,11 @@ def editable_source(project, name):
 
 def _bases(pid, name):
     relative = Path('world') / (name.split('_')[0].lower() + '-rooms') / name
-    return [storage.project_file(pid).parent / 'rooms/rendered' / name,
-            storage.target_mod(pid) / relative, storage.installed_mod(pid) / relative]
+    bases = [storage.project_file(pid).parent / 'rooms/rendered' / name,
+             storage.target_mod(pid) / relative]
+    installed = storage.installed_mod(pid, required=False)
+    if installed is not None:bases.append(installed / relative)
+    return bases
 
 
 def default_node(project, name):
@@ -107,7 +110,10 @@ def _legacy(base, spec):
 
 
 def _worlds(pid):
-    for root in (storage.DATA / 'local-mod', storage.installed_mod(pid)):
+    roots = [storage.DATA / 'local-mod']
+    installed = storage.installed_mod(pid, required=False)
+    if installed is not None:roots.append(installed)
+    for root in roots:
         for pattern in ('world/*/world_*.txt', 'modify/world/*/world_*.txt'):
             yield from root.glob(pattern)
 
@@ -211,7 +217,9 @@ def prepare(project):
                         record['roomBinding'] = changed['roomBinding']
             writes[registry] = json.dumps(records, ensure_ascii=False, indent=2).encode('utf-8')
     # Protect all write/delete destinations, including junctions, before writing.
-    permitted = [storage.DATA.resolve(), storage.installed_mod(pid).resolve()]
+    permitted = [storage.DATA.resolve()]
+    installed = storage.installed_mod(pid, required=False)
+    if installed is not None:permitted.append(installed.resolve())
     for file in [*writes, *removes]:
         if not any(file.resolve().is_relative_to(root) for root in permitted):
             raise ValueError('等待房间迁移路径越界，未修改房间。')

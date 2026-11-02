@@ -1,55 +1,57 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 
 namespace MoreIterators
 {
-    // UI resources only. Author dialogue, names and machine identifiers are never translated here.
+    // UI and built-in fallbacks only. Authored names and dialogue stay literal.
     public static class UiText
     {
-        static readonly Dictionary<string, Dictionary<string, object>> resources = new Dictionary<string, Dictionary<string, object>>();
-        static string locale = "zh-CN";
+        static RainWorld current;
 
         public static void Use(RainWorld game)
         {
-            if (game == null || game.options == null) return;
-            var language = game.options.language;
-            locale = language == InGameTranslator.LanguageID.Chinese || language == InGameTranslator.LanguageID.TraditionalChinese ? "zh-CN" : "en";
+            if (game != null) current = game;
         }
 
-        static Dictionary<string, object> Load(string name)
+        public static string LanguageKey
         {
-            Dictionary<string, object> table;
-            if (resources.TryGetValue(name, out table)) return table;
-            table = new Dictionary<string, object>();
+            get
+            {
+                RainWorld game = current != null ? current : RWCustom.Custom.rainWorld;
+                return game != null && game.inGameTranslator != null
+                    ? game.inGameTranslator.currentLanguage.ToString() : "English";
+            }
+        }
+
+        public static string Get(string original)
+        {
+            if (String.IsNullOrEmpty(original)) return original ?? "";
             try
             {
-                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("mi.ui." + name + ".json"))
+                RainWorld game = current != null ? current : RWCustom.Custom.rainWorld;
+                if (game != null && game.inGameTranslator != null)
                 {
-                    if (stream == null) throw new FileNotFoundException("Missing embedded UI language resource: " + name);
-                    using (var reader = new StreamReader(stream))
-                        table = Json.Deserialize(reader.ReadToEnd()) as Dictionary<string, object> ?? table;
+                    string translated = game.inGameTranslator.Translate(original);
+                    if (!String.IsNullOrEmpty(translated) && translated != "!NO TRANSLATION!")
+                        return Display(translated);
                 }
             }
-            catch (Exception error) { MiDiagnostics.Report("MI-I18N-001", "UiText.Load", error, "locale=" + name); }
-            resources[name] = table;
-            return table;
+            catch (Exception error) { MiDiagnostics.Report("MI-I18N-003", "UiText.Get", error, "original=" + original); }
+            return Display(original);
         }
 
-        public static string Get(string key)
+        static string Display(string value)
         {
-            object value;
-            if (Load(locale).TryGetValue(key, out value) && value is string) return (string)value;
-            // English is safe in both game font sets; a missing resource stays conspicuous.
-            if (Load("en").TryGetValue(key, out value) && value is string) return (string)value;
-            MiDiagnostics.Warn("MI-I18N-002", "UiText.Get", "Undefined UI key", key);
-            return "[" + key + "]";
+            return value.Replace("<LINE>", "\n").Replace("<WWLINE>", "");
         }
 
-        public static string Format(string key, params object[] values)
+        public static string Format(string original, params object[] values)
         {
-            return String.Format(System.Globalization.CultureInfo.CurrentCulture, Get(key), values);
+            try { return String.Format(System.Globalization.CultureInfo.CurrentCulture, Get(original), values); }
+            catch (FormatException error)
+            {
+                MiDiagnostics.Report("MI-I18N-004", "UiText.Format", error, "original=" + original);
+                return String.Format(System.Globalization.CultureInfo.CurrentCulture, Display(original), values);
+            }
         }
     }
 }

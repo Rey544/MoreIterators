@@ -1,0 +1,211 @@
+0
+A runtime error was detected. The current operation may be incomplete.|A runtime error was detected. The current operation may be incomplete.
+Source|Source
+Runtime exception|Runtime exception
+Throwing function|Throwing function
+No stack supplied|No stack supplied
+Recorded by|Recorded by
+Search keywords|Search keywords
+Find all issues|Find all issues
+Behavior issue|Behavior issue
+Full exception log:|Full exception log:
+Head|Head
+Neck|Neck
+Torso|Torso
+View drawing state|View drawing state
+Iterator render state|Iterator render state
+Captured|Captured
+Project|Project
+Iterator ID|Iterator ID
+Room|Room
+Culled|Culled
+Body setting|Body setting
+Sprite index|Sprite index
+Part|Part
+Element|Element
+Visible|Visible
+Opacity|Opacity
+Scale|Scale
+Position|Position
+Render depth|Render depth
+Container|Container
+Mesh bounds|Mesh bounds
+Enabled|Enabled
+Not enabled|Not enabled
+Eyes|Eyes
+Face markings|Face markings
+Antennae|Antennae
+Headphones|Headphones
+Gown|Gown
+Sleeves|Sleeves
+Hands|Hands
+Feet|Feet
+Collar|Collar
+Mechanical arm|Mechanical arm
+Umbilical cord|Umbilical cord
+Processing rings|Processing rings
+Resume motion|Resume motion
+Pause motion|Pause motion
+Work normally|Work normally
+Reception (Motion only)|Reception (Motion only)
+Replay first encounter|Replay first encounter
+Rear glow|Rear glow
+Lightning|Lightning
+Work pearls|Work pearls
+Pearl glyphs|Pearl glyphs
+Close (Resume playing)|Close (Resume playing)
+Chamber controls|Chamber controls
+Motion|Motion
+Display|Display
+Puppet layers|Puppet layers
+Action failed|Action failed
+Motion paused|Motion paused
+Reception motion|Reception motion
+Normal activity|Normal activity
+{0}: {1}|{0}: {1}
+Shown|Shown
+Hidden|Hidden
+Chambers|Chambers
+Current ({0})|Current ({0})
+Untitled project|Untitled project
+Previous ({0} / {1})|Previous ({0} / {1})
+Next|Next
+Back|Back
+Apply a project in the web editor first|Apply a project in the web editor first
+Project: {0}|Project: {0}
+Status: {0}|Status: {0}
+Mode: {0}|Mode: {0}
+No dialogue|No dialogue
+Story dialogue|Story dialogue
+Pearl reading|Pearl reading
+Mark: Yes|Mark: Yes
+Mark: No|Mark: No
+Visits: {0}|Visits: {0}
+Start over|Start over
+Keep|Keep
+Enter chamber|Enter chamber
+Enter waiting room|Enter waiting room
+Open web editor|Open web editor
+Pearls|Pearls
+Broadcasts|Broadcasts
+Close|Close
+First encounter|First encounter
+Skip first encounter|Skip first encounter
+Mark of Communication: Yes|Mark of Communication: Yes
+Mark of Communication: No|Mark of Communication: No
+Back to chamber|Back to chamber
+Previous|Previous
+Previous page|Previous page
+Next page|Next page
+(Blank)|(Blank)
+[Page {0}]|[Page {0}]
+No pearls imported. Save and apply one in the web editor.|No pearls imported. Save and apply one in the web editor.
+No reader is assigned to this pearl.|No reader is assigned to this pearl.
+Reader: {0}  ›|Reader: {0}  ›
+First reading|First reading
+Repeated delivery|Repeated delivery
+Leaving midway|Leaving midway
+Return|Return
+Several this cycle|Several this cycle
+Broadcasts (Imported items unlocked)|Broadcasts (Imported items unlocked)
+Save and apply a broadcast in the web editor to show it here.|Save and apply a broadcast in the web editor to show it here.
+Previous group|Previous group
+Next group|Next group
+The room file has no camera positions.|The room file has no camera positions.
+The room has no camera views.|The room has no camera views.
+This project's room could not be found. Apply the project again in the studio.|This project's room could not be found. Apply the project again in the studio.
+This project's room could not be found. Reinstall this content mod.|This project's room could not be found. Reinstall this content mod.
+Looks to the Moon (Spearmaster) requires More Slugcats Expansion.|Looks to the Moon (Spearmaster) requires More Slugcats Expansion.
+The project rooms are missing from {0}. Apply the project again before entering.|The project rooms are missing from {0}. Apply the project again before entering.
+The project rooms are missing from {0}. Reinstall this content mod.|The project rooms are missing from {0}. Reinstall this content mod.
+Missing room asset: {0}. Apply the project again.|Missing room asset: {0}. Apply the project again.
+Missing room asset: {0}. Reinstall this content mod.|Missing room asset: {0}. Reinstall this content mod.
+Camera background {0} is missing: {1}. Apply the project again and restart the game.|Camera background {0} is missing: {1}. Apply the project again and restart the game.
+Camera background {0} is missing: {1}. Reinstall this content mod and restart the game.|Camera background {0} is missing: {1}. Reinstall this content mod and restart the game.
+The base-game region index has not loaded. Enable More Slugcats Expansion and restart the game.|The base-game region index has not loaded. Enable More Slugcats Expansion and restart the game.
+The room region has changed. Exit Rain World completely and restart it before entering this room.|The room region has changed. Exit Rain World completely and restart it before entering this room.
+Could not enter the room: {0}|Could not enter the room: {0}
+Room validation failed. See MI_LAUNCH_FAILED in the log for details.|Room validation failed. See MI_LAUNCH_FAILED in the log for details.
+Unknown editor page.|Unknown editor page.
+Invalid project ID.|Invalid project ID.
+The web editor launcher could not be found. Check editorDirectory in your local moreiterators.paths.json.|The web editor launcher could not be found. Check editorDirectory in your local moreiterators.paths.json.
+Python could not be found. Open the web editor using its local shortcut first.|Python could not be found. Open the web editor using its local shortcut first.
+Open the web editor once using its local shortcut to configure the Python path.|Open the web editor once using its local shortcut to configure the Python path.
+Could not open the web editor: {0}|Could not open the web editor: {0}
+The launcher failed. See MI_STUDIO_LAUNCH in the log for details.|The launcher failed. See MI_STUDIO_LAUNCH in the log for details.
+{0} issues in this batch; see the full log.|{0} issues in this batch; see the full log.
+Affinity {0} ({1})|Affinity {0} ({1})
+Disabled|Disabled
+Not speaking|Not speaking
+Dislikes|Dislikes
+Neutral|Neutral
+Likes|Likes
+Affinity −0.1|Affinity −0.1
+Affinity +0.1|Affinity +0.1
+Slugcat: {0}|Slugcat: {0}
+Slugcat: scene default ({0})|Slugcat: scene default ({0})
+More Iterators|More Iterators
+Iterator broadcasts|Iterator broadcasts
+Spawn: {0}|Spawn: {0}
+Waiting room|Waiting room
+Chamber|Chamber
+Keep dialogue progress: {0}|Keep dialogue progress: {0}
+Off|Off
+On|On
+Enter preview|Enter preview
+Local content is disabled|Local content is disabled
+Enable moreiterators.local in Remix.<LINE>Apply the changes and restart the game.|Enable moreiterators.local in Remix.<LINE>Apply the changes and restart the game.
+Voice: On|Voice: On
+Voice: Off|Voice: Off
+The bundled Python runtime could not be found. Check that the mod download is complete.|The bundled Python runtime could not be found. Check that the mod download is complete.
+A copied iterator retained base-game behavior. MI took control before its next update.|A copied iterator retained base-game behavior. MI took control before its next update.
+A copied iterator retained base-game behavior. Its base-game story actions were blocked.|A copied iterator retained base-game behavior. Its base-game story actions were blocked.
+Multiple copies of Revivify Meadow were detected. The room-scan guard was not installed.|Multiple copies of Revivify Meadow were detected. The room-scan guard was not installed.
+The expected dead-player update method was not found.|The expected dead-player update method was not found.
+The Revivify Meadow version or method structure did not match. The room-scan guard was not enabled.|The Revivify Meadow version or method structure did not match. The room-scan guard was not enabled.
+The dead player's room data is incomplete. This revival scan was skipped.|The dead player's room data is incomplete. This revival scan was skipped.
+Missing: {0}|Missing: {0}
+Revivify Meadow's original player-update entry point has changed.|Revivify Meadow's original player-update entry point has changed.
+Revivify Meadow's death check or scan entry point is not unique.|Revivify Meadow's death check or scan entry point is not unique.
+The expected dead-player room-scan instructions were not found. Revivify Meadow was left unchanged.|The expected dead-player room-scan instructions were not found. Revivify Meadow was left unchanged.
+Merged content has multiple providers; keeping each pack's own file.|Merged content has multiple providers; keeping each pack's own file.
+Texture slot is missing.|Texture slot is missing.
+Null broadcast pages were treated as empty.|Null broadcast pages were treated as empty.
+Null broadcast text was treated as empty.|Null broadcast text was treated as empty.
+Null legacy dialogue was treated as empty.|Null legacy dialogue was treated as empty.
+Local pearl UID conflicts with installed content; the content pearl was retained.|Local pearl UID conflicts with installed content; the content pearl was retained.
+Too many pending pearl offers; throw this pearl again after a read completes.|Too many pending pearl offers; throw this pearl again after a read completes.
+Owned hit arrived before encounter creation.|Owned hit arrived before encounter creation.
+Native regurgitation did not release the requested pearl; this request will not retry.|Native regurgitation did not release the requested pearl; this request will not retry.
+Null string was treated as empty.|Null string was treated as empty.
+A decorative pearl group ID was repeated; the duplicate was not drawn.|A decorative pearl group ID was repeated; the duplicate was not drawn.
+The decorative pearl group references an unavailable attachment.|The decorative pearl group references an unavailable attachment.
+Shader unavailable: {0}|Shader unavailable: {0}
+Missing or invalid display name; using project ID.|Missing or invalid display name; using project ID.
+Some accessory bindings are invalid. Affected accessories were hidden.|Some accessory bindings are invalid. Affected accessories were hidden.
+No current iterator render snapshot is available.|No current iterator render snapshot is available.
+The render snapshot belongs to a different iterator. Re-enter its chamber before opening the report.|The render snapshot belongs to a different iterator. Re-enter its chamber before opening the report.
+Hooks are already installed.|Hooks are already installed.
+Expected native mark check or compatible V1 guard was not found; custom spawning is disabled.|Expected native mark check or compatible V1 guard was not found; custom spawning is disabled.
+A preview transition is already active.|A preview transition is already active.
+Original progression is unavailable.|Original progression is unavailable.
+The game's Gown.owner field was not found.|The game's Gown.owner field was not found.
+Oracle constructor compatibility check failed.|Oracle constructor compatibility check failed.
+Unnamed iterator|Unnamed iterator
+Greeting|Greeting
+...Are you leaving?|...Are you leaving?
+Then, let us continue where we left off.|Then, let us continue where we left off.
+Little creature, what have you brought me this time?|Little creature, what have you brought me this time?
+I remember this pearl.|I remember this pearl.
+You have brought quite a few pearls this time.|You have brought quite a few pearls this time.
+Let me have a look at this one.|Let me have a look at this one.
+...Hello.|...Hello.
+We meet again.|We meet again.
+...Let me have a look.|...Let me have a look.
+Texture not applied.|Texture not applied.
+No duplicate hooks added.|No duplicate hooks added.
+Original IL left unchanged.|Original IL left unchanged.
+Original state backup retained; repeated launch ignored.|Original state backup retained; repeated launch ignored.
+Backup retained.|Backup retained.
+Native color retained.|Native color retained.
+Stopping owned speech.|Stopping owned speech.

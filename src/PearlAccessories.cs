@@ -26,9 +26,9 @@ public static class PearlAccessories {
   int count=Mathf.Min(MaxGroups,d.pearlAccessories.Length);
   for(int index=0;index<count;index++){
    var item=d.pearlAccessories[index];if(item==null||!item.enabled||String.IsNullOrEmpty(item.id))continue;
-   if(result.ContainsKey(item.id)){if(state.missing.Add("duplicate "+item.id))MiDiagnostics.Warn("MI_PEARL_ACCESSORY_DUPLICATE","PearlAccessories.Draw","A decorative pearl group ID was repeated; the duplicate was not drawn.",item.id);continue;}
+   if(result.ContainsKey(item.id)){if(state.missing.Add("duplicate "+item.id))MiDiagnostics.Warn("MI_PEARL_ACCESSORY_DUPLICATE","PearlAccessories.Draw",UiText.Get("A decorative pearl group ID was repeated; the duplicate was not drawn."),item.id);continue;}
    string binding=item.id+" -> "+item.anchor;
-   if(!CreatorWardrobe.HasAnchor(item.anchor,g)){if(state.missing.Add(binding))MiDiagnostics.Warn("MI_PEARL_ACCESSORY_BINDING","PearlAccessories.Draw","The decorative pearl group references an unavailable attachment.",binding);continue;}state.missing.Remove(binding);
+   if(!CreatorWardrobe.HasAnchor(item.anchor,g)){if(state.missing.Add(binding))MiDiagnostics.Warn("MI_PEARL_ACCESSORY_BINDING","PearlAccessories.Draw",UiText.Get("The decorative pearl group references an unavailable attachment."),binding);continue;}state.missing.Remove(binding);
    var group=state.groups[index];if(group==null)state.groups[index]=group=new Group();
    Vector2 attachmentRight=anchor(item.anchor,Mathf.Clamp01(item.u+.01f),item.v)-anchor(item.anchor,Mathf.Clamp01(item.u-.01f),item.v);
    Vector2 attachmentUp=anchor(item.anchor,item.u,Mathf.Clamp01(item.v-.01f))-anchor(item.anchor,item.u,Mathf.Clamp01(item.v+.01f));

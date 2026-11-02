@@ -5,6 +5,7 @@
 @font-face{font-family:'Fusion Pixel zh_hk';src:url('/fonts/fusion-pixel-zh_hk.woff2') format('woff2');font-weight:400 700;font-display:swap}
 @font-face{font-family:'Fusion Pixel zh_tw';src:url('/fonts/fusion-pixel-zh_tw.woff2') format('woff2');font-weight:400 700;font-display:swap}
 :root{--mi-ui-font:'Fusion Pixel','Microsoft YaHei',sans-serif;--mi-bg:#0e0f10;--mi-panel:#16181a;--mi-field:#121415;--mi-text:#c9cccf;--mi-muted:#92979c;--mi-line:#4a4f55;--mi-soft:#292d31;--mi-active:#e6e6e6;color-scheme:dark;background:var(--mi-bg)}
+body.mi-studio :is(#identity,#notice,#position,#spawnPositionState,#gameState,#pearlPresentationState,.project-manage-summary){white-space:pre-line}
 html:lang(ja){--mi-ui-font:'Fusion Pixel ja','Fusion Pixel',sans-serif}
 html:lang(zh-Hant){--mi-ui-font:'Fusion Pixel zh_hant','Fusion Pixel',sans-serif}
 html:lang(zh-HK){--mi-ui-font:'Fusion Pixel zh_hk','Fusion Pixel',sans-serif}

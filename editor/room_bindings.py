@@ -25,6 +25,7 @@ ROOM_RE = re.compile(r'[A-Z][A-Z0-9]{1,7}_[A-Z0-9_]{1,64}')
 REGION_RE = re.compile(r'[A-Z][A-Z0-9]{1,7}')
 _offline_cache = None
 _offline_at = 0
+_offline_key = None
 
 
 def _atomic(path, data):
@@ -100,12 +101,14 @@ def parse_world(text, region):
 
 
 def _asset_roots():
-    assets = storage.GAME / 'RainWorld_Data/StreamingAssets'
+    game = storage.available_game_root()
+    if game is None:return [storage.DATA / 'local-mod']
+    assets = game / 'RainWorld_Data/StreamingAssets'
     roots = [assets, storage.DATA / 'local-mod']
     mods = assets / 'mods'
     if mods.is_dir():
         roots.extend(p for p in mods.iterdir() if p.is_dir())
-    workshop = storage.GAME.parent.parent / 'workshop/content/312520'
+    workshop = game.parent.parent / 'workshop/content/312520'
     if workshop.is_dir():
         for folder in workshop.iterdir():
             if not folder.is_dir():
@@ -115,8 +118,9 @@ def _asset_roots():
 
 
 def offline_catalog(refresh=False):
-    global _offline_cache, _offline_at
-    if not refresh and _offline_cache is not None and time.monotonic() - _offline_at < 20:
+    global _offline_cache, _offline_at, _offline_key
+    key = (storage.GAME.resolve(), storage.DATA.resolve())
+    if not refresh and _offline_cache is not None and _offline_key == key and time.monotonic() - _offline_at < 20:
         return copy.deepcopy(_offline_cache)
     regions, reserved = {}, set()
     for root in _asset_roots():
@@ -146,6 +150,7 @@ def offline_catalog(refresh=False):
                          reservedRooms=sorted(reserved), reservedRegions=sorted(regions),
                          warnings=['离线目录包含已安装内容；游戏中实际启用的房间和出口须进入游戏后核对。'])
     _offline_at = time.monotonic()
+    _offline_key = key
     return copy.deepcopy(_offline_cache)
 
 
@@ -180,7 +185,8 @@ def resolve_room_source(name):
     if len(paths) != 1:
         raise ValueError('缺少此房间的游戏素材路径，请进入游戏后刷新房间目录。')
     path = Path(next(iter(paths))).resolve()
-    roots = [storage.GAME.resolve(), (storage.GAME.parent.parent / 'workshop/content/312520').resolve()]
+    game = storage.require_game_root()
+    roots = [game.resolve(), (game.parent.parent / 'workshop/content/312520').resolve()]
     if path.suffix.lower() != '.txt' or path.stem.upper() != name or not any(path.is_relative_to(root) for root in roots):
         raise ValueError('游戏目录中的房间素材路径无效或越界。')
     if not path.is_file():
@@ -263,7 +269,6 @@ def source_for(project, kind):
         return own
     if project.get('roomBinding'):
         raise ValueError('当前绑定的房间素材缺失：' + name + '；请先同步此房间，不会回退到旧房间或默认模板。')
-    assets = storage.GAME / 'RainWorld_Data/StreamingAssets'
     if kind == 'entry':
         configured = storage.settings.get('entryRoomTemplate')
         if configured:
@@ -272,7 +277,7 @@ def source_for(project, kind):
                 raise ValueError('入口模板路径越界')
             return candidate
         return waiting_room.rendered()
-    return assets / 'world/ss-rooms/ss_ai'
+    return storage.require_game_root() / 'RainWorld_Data/StreamingAssets/world/ss-rooms/ss_ai'
 
 
 def _room_map(cat):

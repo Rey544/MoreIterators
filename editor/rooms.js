@@ -20,7 +20,7 @@ const $=id=>document.getElementById(id),t=(key,values={})=>MI18n.t(`rooms.${key}
 const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined)node.textContent=text;return node;};
 const content=(tag,text)=>MI18n.content(el(tag,text));
 const option=(value,label,disabled=false)=>Object.assign(el('option',label),{value,disabled});
-const api=async(path,data)=>{await MI18n.ready;const response=await fetch('/api/'+path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(MI18n.error(result,response.statusText));return result;};
+const api=async(path,data)=>{await MI18n.ready;const response=await fetch('/api/'+path,data===undefined?{headers:{'X-MI-Language':MI18n.locale}}:{method:'POST',headers:{'Content-Type':'application/json','X-MI-Language':MI18n.locale},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(MI18n.error(result,response.statusText));return result;};
 const run=fn=>async(...args)=>{try{return await fn(...args);}catch(error){notice(error.message,true);console.error(error);}};
 let roomDraftDirty=false,roomDraftRevision=0;
 let projects=[],project=null,description=null,binding=null,catalog=null,busy=false,dirty=false,plan=null,token=null,limit=80,catalogRefreshing=false,catalogTimer=null,appliedNoticeBinding=null;
@@ -50,7 +50,7 @@ function nodes(id,count,value,room=null){
   const name=id==='aiNode'?binding.ai:binding.entry;
   const choices=Array.from({length:maximum},(_,node)=>{const free=!room||MIRoomChoices.free(room,node,description?.binding);return MI18n.content(option(node,room?connectionText(room,node):endpoint(name,node),!free));});
   $(id).replaceChildren(...choices);$(id).value=String(value);
-  if(!choices.some(choice=>String(choice.value)===String(value))){$(id).prepend(MI18n.content(option(value,endpoint(name,value)+' · '+t('unverified'),true)));$(id).value=String(value);}
+  if(!choices.some(choice=>String(choice.value)===String(value))){$(id).prepend(MI18n.content(option(value,endpoint(name,value)+' ('+t('unverified')+')',true)));$(id).value=String(value);}
 }
 function selectedRoom(){return MIRoomChoices.rooms(catalog).find(room=>room.name===binding?.entry);}
 function renderNodes(){
@@ -82,7 +82,7 @@ function renderCleanup(){
   warnings('cleanupWarnings',cleanupDocument?.warnings);
   $('cleanupState').textContent=rooms.length?t('cleanupCount',{count:rooms.length}):t('cleanupEmpty');$('prepareCleanup').textContent=t('cleanupButton',{count:ready.length});
   $('cleanupRooms').replaceChildren(...rooms.map(room=>{const row=el('article');row.className='cleanup-room';const heading=el('header');heading.append(content('strong',room.name),el('span',t('cleanupStatus'+room.status)));row.append(heading);for(const reason of room.reasons||[])row.append(content('p',MI18n.text(reason)));
-    if(room.files?.length){const files=el('details');files.append(el('summary',t('cleanupFiles',{count:room.files.length})));const list=el('ul');for(const file of room.files){const item=el('li');item.append(el('span',t('cleanupScope'+file.scope)+' · '),content('span',file.path),el('span',' · '+t('fileBytes',{size:file.size})));list.append(item);}files.append(list);row.append(files);}return row;}));cleanupControls();
+    if(room.files?.length){const files=el('details');files.append(el('summary',t('cleanupFiles',{count:room.files.length})));const list=el('ul');for(const file of room.files){const item=el('li');item.append(el('div',t('cleanupScope'+file.scope)),content('div',file.path),el('div',t('fileBytes',{size:file.size})));list.append(item);}files.append(list);row.append(files);}return row;}));cleanupControls();
 }
 async function loadCleanup(){
   if(busy||cleanupBusy||!project)return;const projectId=project.projectId;cleanupBusy=true;cleanupConfirmedToken=null;$('cleanupConfirm').hidden=true;cleanupControls();$('cleanupNotice').textContent='';
@@ -127,7 +127,7 @@ function renderOverseerProfiles(){
   $('overseerNameField').hidden=overseerProfileId==='default';$('overseerName').value=overseerConfig.name||'';$('overseerName').required=overseerProfileId!=='default';$('overseerName').setCustomValidity(overseerProfileId==='default'||MIOverseerControls.nameValid(overseerConfig.name)?'':ot('nameInvalid'));
   const owner=Object.hasOwn(overseerConfig,'ownerProjectId')?overseerConfig.ownerProjectId:project.projectId;
   const owners=[option('',ot('unbound')),...projects.map(item=>contentOption(item.projectId,item.name))];
-  if(owner&&!projects.some(item=>item.projectId===owner))owners.push(contentOption(owner,owner+' · '+ot('ownerUnavailable')));
+  if(owner&&!projects.some(item=>item.projectId===owner))owners.push(contentOption(owner,owner+' ('+ot('ownerUnavailable')+')'));
   $('overseerOwnerProject').replaceChildren(...owners);$('overseerOwnerProject').value=owner;
 }
 function overseerDefaultRooms(){return MIOverseerControls.defaultRooms(description?.binding);}
@@ -204,7 +204,7 @@ $('refreshCatalog').onclick=()=>refreshCatalog(true);
 function renderPlan(){
   if(!plan)return;warnings('planWarnings',plan.warnings);
     $('connectionChanges').replaceChildren(...(plan.connectionChanges||[]).map(change=>{const row=el('tr'),room=MIRoomChoices.rooms(catalog).find(item=>item.name===change.room),previous=MIRoomChoices.connection(catalog,room,change.node);row.append(content('td',change.room),content('td',t('shaftIndex',{node:change.node,ordinal:change.node+1})),content('td',change.fromRoom==='DISCONNECTED'?t('disconnected'):endpoint(change.fromRoom||t('unknownConnection'),previous.target===change.fromRoom?previous.node:null)),content('td',plannedConnection(change,plan.connectionChanges||[])));return row;}));
-    $('roomCopies').replaceChildren(...(plan.roomCopies||[]).map(room=>{const item=el('li');item.append(el('span',t(room.kind==='ai'?'copyAi':'copyEntry')),document.createTextNode(' · '),content('span',room.name));return item;}));
+    $('roomCopies').replaceChildren(...(plan.roomCopies||[]).map(room=>{const item=el('li');item.append(el('span',t(room.kind==='ai'?'copyAi':'copyEntry')),el('br'),content('span',room.name));return item;}));
     $('worldFileContent').replaceChildren(...Object.entries(plan.worldFiles||{}).flatMap(([path,text])=>{const name=content('p',path);name.className='world-file-name';return [name,content('pre',text)];}));
     $('previewPair').textContent=pairText(plan.binding);$('planContent').hidden=false;$('planEmpty').hidden=true;
 }

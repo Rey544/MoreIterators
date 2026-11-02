@@ -145,6 +145,8 @@ def delete(data,server,transaction=None):
     pearl_suspension.verify_runtime()
     records=_registry();owned=[copy.deepcopy(v) for v in records if v.get('projectId')==pid]
     remaining=[v for v in records if v.get('projectId')!=pid]
+    if owned or storage.available_game_root() is None and any(item.get('kind')=='runtime' for _,item in _owned_files(pid,existing or draft)):
+        storage.require_game_root()
     room_files=project_worlds.owned_files(pid,existing or draft,owned,records)
     world_changes=project_worlds.plan(remaining,pid) if owned else {}
     if room_files or world_changes:project_worlds.require_closed()
@@ -186,6 +188,7 @@ def restore(token,server):
     value=_read(_token(token));pid=value['projectId'];_editable(pid,value['project'])
     storage.assert_not_purged(pid)
     if value.get('state') not in ACTIVE_STATES:raise ValueError('此删除记录已恢复')
+    if value['registry'] or any(item.get('kind') in ('runtime','local-room','installed-room') for item in value['files']):storage.require_game_root()
     current=storage.project_file(pid)
     if current.exists() and value['state']=='deleted':raise ValueError('同名项目编号已被占用，不能覆盖恢复')
     binding=room_bindings.binding(value['project']);records=_registry()
@@ -221,6 +224,7 @@ def reconcile_deleted(token,server):
     """One-time upgrade of old tombstones; archive outputs before removing them."""
     value=_read(_token(token));pid=value['projectId'];_editable(pid,value['project'])
     if value['state']!='deleted':raise ValueError('此删除记录不能清理运行残留')
+    if value['registry'] or any(item.get('kind') in ('runtime','local-room','installed-room') for item in value['files']):storage.require_game_root()
     for item in value['files']:_blob(value,item)
     records=_registry()
     if any(v.get('projectId')==pid for v in records):raise ValueError('已删除项目仍在运行目录，请先检查项目状态')

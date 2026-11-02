@@ -5,7 +5,7 @@ using UnityEngine;
 [Serializable] public class IteratorLayers {public bool head=true,body=true,neck=true,eyes=true,face=true,antenna=true,ears=true,robe=true,sleeves=true,hands=true,feet=true,collar=true,mechanicalArm=true,cables=true,halo=true;}
 [Serializable] public class IteratorDesign {
  public CreatorVoiceDesign voice=new CreatorVoiceDesign();
- public string schema="moreiterators.oracle.v1",projectId="",name="未命名迭代器",oracleId="default",previewToken="";
+ public string schema="moreiterators.oracle.v1",projectId="",name=UiText.Get("Unnamed iterator"),oracleId="default",previewToken="";
  public string headColor="#a0aaa7",eyeColor="#eef0e8",clothTopColor="#687872",clothBottomColor="#bac2ba",antennaColor="#84a99d",metalColor="#334542",facePng="",antennaPng="";
  public string armJointColor="#354b43",collarColor="#29bc91",eyeshadowColor="#91232d"; public float eyeshadowOpacity=0,eyeshadowSize=.65f;
  public string clothMiddleColor="#a45a60";public float clothGrain=.16f;
@@ -79,27 +79,38 @@ using UnityEngine;
  public string scarfTopColor="#384845",scarfMiddleColor="#688479",scarfBottomColor="#b5c7bd",scarfBasePng="",scarfPng="";
  public string roomWorkColor="#476d67",roomReceptionColor="#bd8152",roomTemplate="fp";public float roomTransition=3;
  public float pearlClusterX=.25f,pearlClusterY=.18f,pearlCluster2X=.75f,pearlCluster2Y=.18f,pearlScatter=1;public int pearlFixedCount=8;
- public string firstDialogue="……你好。",repeatDialogue="又见面了。",unmarkedDialogue="……",pearlDialogue="……让我看看。";
+ public string firstDialogue=UiText.Get("...Hello."),repeatDialogue=UiText.Get("We meet again."),unmarkedDialogue="……",pearlDialogue=UiText.Get("...Let me have a look.");
  public IteratorLayers layers=new IteratorLayers();
  public string appearanceAdapter="",nativeOracle="";
+ readonly System.Collections.Generic.HashSet<string> suppliedText=new System.Collections.Generic.HashSet<string>();
+ string defaultsLanguage,defaultName,defaultFirst,defaultRepeat,defaultPearl;
+ public IteratorDesign(){defaultsLanguage=UiText.LanguageKey;defaultName=name;defaultFirst=firstDialogue;defaultRepeat=repeatDialogue;defaultPearl=pearlDialogue;}
+ internal void RefreshDefaults(){
+  string language=UiText.LanguageKey;if(defaultsLanguage==language)return;defaultsLanguage=language;
+  if(!suppliedText.Contains("name")&&name==defaultName)name=defaultName=UiText.Get("Unnamed iterator");
+  if(!suppliedText.Contains("firstDialogue")&&firstDialogue==defaultFirst)firstDialogue=defaultFirst=UiText.Get("...Hello.");
+  if(!suppliedText.Contains("repeatDialogue")&&repeatDialogue==defaultRepeat)repeatDialogue=defaultRepeat=UiText.Get("We meet again.");
+  if(!suppliedText.Contains("pearlDialogue")&&pearlDialogue==defaultPearl)pearlDialogue=defaultPearl=UiText.Get("...Let me have a look.");
+ }
  public static IteratorDesign Current=new IteratorDesign();
- sealed class CachedDesign {public IteratorDesign value;public DateTime stamp;public float poll;}
+ sealed class CachedDesign {public IteratorDesign value;public DateTime stamp;public float poll;public string path;public long length;}
  static readonly System.Collections.Generic.Dictionary<string,CachedDesign> roomDesigns=new System.Collections.Generic.Dictionary<string,CachedDesign>();
  public static IteratorDesign ForRoom(Room r){return ForId(CreatorRuntime.Id(r==null?null:r.abstractRoom.name));}
  public static IteratorDesign ForId(string id){
   CachedDesign cache;if(!roomDesigns.TryGetValue(id,out cache)){cache=new CachedDesign{value=new IteratorDesign{oracleId=id}};roomDesigns[id]=cache;}
-  if(Time.realtimeSinceStartup<cache.poll)return cache.value;cache.poll=PlaybackMode.Enabled?float.MaxValue:Time.realtimeSinceStartup+.5f;
+  cache.value.RefreshDefaults();if(Time.realtimeSinceStartup<cache.poll)return cache.value;cache.poll=Time.realtimeSinceStartup+.5f;
   string path=RuntimePaths.DesignPath(id);if(!File.Exists(path))return cache.value;
-  var modified=File.GetLastWriteTimeUtc(path);if(modified==cache.stamp)return cache.value;
-  try{var value=new IteratorDesign();ReadFields(value,Json.Deserialize(File.ReadAllText(path)) as System.Collections.Generic.Dictionary<string,object>);if(value.oracleId==id){cache.value=value;cache.stamp=modified;}}catch(Exception e){MiDiagnostics.Report("MI_DESIGN_READ","IteratorDesign.ForId",e,id);UnityEngine.Debug.LogWarning("[More Iterators] Room design "+id+": "+e.Message);}return cache.value;
+  var info=new FileInfo(path);var modified=info.LastWriteTimeUtc;if(modified==cache.stamp&&path==cache.path&&info.Length==cache.length)return cache.value;
+  try{var value=new IteratorDesign();ReadFields(value,Json.Deserialize(File.ReadAllText(path)) as System.Collections.Generic.Dictionary<string,object>);if(value.oracleId==id){cache.value=value;cache.stamp=modified;cache.path=path;cache.length=info.Length;}}catch(Exception e){MiDiagnostics.Report("MI_DESIGN_READ","IteratorDesign.ForId",e,id);UnityEngine.Debug.LogWarning("[More Iterators] Room design "+id+": "+e.Message);}return cache.value;
  }
  public static string SelectedId="default"; public static void Select(string id){if(SelectedId==id)return;SelectedId=id;stamp=DateTime.MinValue;nextRead=0;}
- static float nextRead;static DateTime stamp;public static int Revision;
+ static float nextRead;static DateTime stamp;static string loadedPath;static long loadedLength;public static int Revision;
  public static string FaceElement,AntennaElement,HaloElement; public static Rect FaceInk=new Rect(-2,-2,4,4);
  public static void Poll(Action<string> log){
+  Current.RefreshDefaults();
   if(Time.realtimeSinceStartup<nextRead)return;nextRead=Time.realtimeSinceStartup+.12f;
   string path=RuntimePaths.DesignPath(SelectedId);if(!File.Exists(path))return;
-  DateTime modified=PlaybackMode.Enabled?new DateTime(1):File.GetLastWriteTimeUtc(path);if(modified==stamp)return;
+  var info=new FileInfo(path);DateTime modified=info.LastWriteTimeUtc;if(modified==stamp&&path==loadedPath&&info.Length==loadedLength)return;
   PendingTexture face=null,antenna=null,halo=null;bool committed=false;
   try{
    var d=new IteratorDesign();ReadFields(d,Json.Deserialize(File.ReadAllText(path)) as System.Collections.Generic.Dictionary<string,object>);
@@ -111,8 +122,8 @@ using UnityEngine;
    halo=PrepareTexture(d.haloPng,"moreiterators_halo",d.haloOpacity*.68f);
    string oldFace=FaceElement,oldAntenna=AntennaElement,oldHalo=HaloElement;
    FaceElement=face.element;AntennaElement=antenna.element;HaloElement=halo.element;FaceInk=face.ink;
-   Current=d;stamp=modified;
-   roomDesigns[SelectedId]=new CachedDesign{value=d,stamp=modified,poll=PlaybackMode.Enabled?float.MaxValue:Time.realtimeSinceStartup+.5f};
+   Current=d;stamp=modified;loadedPath=path;loadedLength=info.Length;
+   roomDesigns[SelectedId]=new CachedDesign{value=d,stamp=modified,path=path,length=info.Length,poll=Time.realtimeSinceStartup+.5f};
    Revision++;committed=true;
    ReleaseAtlas(oldFace);ReleaseAtlas(oldAntenna);ReleaseAtlas(oldHalo);
    if(log!=null)log("Applied oracle project "+d.projectId+" revision "+Revision+" arm="+d.layers.mechanicalArm+" cables="+d.layers.cables+" halo="+d.layers.halo);
@@ -127,7 +138,7 @@ using UnityEngine;
   public DesignFieldException(string node,Type type,object value,Exception cause):base("Invalid project field "+node+" (expected "+type.Name+", received "+(value==null?"null":value is System.Collections.IDictionary?"object":value is System.Collections.IList?"array":value.GetType().Name)+"). "+cause.Message,cause){}
  }
  static object ReadValue(Type type,object value,string node){try{
-  if(type==typeof(string)&&value==null){MiDiagnostics.Warn("MI_DESIGN_NULL_STRING","IteratorDesign.ReadValue","Null string was treated as empty.",node);return "";}
+  if(type==typeof(string)&&value==null){MiDiagnostics.Warn("MI_DESIGN_NULL_STRING","IteratorDesign.ReadValue",UiText.Get("Null string was treated as empty."),node);return "";}
   if(type.IsArray){var list=value as System.Collections.IList;if(list==null)throw new Exception("Expected array");Type item=type.GetElementType();var result=Array.CreateInstance(item,list.Count);for(int i=0;i<list.Count;i++)result.SetValue(ReadValue(item,list[i],node+"["+i+"]"),i);return result;}
   if(type==typeof(PuppetArmDesign)){var fields=value as System.Collections.Generic.Dictionary<string,object>;var result=new PuppetArmDesign();ReadFields(result,fields,node);if(!fields.ContainsKey("handTextureTint"))result.handTextureTint=result.handOwnColor;return result;}
   if(type==typeof(CreatorVoiceDesign)||type==typeof(EyeDesign)||type==typeof(AudioTrackDesign)||type==typeof(IteratorLayers)||type==typeof(NecklaceDesign)||type==typeof(NecklacePearl)||type==typeof(GarmentDesign)||type==typeof(ColorGradient)||type==typeof(GradientStop)||type==typeof(RoomGradient)||type==typeof(CornerGlow)||type==typeof(PearlAccessoryDesign)||type==typeof(PearlAccessoryBead)||type==typeof(PearlAccessoryChild)){object result=Activator.CreateInstance(type);ReadFields(result,value as System.Collections.Generic.Dictionary<string,object>,node);return result;}
@@ -135,7 +146,7 @@ using UnityEngine;
  }catch(DesignFieldException){throw;}catch(Exception error){throw new DesignFieldException(node,type,value,error);}
  }
  static void ReadFields(object target,System.Collections.Generic.Dictionary<string,object> values){ReadFields(target,values,target.GetType().Name);}
- static void ReadFields(object target,System.Collections.Generic.Dictionary<string,object> values,string node){if(values==null)throw new Exception("Invalid project object");foreach(var field in target.GetType().GetFields(System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance)){object value;if(values.TryGetValue(field.Name,out value))field.SetValue(target,ReadValue(field.FieldType,value,node+"."+field.Name));}}
+ static void ReadFields(object target,System.Collections.Generic.Dictionary<string,object> values,string node){if(values==null)throw new Exception("Invalid project object");var design=target as IteratorDesign;if(design!=null)foreach(string name in new[]{"name","firstDialogue","repeatDialogue","pearlDialogue"})if(values.ContainsKey(name))design.suppliedText.Add(name);foreach(var field in target.GetType().GetFields(System.Reflection.BindingFlags.Public|System.Reflection.BindingFlags.Instance)){object value;if(values.TryGetValue(field.Name,out value))field.SetValue(target,ReadValue(field.FieldType,value,node+"."+field.Name));}}
  sealed class PendingTexture {
   public string element;public Texture2D texture;public Rect ink=new Rect(-2,-2,4,4);
  }

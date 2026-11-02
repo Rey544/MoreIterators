@@ -49,9 +49,10 @@ class Plan:
         self._safe_paths = {}
         self._trees = {}
         self._checked_dirs = set()
+        self.installed = storage.installed_mod('purge-operation', required=False)
         self._roots = tuple(Path(base).absolute() for base in
                             (storage.DATA, storage.PROJECTS, storage.RUNTIME, storage.EXPORTS,
-                             storage.archive_root(), storage.installed_mod('purge-operation')))
+                             storage.archive_root(), self.installed) if base is not None)
 
     def safe(self, file, fresh=False):
         file = Path(file).absolute()
@@ -119,7 +120,7 @@ class Plan:
             self.read(file)
             self.removes.add(file)
             self.writes.pop(file, None)
-            self.game_files |= file.is_relative_to(storage.RUNTIME) or file.is_relative_to(storage.DATA/'local-mod') or file.is_relative_to(storage.installed_mod('purge-operation'))
+            self.game_files |= file.is_relative_to(storage.RUNTIME) or file.is_relative_to(storage.DATA/'local-mod') or bool(self.installed is not None and file.is_relative_to(self.installed))
 
     def remove_tree(self, base):
         base = self.safe(base)
@@ -137,7 +138,7 @@ class Plan:
         content = value if isinstance(value, bytes) else _json_bytes(value)
         if before != content:
             self.writes[file] = content
-            self.game_files |= file.is_relative_to(storage.RUNTIME) or file.is_relative_to(storage.DATA/'local-mod') or file.is_relative_to(storage.installed_mod('purge-operation'))
+            self.game_files |= file.is_relative_to(storage.RUNTIME) or file.is_relative_to(storage.DATA/'local-mod') or bool(self.installed is not None and file.is_relative_to(self.installed))
 
     def block(self, key, message):
         if not any(item['id'] == key for item in self.conflicts):
@@ -362,6 +363,8 @@ def _collect(data):
             if record not in owned:
                 owned.append(record)
     remaining = [value for value in records if value.get('projectId') != pid]
+    if owned and p.installed is None:
+        p.block('game-path', 'Rain World was not found. Select RainWorld.exe in the editor settings.')
     rooms = set(pearl_suspension.owned_rooms(project))
     oracles = {room_bindings.binding(project)['oracleId']}
     for archive in archived:
@@ -393,7 +396,10 @@ def _collect(data):
                 raise ValueError('房间归属记录无效')
             rooms.add(room['name'])
             for item in room.get('files', []):
-                file = room_cleanup._resolve(pid, room['name'], item)
+                file = room_cleanup._resolve(pid, room['name'], item, required=False)
+                if file is None:
+                    p.block('game-path', 'Rain World was not found. Select RainWorld.exe in the editor settings.')
+                    continue
                 if item.get('scope') == 'rendered' or not file.exists():
                     continue
                 ledger_files.setdefault(file, dict(name=room['name'], hashes=set()))['hashes'].add(item.get('sha256'))
@@ -571,7 +577,8 @@ def _collect(data):
             content = p.read(file)
             if content is not None:
                 candidates.update(match.decode() for match in re.findall(rb'(?<![a-f0-9])[a-f0-9]{64}(?![a-f0-9])', content))
-    audio_roots = (storage.DATA/'audio', storage.DATA/'local-mod/mi_audio', storage.installed_mod(pid)/'mi_audio')
+    audio_roots = [storage.DATA/'audio', storage.DATA/'local-mod/mi_audio']
+    if p.installed is not None:audio_roots.append(p.installed/'mi_audio')
     candidates = {asset for asset in candidates if any((base/(asset+'.mp3')).is_file() for base in audio_roots)}
     if candidates:
         retained = set()
@@ -595,7 +602,8 @@ def _collect(data):
                 for file in sorted(base.rglob('*.json')):
                     content = p.reference(file)
                     retained.update(asset for asset in candidates if asset.encode() in content)
-        roots = (storage.DATA, storage.archive_root(), storage.installed_mod(pid))
+        roots = [storage.DATA, storage.archive_root()]
+        if p.installed is not None:roots.append(p.installed)
         seen = set()
         for base in roots:
             if retained >= candidates:
@@ -631,6 +639,8 @@ def _collect(data):
                     if base != storage.DATA/'audio':
                         p.game_files = True
     p.write(storage.purge_marker(pid), dict(schema='moreiterators.purged-project.v1', projectId=pid))
+    if p.game_files and p.installed is None:
+        p.block('game-path', 'Rain World was not found. Select RainWorld.exe in the editor settings.')
     if p.game_files:
         try:
             project_worlds.require_closed()

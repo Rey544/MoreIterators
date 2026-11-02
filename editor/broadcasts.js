@@ -17,14 +17,14 @@ function normalize(value){
  }
  p.speakers=p.speakers||[];for(const s of p.speakers)s.aliases=s.aliases||[];return p;
 }
-async function api(url,value){await MI18n.ready;const r=await fetch(url,value===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)});const j=await r.json();if(!r.ok)throw Error(MI18n.error(j,'请求失败'));return j;}
+async function api(url,value){await MI18n.ready;const r=await fetch(url,value===undefined?{headers:{'X-MI-Language':MI18n.locale}}:{method:'POST',headers:{'Content-Type':'application/json','X-MI-Language':MI18n.locale},body:JSON.stringify(value)});const j=await r.json();if(!r.ok)throw Error(MI18n.error(j,'请求失败'));return j;}
 function notice(s,error=false){$('notice').textContent=s;$('notice').dataset.kind=error?'error':'info';}
 function changed(){dirty=true;notice('');renderCards();window.MIUndo?.changed();}
 function guard(){return !saving&&!loading&&(!dirty||confirm('当前修改尚未保存，确定放弃并切换吗？'));}
 function option(value,text){const e=document.createElement('option');e.value=value;e.textContent=text;return e;}
 function field(type,value,onchange){const e=document.createElement('input');e.type=type;e.value=value;e.addEventListener('input',()=>onchange(e));return e;}
 function button(text,action,title){const e=document.createElement('button');e.type='button';e.textContent=text;e.onclick=action;if(title)e.setAttribute('aria-label',title);return e;}
-async function list(){saved=await api('/api/broadcasts');$('saved').replaceChildren(option('','选择已保存广播…'),...saved.map(p=>option(p.id,p.id+' · '+p.name)));if(project&&saved.some(p=>p.uid===project.uid))$('saved').value=project.id;renderCards();}
+async function list(){saved=await api('/api/broadcasts');$('saved').replaceChildren(option('','选择已保存广播…'),...saved.map(p=>option(p.id,p.name&&p.name!==p.id?p.name+' ('+p.id+')':p.id)));if(project&&saved.some(p=>p.uid===project.uid))$('saved').value=project.id;renderCards();}
 function renderCards(){
  const cards=saved.map(p=>project?.uid===p.uid?project:p);if(project&&!cards.some(p=>p.uid===project.uid))cards.push(project);
  $('broadcastList').replaceChildren(...cards.map(p=>{const b=button('',()=>{if(p.uid!==project?.uid&&guard())choose(p);});b.className='broadcast-card';b.setAttribute('aria-current',String(p.uid===project?.uid));const name=MI18n.content(document.createElement('span'));name.textContent=p.name||p.id;const id=MI18n.content(document.createElement('small'));id.textContent=p.id;b.append(name,id);return b;}));
@@ -36,7 +36,7 @@ function roomOptions(){const items=rooms.filter(r=>r.region===project.region);$(
 async function loadGeometry(){geometry=null;drawMap();if(!project.room)return;const room=project.room,g=await api('/api/broadcast-room?room='+encodeURIComponent(room));if(project.room===room){geometry=g;drawMap()}}
 function drawMap(){const c=$('map'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#111111';ctx.fillRect(0,0,c.width,c.height);$('x').value=(project.x*100).toFixed(1);$('y').value=(project.y*100).toFixed(1);mapRect=null;if(!geometry){$('position').textContent='先选择房间';return}
  const g=geometry,s=Math.min((c.width-20)/g.width,(c.height-20)/g.height),ox=(c.width-g.width*s)/2,oy=(c.height-g.height*s)/2;mapRect={s,ox,oy,w:g.width,h:g.height};ctx.fillStyle='#737373';for(const [x,y] of g.solids)ctx.fillRect(ox+x*s,oy+(g.height-y-1)*s,Math.ceil(s),Math.ceil(s));ctx.strokeStyle='#b0b0b0';ctx.lineWidth=1;ctx.setLineDash([4,3]);g.cameras.forEach(([x,y],i)=>{ctx.strokeRect(ox+x/20*s,oy+(g.height-(y+800)/20)*s,1400/20*s,800/20*s);ctx.fillStyle='#dedede';ctx.fillText(String(i+1),ox+x/20*s+3,oy+(g.height-(y+800)/20)*s+12)});
- ctx.setLineDash([]);const x=ox+project.x*g.width*s,y=oy+(1-project.y)*g.height*s;ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-8);ctx.lineTo(x+6,y);ctx.lineTo(x,y+8);ctx.lineTo(x-6,y);ctx.closePath();ctx.stroke();const tile=[Math.floor(project.x*g.width),Math.floor(project.y*g.height)],solid=g.solids.some(p=>p[0]===tile[0]&&p[1]===tile[1]);$('position').textContent=`游戏坐标：${Math.round(project.x*g.width*20)}, ${Math.round(project.y*g.height*20)}${solid?' · 注意：当前位置在实体地形内':''}`;
+ ctx.setLineDash([]);const x=ox+project.x*g.width*s,y=oy+(1-project.y)*g.height*s;ctx.strokeStyle='white';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y-8);ctx.lineTo(x+6,y);ctx.lineTo(x,y+8);ctx.lineTo(x-6,y);ctx.closePath();ctx.stroke();const tile=[Math.floor(project.x*g.width),Math.floor(project.y*g.height)],solid=g.solids.some(p=>p[0]===tile[0]&&p[1]===tile[1]);$('position').textContent=MI18n.t(solid?'broadcast.position.solid':'broadcast.position',{x:Math.round(project.x*g.width*20),y:Math.round(project.y*g.height*20)});
 }
 $('map').onclick=e=>{if(!mapRect)return;const b=e.currentTarget.getBoundingClientRect(),r=mapRect;project.x=Math.max(0,Math.min(1,((e.clientX-b.left)/b.width*e.currentTarget.width-r.ox)/(r.w*r.s)));project.y=Math.max(0,Math.min(1,1-((e.clientY-b.top)/b.height*e.currentTarget.height-r.oy)/(r.h*r.s)));changed();drawMap()};
 

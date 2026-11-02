@@ -22,7 +22,10 @@ $output = [IO.Path]::GetFullPath($OutputPath)
 New-Item -ItemType Directory -Force -Path (Split-Path $output -Parent) | Out-Null
 $references = @($referencePaths | ForEach-Object { '/r:' + $_ })
 $sources = (Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src') -Filter '*.cs' -File).FullName
-$resources = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'localization\game') -Filter '*.json' -File | ForEach-Object { '/resource:' + $_.FullName + ',mi.ui.' + $_.BaseName + '.json' })
-& $compiler /nologo /target:library "/out:$output" $references $resources $sources
+foreach ($language in @('eng','chi','tra')) {
+    $translation = Join-Path $projectRoot ('mod/text/text_' + $language + '/strings.txt')
+    if (!(Test-Path -LiteralPath $translation -PathType Leaf)) { throw "Missing game localization: $translation" }
+}
+& $compiler /nologo /target:library "/out:$output" $references $sources
 if ($LASTEXITCODE -ne 0) { throw 'MoreIterators compilation failed.' }
 Write-Output "Built $output"

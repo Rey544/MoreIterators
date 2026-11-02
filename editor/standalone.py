@@ -139,17 +139,55 @@ def preferences(pid=''):
     value['projects']=[pid] if pid else []
     return value
 
+SOURCE_MANIFEST='templates/standalone/sources.json'
+
+def _runtime_source_plan(workspace=None):
+    root=Path(workspace if workspace is not None else storage.WORKSPACE).resolve()
+    manifest_path=root/SOURCE_MANIFEST
+    if not manifest_path.is_file():raise ValueError('Missing standalone source manifest: '+SOURCE_MANIFEST)
+    manifest=json.loads(manifest_path.read_text('utf-8-sig'))
+    if manifest.get('schema')!='moreiterators.standalone-sources.v1':raise ValueError('Unsupported standalone source manifest')
+    sources=manifest.get('sources');fragments=manifest.get('fragments');excluded=manifest.get('excluded')
+    if not isinstance(sources,list) or not sources or not isinstance(fragments,dict) or set(fragments)!={'encounter'} or not isinstance(excluded,dict):
+        raise ValueError('Invalid standalone source manifest')
+    def checked(relative):
+        if not isinstance(relative,str) or not re.fullmatch(r'(?:src|templates/standalone)/[A-Za-z][A-Za-z0-9_]*\.cs',relative):
+            raise ValueError('Invalid standalone source path: '+str(relative))
+        path=root/relative
+        if not path.resolve().is_relative_to(root):raise ValueError('Standalone source path escapes workspace: '+relative)
+        return path
+    names=[checked(relative).name.casefold() for relative in sources]
+    if len(set(names))!=len(names):raise ValueError('Duplicate standalone compiler source name')
+    inputs={SOURCE_MANIFEST:manifest_path}
+    for relative in [*sources,*fragments.values()]:
+        path=checked(relative)
+        if not path.is_file():raise ValueError('Missing standalone export source: '+relative)
+        inputs[relative]=path
+    for relative,reason in excluded.items():
+        checked(relative)
+        if relative in inputs or not relative.startswith('src/') or not isinstance(reason,str) or not reason.strip():
+            raise ValueError('Invalid standalone source exclusion: '+relative)
+    classified=set(inputs)|set(excluded)
+    for directory in ('src','templates/standalone'):
+        for path in (root/directory).glob('*.cs'):
+            relative=path.relative_to(root).as_posix()
+            if relative not in classified:raise ValueError('Unclassified standalone source: '+relative)
+    return manifest,inputs
+
+def runtime_source_inputs(workspace=None):
+    """Files required by export; shared by the Workshop packager and compiler."""
+    return _runtime_source_plan(workspace)[1]
+
 def compiler_sources(destination,meta,projects=()):
-    src=storage.WORKSPACE/'src';templates=storage.WORKSPACE/'templates/standalone'
+    manifest,inputs=_runtime_source_plan()
     suffix=hashlib.sha256(meta['id'].encode()).hexdigest()[:12]
     namespace='IteratorContent_'+suffix
-    encounter=(src/'CreatorRuntime.cs').read_text('utf-8').split('public class CreatorEncounter:',1)[1]
+    encounter=inputs[manifest['fragments']['encounter']].read_text('utf-8').split('public class CreatorEncounter:',1)[1]
     encounter='public class CreatorEncounter:'+encounter.rsplit('}',1)[0]
     sources=[]
-    for file in sorted(src.glob('*.cs')):
-        if file.name in ('StudioLauncher.cs','RoomCatalogSnapshot.cs'):continue
-        replacement=templates/file.name
-        text=(replacement if replacement.exists() else file).read_text('utf-8')
+    for relative in manifest['sources']:
+        file=inputs[relative]
+        text=file.read_text('utf-8')
         text=text.replace('__ENCOUNTER__',encounter).replace('__MOD_ID__',meta['id'])
         text=text.replace('namespace MoreIterators','namespace '+namespace)
         # Atlas and extensible-enum identifiers must also be unique per content mod.
@@ -166,6 +204,19 @@ def compiler_sources(destination,meta,projects=()):
     sources+=playback_adapters.export_sources(destination,projects,namespace)
     return sources,suffix
 
+GAME_UI_FILES=tuple('text/text_'+language+'/strings.txt' for language in ('eng','chi','tra'))
+
+def game_ui_sources():
+    root=storage.WORKSPACE/'mod' if (storage.WORKSPACE/'mod/text').is_dir() else storage.WORKSPACE
+    files={relative:root/relative for relative in GAME_UI_FILES}
+    for relative,path in files.items():
+        if not path.is_file():raise ValueError('Missing native game UI translations: '+relative)
+    return files
+
+def copy_game_ui(stage):
+    for relative,path in game_ui_sources().items():
+        target=stage/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(path,target)
+
 def compile_runtime(stage,source_dir,meta,projects=()):
     sources,suffix=compiler_sources(source_dir,meta,projects)
     managed=storage.GAME/'RainWorld_Data/Managed'
@@ -176,10 +227,7 @@ def compile_runtime(stage,source_dir,meta,projects=()):
     csc=Path(os.environ.get('WINDIR','C:/Windows'))/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     out=stage/'plugins'/('IteratorContent_'+suffix+'.dll');out.parent.mkdir(parents=True,exist_ok=True)
     if not csc.is_file():raise ValueError('独立 DLL 导出需要 Windows .NET Framework 编译器；当前平台可以编辑项目和导出素材。')
-    resources=['/resource:'+str(path)+',mi.ui.'+path.stem+'.json' for path in sorted((storage.WORKSPACE/'localization/game').glob('*.json'))]
-    if (storage.WORKSPACE/'src/UiText.cs').exists() and any(not (storage.WORKSPACE/'localization/game'/(language+'.json')).is_file() for language in ('en','zh-CN')):
-        raise ValueError('Missing embedded game UI translations')
-    result=subprocess.run([str(csc),'/nologo','/target:library','/optimize+','/define:PLAYBACK','/out:'+str(out),*['/r:'+str(r) for r in refs],*resources,*[str(s) for s in sources]],capture_output=True,timeout=120)
+    result=subprocess.run([str(csc),'/nologo','/target:library','/optimize+','/define:PLAYBACK','/out:'+str(out),*['/r:'+str(r) for r in refs],*[str(s) for s in sources]],capture_output=True,timeout=120)
     if result.returncode:raise ValueError('独立运行版编译失败：'+result.stdout.decode('utf-8',errors='replace')[-6000:])
     return suffix
 
@@ -435,6 +483,7 @@ def build(request,server,save_preferences=True):
     registry=[];mapping={};room_map={};connections={region:[] for region in regions};design_schema=runtime_design_schema()
     with tempfile.TemporaryDirectory(prefix='mi-content-') as temp:
         temporary=Path(temp);stage=temporary/meta['id'];stage.mkdir();sources=temporary/'source';sources.mkdir()
+        copy_game_ui(stage)
         suffix=compile_runtime(stage,sources,meta,projects)
         for i,p in enumerate(projects,1):
             ai,entry,old_oid=server.roomnames(p);pid=p['projectId'];new_ai,new_entry=room_names[pid];region=new_ai.split('_')[0];oid='pack_'+suffix+'_'+str(i)
@@ -627,7 +676,7 @@ def audit(stage,ids):
                 except ValueError:reject('独立包内嵌数据格式无效',file)
                 inspect(nested,file)
 
-    allowed={'modinfo.json','content-manifest.json','README.txt','thumbnail.png','moreiterators/registry.json','modify/world/regions.txt'}|expected_designs
+    allowed={'modinfo.json','content-manifest.json','README.txt','thumbnail.png','moreiterators/registry.json','modify/world/regions.txt'}|expected_designs|set(GAME_UI_FILES)
     for region in regions:allowed.update(('world/'+region.lower()+'/properties.txt','world/'+region.lower()+'/displayname.txt','world/'+region.lower()+'/world_'+region.lower()+'.txt'))
     suffix=hashlib.sha256(info['id'].encode()).hexdigest()[:12]
     allowed.add('plugins/IteratorContent_'+suffix+'.dll')

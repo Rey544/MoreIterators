@@ -61,7 +61,7 @@ internal static class CreatorPearlCollection {
  }
  static void MergeCached(Dictionary<string,PearlProject> destination){
   foreach(var pair in cached){
-   if(contentIds.Contains(pair.Key)){MiDiagnostics.Warn("MI-PEARL-OWNER-CONFLICT","CreatorPearlCollection.Merge","Local pearl UID conflicts with installed content; the content pearl was retained.",pair.Key+" owner="+destination[pair.Key].ownerMod);continue;}
+   if(contentIds.Contains(pair.Key)){MiDiagnostics.Warn("MI-PEARL-OWNER-CONFLICT","CreatorPearlCollection.Merge",UiText.Get("Local pearl UID conflicts with installed content; the content pearl was retained."),pair.Key+" owner="+destination[pair.Key].ownerMod);continue;}
    destination[pair.Key]=pair.Value;new DataPearl.AbstractDataPearl.DataPearlType(pair.Key,true);
   }
  }

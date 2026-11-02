@@ -256,14 +256,18 @@ def plan(data,server):
 
 def _location(file):
     file=Path(file).absolute()
-    for key,base in [('data',storage.DATA),('installed',storage.installed_mod('association-operation')),('history',storage.archive_root()/'project-history')]:
+    roots=[('data',storage.DATA),('history',storage.archive_root()/'project-history')]
+    installed=storage.installed_mod('association-operation',required=False)
+    if installed is not None:roots.append(('installed',installed))
+    for key,base in roots:
         base=base.absolute()
         if file.is_relative_to(base):return dict(root=key,path=file.relative_to(base).as_posix())
     raise ValueError('关联操作文件不在本地项目范围内')
 def _operation_root():return storage.DATA/'association-operations'
 def _op_path(token):return life._safe_path(_operation_root(),life._token(token)+'/manifest.json')
 def _resolve(item):
-    roots=dict(data=storage.DATA,installed=storage.installed_mod('association-operation'),history=storage.archive_root()/'project-history')
+    roots=dict(data=storage.DATA,history=storage.archive_root()/'project-history')
+    if item.get('root')=='installed':roots['installed']=storage.installed_mod('association-operation')
     if item.get('root') not in roots:raise ValueError('关联操作恢复路径无效')
     return life._safe_path(roots[item['root']],item.get('path'))
 

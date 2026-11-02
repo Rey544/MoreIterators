@@ -30,7 +30,6 @@ internal static class CreatorStudioMenu {
  const float CollectionStep=50,CollectionSize=42;
  const float FooterY=42,FooterHeight=32,FooterGap=12,ContentBottom=90;
  internal static bool IsOpen { get { return menu!=null&&page!=null; } }
- static string T(string key){return UiText.Get("game.studio_menu."+key);}
  internal static int InsertBeforeRemix(IList<Menu.SimpleButton> list){
   for(int i=0;i<list.Count;i++)if(list[i].signalText=="REMIX")return list.Count-i;
   return 0;
@@ -47,7 +46,7 @@ internal static class CreatorStudioMenu {
   if(list==null){list=new List<Menu.SimpleButton>();foreach(var item in m.pages[0].subObjects){var b=item as Menu.SimpleButton;if(b!=null)list.Add(b);}}
   Menu.SimpleButton remix=list.Find(b=>b.signalText=="REMIX");
   Vector2 size=remix==null?new Vector2(110,30):remix.size;
-  var button=new Menu.SimpleButton(m,m.pages[0],T("title"),"TEST_MENU",Vector2.zero,size);
+  var button=new Menu.SimpleButton(m,m.pages[0],UiText.Get("More Iterators"),"TEST_MENU",Vector2.zero,size);
   m.AddMainMenuButton(button,delegate{Open(m,0);},InsertBeforeRemix(list));
  }
  public static void Open(Menu.MainMenu m,int tab){
@@ -109,7 +108,7 @@ internal static class CreatorStudioMenu {
  static void FooterActions(string editorLabel,bool preview=false,bool enabled=true){
   float span=width-left-right;
   if(!preview){CenterButton(editorLabel,"WEB",FooterY,span,FooterHeight);return;}
-  string enterLabel=T("enter");float maximum=(span-FooterGap)*.5f;
+  string enterLabel=UiText.Get("Enter preview");float maximum=(span-FooterGap)*.5f;
   float actionWidth=Math.Max(CompactWidth(editorLabel,maximum),CompactWidth(enterLabel,maximum));
   float x=right+(span-actionWidth*2-FooterGap)*.5f;
   Button(editorLabel,"WEB",x,FooterY,actionWidth,FooterHeight);
@@ -166,10 +165,10 @@ internal static class CreatorStudioMenu {
   if(!IsOpen)return;UiText.Use(menu.manager.rainWorld);var previous=menu.selectedObject as Menu.SimpleButton;var oldScroll=menu.selectedObject as CreatorMenuScrollBar;string focus=previous==null?"":previous.signalText;string scrollFocus=oldScroll==null?"":oldScroll.key;Clear();
   width=menu.manager.rainWorld.options.ScreenSize.x;height=menu.manager.rainWorld.options.ScreenSize.y;
   float available=Mathf.Min(1160,width-100);left=(width-available)*.5f;listWidth=category==0?Mathf.Clamp(available*.30f,220,340):Mathf.Min(250,available*.30f);right=left+listWidth+44;top=height-170;
-  Label(T("title"),left,height-65,available,true);
-  string[] names={T("chambers"),T("broadcasts"),T("pearls")};float tabWidth=Mathf.Min(220,(available-24)/3);
+  Label(UiText.Get("More Iterators"),left,height-65,available,true);
+  string[] names={UiText.Get("Chambers"),UiText.Get("Iterator broadcasts"),UiText.Get("Pearls")};float tabWidth=Mathf.Min(220,(available-24)/3);
   for(int i=0;i<3;i++){var tab=Button(names[i],"TAB_"+i,left+i*(tabWidth+12),height-118,tabWidth);tab.toggled=i==category;}
-  var back=Button(UiText.Get("game.menu.back"),"CLOSE",left,FooterY,110,FooterHeight);menu.backObject=back;
+  var back=Button(UiText.Get("Back"),"CLOSE",left,FooterY,110,FooterHeight);menu.backObject=back;
   if(category==0)Chambers();else if(category==1)Broadcasts();else Pearls();
   if(category!=0)CollectionNavigation();else ProjectNavigation();FooterNavigation();
   // Native geometric navigation keeps columns and tab rows in screen order.
@@ -205,44 +204,44 @@ internal static class CreatorStudioMenu {
  static void Chambers(){
   var all=Projects();var chosen=SelectedProject();int rows=Rows();ProjectButtons();
   listScroll=ScrollBar("LIST",left+listWidth+6,top-(rows-1)*48,top+40,all.Count,rows,listOffset,SetListOffset);float span=Mathf.Min(400,width-left-right);
-  if(chosen==null){FooterActions(UiText.Get("game.menu.studio"));return;}
+  if(chosen==null){FooterActions(UiText.Get("Open web editor"));return;}
   Label(IteratorCatalog.Text(chosen,"name"),right,top,span,true);
   if(!IteratorCatalog.OwnerEnabled(IteratorCatalog.Text(chosen,"ownerMod"))){
-   Label(T("local_not_enabled"),right,top-48,span);
-   Label(T("enable_local_in_remix"),right,top-80,span);
-   FooterActions(UiText.Get("game.menu.studio"),true,false);return;
+   Label(UiText.Get("Local content is disabled"),right,top-48,span);
+   Label(UiText.Get("Enable moreiterators.local in Remix.<LINE>Apply the changes and restart the game."),right,top-80,span);
+   FooterActions(UiText.Get("Open web editor"),true,false);return;
   }
   float step=Mathf.Clamp((top-182)/6,32,44),y=top-step;
-  string[] options={CreatorSlugcatSelection.Label(menu,Room(chosen)),UiText.Format("game.studio_menu.spawn",entrySpawn?T("waiting"):T("chamber")),UiText.Format("game.menu.mark",UiText.Get(CreatorRuntime.Mark?"game.menu.yes":"game.menu.no")),UiText.Format("game.studio_menu.keep_progress",CreatorRuntime.Reset?T("off"):T("on")),UiText.Format("game.menu.mode",UiText.Get(CreatorRuntime.Mode=="silent"?"game.menu.silent":CreatorRuntime.Mode=="story"?"game.menu.story":"game.menu.read"))};
+  string[] options={CreatorSlugcatSelection.Label(menu,Room(chosen)),UiText.Format("Spawn: {0}",entrySpawn?UiText.Get("Waiting room"):UiText.Get("Chamber")),UiText.Get(CreatorRuntime.Mark?"Mark: Yes":"Mark: No"),UiText.Format("Keep dialogue progress: {0}",CreatorRuntime.Reset?UiText.Get("Off"):UiText.Get("On")),UiText.Format("Status: {0}",UiText.Get(CreatorRuntime.Mode=="silent"?"No dialogue":CreatorRuntime.Mode=="story"?"Story dialogue":"Pearl reading"))};
   string[] signals={"SLUGCAT","SPAWN","MARK","KEEP","MODE"};float optionWidth=110;
   foreach(string option in options)optionWidth=Math.Max(optionWidth,CompactWidth(option,span));
   for(int i=0;i<options.Length;i++)Button(options[i],signals[i],right+(width-left-right-optionWidth)*.5f,y-step*i,optionWidth);
-  Label(T("waiting")+" · "+IteratorCatalog.Text(chosen,"entry"),right,y-step*4-36,span);
-  Label(T("chamber")+" · "+IteratorCatalog.Text(chosen,"ai"),right,y-step*4-60,span);
-  FooterActions(UiText.Get("game.menu.studio"),true);
+  Label(UiText.Get("Waiting room")+": "+IteratorCatalog.Text(chosen,"entry"),right,y-step*4-36,span);
+  Label(UiText.Get("Chamber")+": "+IteratorCatalog.Text(chosen,"ai"),right,y-step*4-60,span);
+  FooterActions(UiText.Get("Open web editor"),true);
  }
  static void Broadcasts(){
   var all=CreatorBroadcastCatalog.All();broadcastOffset=CollectionOffset(broadcastOffset,all.Count);
   var selected=all.Find(p=>p.uid==selectedBroadcast);if(selected==null&&all.Count>0){selected=all[0];selectedBroadcast=selected.uid;}
-  CollectionButtons();CollectionScroll(all.Count,broadcastOffset);FooterActions(UiText.Get("game.gallery.broadcast.studio"));
+  CollectionButtons();CollectionScroll(all.Count,broadcastOffset);FooterActions(UiText.Get("Open web editor"));
   if(selected==null)return;
   Label(selected.name,right,top,width-left-right,true);Label(selected.region+" / "+selected.room,right,top-36,width-left-right);
   int pages=selected.pages==null?0:selected.pages.Length;broadcastPage=Mathf.Clamp(broadcastPage,0,Math.Max(0,pages-1));
   Text(CreatorBroadcastGallery.TextLines(selected,broadcastPage),top-82);
-  float span=width-left-right,maximum=(span-12)*.5f;string prev=UiText.Get("game.gallery.previous_text"),next=UiText.Get("game.gallery.next_text");float pw=CompactWidth(prev,maximum),nw=CompactWidth(next,maximum),x=right+(span-pw-nw-12)*.5f;
+  float span=width-left-right,maximum=(span-12)*.5f;string prev=UiText.Get("Previous page"),next=UiText.Get("Next page");float pw=CompactWidth(prev,maximum),nw=CompactWidth(next,maximum),x=right+(span-pw-nw-12)*.5f;
   Button(prev,"TEXT_UP",x,84,pw).buttonBehav.greyedOut=broadcastPage==0;Button(next,"TEXT_DOWN",x+pw+12,84,nw).buttonBehav.greyedOut=broadcastPage>=pages-1;
  }
  static void Pearls(){
   var all=CreatorPearlCatalog.All();pearlOffset=CollectionOffset(pearlOffset,all.Count);
   var selected=all.Find(p=>p.uid==selectedPearl);if(selected==null&&all.Count>0){selected=all[0];selectedPearl=selected.uid;reader=0;}
-  CollectionButtons();CollectionScroll(all.Count,pearlOffset);FooterActions(UiText.Get("game.gallery.pearl.studio"));
+  CollectionButtons();CollectionScroll(all.Count,pearlOffset);FooterActions(UiText.Get("Open web editor"));
   if(selected==null)return;
   Label(selected.name,right,top,width-left-right,true);
   var readers=selected.readers??new PearlReaderProfile[0];if(readers.Length==0)return;
   reader=Mathf.Clamp(reader,0,readers.Length-1);var selectedReader=readers[reader];if(selectedReader==null)return;
   float span=width-left-right,controlsY=top-46;
-  string readerText=UiText.Format("game.gallery.pearl.reader",selectedReader.name);float readerWidth=CompactWidth(readerText,span);
-  string[] stages={"read","repeat","leaving","returning","many"};string stage=UiText.Get("game.gallery.pearl.stage."+stages[pearlStage]);float stageWidth=CompactWidth(stage,span);
+  string readerText=UiText.Format("Reader: {0}  ›",selectedReader.name);float readerWidth=CompactWidth(readerText,span);
+  string[] stages={"First reading","Repeated delivery","Leaving midway","Return","Several this cycle"};string stage=UiText.Get(stages[pearlStage]);float stageWidth=CompactWidth(stage,span);
   bool sameRow=readerWidth+stageWidth+12<=span;float readerX=right+(span-(sameRow?readerWidth+stageWidth+12:readerWidth))*.5f;
   Button(readerText,"READER",readerX,controlsY,readerWidth);
   float stageX=sameRow?readerX+readerWidth+12:right+(span-stageWidth)*.5f;if(!sameRow)controlsY-=42;

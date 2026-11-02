@@ -13,20 +13,19 @@ namespace MoreIterators {
    if(ModManager.ActiveMods==null)return groups;
    if(Time.realtimeSinceStartup<next)return groups;next=Time.realtimeSinceStartup+1;
    var found=new Dictionary<string,ProjectionGroup>();
-   foreach(var mod in ModManager.ActiveMods){
-    if(PlaybackMode.Enabled&&mod.id!=RuntimePaths.ModId)continue;
-#if !PLAYBACK
-    if(RuntimePaths.HasIndependentRuntime(mod.path))continue;
-#endif
-    Read(Path.Combine(mod.path,"moreiterators/projections"),mod.id,found);
-   }
+   try{foreach(var asset in ContentAssets.Files("moreiterators/projections",".json",PlaybackMode.Enabled?RuntimePaths.ModId:null))
+    if(ContentAssets.Managed(asset.owner))ReadFile(asset.path,asset.owner,found,false);
+   }catch(Exception error){MiDiagnostics.Report("MI-PROJECTION-DIRECTORY","ProjectionCatalog.All",error,"moreiterators/projections");}
    if(!PlaybackMode.Enabled)Read(Path.Combine(RuntimePaths.DataDirectory,"projections"),"",found);
    groups=new List<ProjectionGroup>(found.Values);return groups;
   }
   static void Read(string directory,string owner,Dictionary<string,ProjectionGroup> result){
    if(!Directory.Exists(directory))return;
-   try{foreach(string file in Directory.GetFiles(directory,"*.json")){
-    try{
+   try{foreach(string file in Directory.GetFiles(directory,"*.json"))ReadFile(file,owner,result,true);}
+   catch(Exception error){MiDiagnostics.Report("MI-PROJECTION-DIRECTORY","ProjectionCatalog.Read",error,directory);}
+  }
+  static void ReadFile(string file,string owner,Dictionary<string,ProjectionGroup> result,bool replace){
+   try{
      var info=new FileInfo(file);Cached old;ProjectionGroup group;
      if(files.TryGetValue(file,out old)&&old.stamp==info.LastWriteTimeUtc.Ticks&&old.length==info.Length)group=old.group;
      else{
@@ -35,13 +34,13 @@ namespace MoreIterators {
       Validate(group);files[file]=new Cached{stamp=info.LastWriteTimeUtc.Ticks,length=info.Length,group=group};
       MiDiagnostics.Info("projection.load",group.uid+" revision="+group.revision);
      }
-     if(owner!="")group.ownerMod=owner;
+     if(!String.IsNullOrEmpty(owner))group.ownerMod=owner;
      var record=IteratorCatalog.Projects().Find(p=>IteratorCatalog.Text(p,"projectId")==group.projectId);
-     if(record==null||IteratorCatalog.Text(record,"oracleId")!=group.oracleId||(!String.IsNullOrEmpty(group.ownerMod)&&IteratorCatalog.Text(record,"ownerMod")!=group.ownerMod))continue;
+     if(record==null||IteratorCatalog.Text(record,"oracleId")!=group.oracleId||(!String.IsNullOrEmpty(group.ownerMod)&&IteratorCatalog.Text(record,"ownerMod")!=group.ownerMod))return;
+     if(!replace&&result.ContainsKey(group.uid))return;
      result[group.uid]=group;
-    }catch(FileNotFoundException){}
-    catch(Exception error){MiDiagnostics.Report("MI-PROJECTION-DATA","ProjectionCatalog.Read",error,file);}
-   }}catch(Exception error){MiDiagnostics.Report("MI-PROJECTION-DIRECTORY","ProjectionCatalog.Read",error,directory);}
+   }catch(FileNotFoundException){}
+   catch(Exception error){MiDiagnostics.Report("MI-PROJECTION-DATA","ProjectionCatalog.ReadFile",error,file);}
   }
   public static void Validate(ProjectionGroup g){
    if(g==null||g.schema!="moreiterators.projection.v1"||String.IsNullOrEmpty(g.uid)||g.uid.Length!=32||String.IsNullOrEmpty(g.projectId)||g.trigger==null||g.images==null||g.tracks==null||g.tracks.Length>32||g.images.Length>16)throw new InvalidDataException("Invalid projection identity or document.");

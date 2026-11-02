@@ -12,8 +12,15 @@ using UnityEngine.Networking;
 public static class CreatorAudio {
  static readonly List<CreatorAudioChannel> channels=new List<CreatorAudioChannel>();
  static bool installed;
- public static void Install(){if(installed)return;installed=true;On.Music.MusicPlayer.Update+=MusicUpdate;}
- internal static void Register(CreatorAudioChannel channel){Install();if(!channels.Contains(channel))channels.Add(channel);}
+ public static bool Enabled{get;private set;}
+ public static void Enable(){Enabled=true;}
+ public static void Install(){if(!Enabled||installed)return;On.Music.MusicPlayer.Update+=MusicUpdate;installed=true;}
+ public static void Shutdown(){
+  Enabled=false;
+  try{if(installed){On.Music.MusicPlayer.Update-=MusicUpdate;installed=false;}}
+  finally{foreach(var channel in channels.ToArray())channel.Stop();channels.Clear();}
+ }
+ internal static bool Register(CreatorAudioChannel channel){if(!Enabled)return false;Install();if(!channels.Contains(channel))channels.Add(channel);return true;}
  internal static void Remove(CreatorAudioChannel channel){channels.Remove(channel);}
  public static bool ValidAsset(string asset){return asset!=null&&Regex.IsMatch(asset,"^[0-9a-f]{64}$");}
  internal static string Resolve(string asset){
@@ -46,10 +53,10 @@ public sealed class CreatorAudioChannel {
  public CreatorAudioChannel(int priority=10){Priority=priority;}
  public bool CanPlay{get{return !failed&&track!=null&&(track.mode=="silent"||clip!=null&&!ended);}}
  public void Update(Room current,AudioTrackDesign desired,bool active){
-  if(!active||desired==null||desired.mode=="native"||current==null||current.game==null||current.game.manager==null||current.game.manager.musicPlayer==null||!current.game.manager.rainWorld.setup.playMusic){Stop();return;}
+  if(!CreatorAudio.Enabled||!active||desired==null||desired.mode=="native"||current==null||current.game==null||current.game.manager==null||current.game.manager.musicPlayer==null||!current.game.manager.rainWorld.setup.playMusic){Stop();return;}
   var player=current.game.manager.musicPlayer;
   string next=desired.mode=="silent"?"silent":desired.asset;
-  if(room!=current||Player!=player||asset!=next){Stop();room=current;Player=player;asset=next;track=desired;failed=false;ended=false;CreatorAudio.Register(this);if(desired.mode=="custom")BeginLoad();else if(desired.mode!="silent")Fail(new InvalidDataException("Unknown music mode."));}
+  if(room!=current||Player!=player||asset!=next){Stop();room=current;Player=player;asset=next;track=desired;failed=false;ended=false;if(!CreatorAudio.Register(this)){Stop();return;}if(desired.mode=="custom")BeginLoad();else if(desired.mode!="silent")Fail(new InvalidDataException("Unknown music mode."));}
   track=desired;seen=Time.realtimeSinceStartup;
  }
  void BeginLoad(){
@@ -80,8 +87,14 @@ public sealed class CreatorAudioChannel {
  }
  void Fail(Exception error){failed=true;MiDiagnostics.Report("MI-AUDIO-ASSET","CreatorAudioChannel.Load",error,"asset="+asset);if(source!=null){source.Stop();UnityEngine.Object.Destroy(source);source=null;}if(clip!=null){UnityEngine.Object.Destroy(clip);clip=null;}}
  public void Stop(){
-  CreatorAudio.Remove(this);if(request!=null){request.Abort();request.Dispose();request=null;}if(source!=null){source.Stop();UnityEngine.Object.Destroy(source);source=null;}if(clip!=null){UnityEngine.Object.Destroy(clip);clip=null;}room=null;Player=null;track=null;asset="";failed=false;ended=false;
+  CreatorAudio.Remove(this);
+  var pending=request;var playing=source;var loaded=clip;
+  request=null;source=null;clip=null;room=null;Player=null;track=null;asset="";failed=false;ended=false;
+  if(pending!=null){Cleanup(delegate{pending.Abort();},"request abort");Cleanup(delegate{pending.Dispose();},"request dispose");}
+  if(playing!=null){Cleanup(delegate{playing.Stop();},"source stop");Cleanup(delegate{UnityEngine.Object.Destroy(playing);},"source destroy");}
+  if(loaded!=null)Cleanup(delegate{UnityEngine.Object.Destroy(loaded);},"clip destroy");
  }
+ static void Cleanup(Action action,string resource){try{action();}catch(Exception error){MiDiagnostics.Report("MI-AUDIO-CLEANUP","CreatorAudioChannel.Stop",error,resource);}}
 }
 
 public static class CreatorMusicSettings {

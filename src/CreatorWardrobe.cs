@@ -56,7 +56,7 @@ public static class CreatorWardrobe {
   // Binding order and draw order are independent; invalid imported graphs are
   // reported once and their affected branches are hidden instead of reattached.
   string bindingError;var bindingOrder=GarmentBindings.Order(list,out bindingError);
-  if(bindingError!=st.bindingError){st.bindingError=bindingError;if(bindingError.Length>0)MiDiagnostics.Warn("MI-ACCESSORY-BINDING","CreatorWardrobe.Draw",bindingError,d.oracleId);}
+  if(bindingError!=st.bindingError){st.bindingError=bindingError;if(bindingError.Length>0)MiDiagnostics.Warn("MI-ACCESSORY-BINDING","CreatorWardrobe.Draw",UiText.Get("Some accessory bindings are invalid. Affected accessories were hidden."),d.oracleId+"; "+bindingError);}
   foreach(int bindingIndex in bindingOrder){
    int index=slots[bindingIndex];var a=list[bindingIndex];done.Add(a.id);bool visible=Enabled(a,index,d),cloth=a.type=="cloth";
    Vector2 p0=Anchor(a.anchor,a.u,a.v,g,s,st,right,n)+(right*a.x+up*a.y)*d.puppetScale,p1=Anchor(a.anchor2,a.u2,a.v2,g,s,st,right,n)+(right*a.x2+up*a.y2)*d.puppetScale;

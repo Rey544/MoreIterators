@@ -40,12 +40,14 @@
             MiDiagnostics.Initialize(Logger);
             if(hooksInstalled)
             {
-                MiDiagnostics.Warn("MI-HOOK-REPEAT","OnEnable","Hooks are already installed.","No duplicate hooks added.");
+                MiDiagnostics.Warn("MI-HOOK-REPEAT","OnEnable",UiText.Get("Hooks are already installed."),UiText.Get("No duplicate hooks added."));
                 return;
             }
             try
             {
                 RuntimePaths.Initialize();
+                CreatorAudio.Enable();
+                CreatorVoice.Enable();
                 InstallHooks();
                 hooksInstalled=true;
             }
@@ -67,6 +69,10 @@
         }
         void RemoveHooks()
         {
+            try { CreatorVoice.Shutdown(); }
+            catch(Exception error) { MiDiagnostics.Report("MI-VOICE-SHUTDOWN","RemoveHooks",error,UiText.Get("Stopping owned speech.")); }
+            try { CreatorAudio.Shutdown(); }
+            catch(Exception error) { MiDiagnostics.Report("MI-AUDIO-SHUTDOWN","RemoveHooks",error,"Cleaning custom music."); }
             for(int i=removeHooks.Count-1;i>=0;i--)try
             {
                 removeHooks[i]();
@@ -866,7 +872,7 @@
         {
             markPatchReady=false;bool reused;
             markPatchReady=CreatorMarkGuard.TryApply(il,out reused);
-            if(!MiDiagnostics.Require(markPatchReady,"MI-IL-MARK","SSOracleBehavior.ctor","Expected native mark check or compatible V1 guard was not found; custom spawning is disabled.","Original IL left unchanged."))return;
+            if(!MiDiagnostics.Require(markPatchReady,"MI-IL-MARK","SSOracleBehavior.ctor",UiText.Get("Expected native mark check or compatible V1 guard was not found; custom spawning is disabled."),UiText.Get("Original IL left unchanged.")))return;
             MiDiagnostics.Info("il.mark.install",reused?"Compatible V1 mark guard reused from an enabled content runtime.":"Native mark check replaced with the V1 static guard.");
         }
         void MenuCtor(On.Menu.MainMenu.orig_ctor orig, Menu.MainMenu self, ProcessManager manager, bool bg)
@@ -912,7 +918,7 @@
             MiDiagnostics.Hit("LaunchPreview",CreatorRuntime.CurrentRoom);
             try
             {
-                if(!MiDiagnostics.Require(!previewSessionCaptured,"MI-PREVIEW-REPEAT","LaunchPreview","A preview transition is already active.","Original state backup retained; repeated launch ignored."))return;
+                if(!MiDiagnostics.Require(!previewSessionCaptured,"MI-PREVIEW-REPEAT","LaunchPreview",UiText.Get("A preview transition is already active."),UiText.Get("Original state backup retained; repeated launch ignored.")))return;
                 if(room!="SS_AI"&&!CreatorLaunch.Ensure(self,room))return;
                 try
                 {
@@ -958,7 +964,7 @@
             var game=previewOwner;
             if(game==null||game.progression==null||game.progression.miscProgressionData==null)
             {
-                MiDiagnostics.Warn("MI-SAVE-RESTORE","RestorePreviewSession","Original progression is unavailable.","Backup retained.");
+                MiDiagnostics.Warn("MI-SAVE-RESTORE","RestorePreviewSession",UiText.Get("Original progression is unavailable."),UiText.Get("Backup retained."));
                 return;
             }
             var progression=game.progression;
@@ -1003,7 +1009,7 @@
             MiDiagnostics.Hit("GownColor",CreatorRuntime.CurrentRoom);
             try
             {
-                if(!MiDiagnostics.Require(GownOwner!=null,"MI-REFLECTION-GOWN","Gown.Color","The game's Gown.owner field was not found.","Native color retained."))return orig(gown,f);
+                if(!MiDiagnostics.Require(GownOwner!=null,"MI-REFLECTION-GOWN","Gown.Color",UiText.Get("The game's Gown.owner field was not found."),UiText.Get("Native color retained.")))return orig(gown,f);
                 var owner=GownOwner.GetValue(gown) as OracleGraphics;
                 return IsCustomOracle(owner)?IteratorDesign.ForRoom(owner.oracle.room).Cloth(f):orig(gown,f);
             }
@@ -1034,7 +1040,7 @@
                     else if(existing==roomOracles[0])NativeRoomProjects.Attach(existing);
                 }
                 if(roomOracles.Count>0)return;
-                if(!MiDiagnostics.Require(markPatchReady,"MI-ORACLE-PATCH","ReadyForAI","Oracle constructor compatibility check failed.",MiDiagnostics.Context(room)))return;
+                if(!MiDiagnostics.Require(markPatchReady,"MI-ORACLE-PATCH","ReadyForAI",UiText.Get("Oracle constructor compatibility check failed."),MiDiagnostics.Context(room)))return;
                 try
                 {
 #if !PLAYBACK

@@ -7,6 +7,7 @@ from pearls import atomic
 SCHEMA='moreiterators.broadcast.v1'
 _rooms=None
 _until=0
+_game_key=None
 def root():return storage.DATA/'broadcasts'
 def listing():return [json.loads(f.read_text('utf-8')) for f in sorted(root().glob('*/broadcast.json'))]
 def valid_id(value):
@@ -120,9 +121,13 @@ def import_bundle(value):
 
 def room_index(force=False):
     """Only enabled worlds; merged files take precedence exactly as the game does."""
-    global _rooms,_until
-    if _rooms is not None and time.monotonic()<_until and not force:return _rooms
-    assets=storage.GAME/'RainWorld_Data/StreamingAssets'
+    global _rooms,_until,_game_key
+    try:game=storage.require_game_root()
+    except ValueError:
+        _rooms=None;_until=0;_game_key=None
+        return {}
+    if _rooms is not None and _game_key==game and time.monotonic()<_until and not force:return _rooms
+    assets=game/'RainWorld_Data/StreamingAssets'
     options=Path.home()/'AppData/LocalLow/Videocult/Rain World/options'
     enabled=set();order={}
     if options.exists():
@@ -135,7 +140,7 @@ def room_index(force=False):
         order={p.split('<optD>')[0]:int(p.split('<optD>')[1]) for p in opts.get('ModLoadOrder','').split('<optC>') if '<optD>' in p}
     bases=[assets]
     mods=list((assets/'mods').glob('*/modinfo.json'))
-    workshop=storage.GAME.parents[1]/'workshop/content/312520'
+    workshop=game.parent.parent/'workshop/content/312520'
     mods+=list(workshop.glob('*/modinfo.json'))
     active=[]
     for f in mods:
@@ -165,7 +170,7 @@ def room_index(force=False):
                 candidate=base/'world'/(region.lower()+'-rooms')/(name+'.txt')
                 if candidate.exists():geometry=candidate;break
             if geometry:result[name.upper()]=dict(region=region,room=name.upper(),path=str(geometry))
-    _rooms=result;_until=time.monotonic()+15
+    _rooms=result;_until=time.monotonic()+15;_game_key=game
     return result
 
 def rooms():return [dict(region=v['region'],room=v['room']) for k,v in sorted(room_index().items())]

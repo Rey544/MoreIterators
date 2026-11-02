@@ -22,7 +22,7 @@ namespace MoreIterators {
     player.Blink(35);
     var pearl=expected.realizedObject as DataPearl;
     if(player.objectInStomach==expected||pearl==null||pearl.room!=oracle.room||pearl.slatedForDeletetion){
-     MiDiagnostics.Warn("MI-PEARL-EXTRACT","CreatorStomachPearl.Extract","Native regurgitation did not release the requested pearl; this request will not retry.",MiDiagnostics.Context(oracle.room));return null;
+     MiDiagnostics.Warn("MI-PEARL-EXTRACT","CreatorStomachPearl.Extract",UiText.Get("Native regurgitation did not release the requested pearl; this request will not retry."),MiDiagnostics.Context(oracle.room));return null;
     }
     for(int i=pearl.grabbedBy.Count-1;i>=0;i--)pearl.grabbedBy[i].Release();
     MiDiagnostics.Info("pearl.extract","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" pearl="+expected.ID);

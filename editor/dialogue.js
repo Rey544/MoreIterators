@@ -53,7 +53,7 @@ const PEARL_KEYS={pearlFirstPreRead:'firstPreRead',pearlGreetingCreatures:'greet
 const social=(key,values={})=>MI18n.t(`dialogue.social.${key}`,values);
 const categoryOf=key=>Object.keys(CATEGORIES).find(category=>CATEGORIES[category].stages.includes(key));
 const isAttack=key=>['attackRock','attackSpear'].includes(key);
-const api=async(path,data)=>{await MI18n.ready;const response=await fetch('/api/'+path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const value=await response.json();if(!response.ok)throw Error(MI18n.error(value,response.statusText));return value;};
+const api=async(path,data)=>{await MI18n.ready;const response=await fetch('/api/'+path,data===undefined?{headers:{'X-MI-Language':MI18n.locale}}:{method:'POST',headers:{'Content-Type':'application/json','X-MI-Language':MI18n.locale},body:JSON.stringify(data)});const value=await response.json();if(!response.ok)throw Error(MI18n.error(value,response.statusText));return value;};
 const run=fn=>async(...args)=>{try{return await fn(...args);}catch(error){notice(error.message,true);console.error(error);}};
 let projects=[],project=null,profile=null,revision=0,stage='first',tier='neutral',poolIndex=0,dirty=false,editVersion=0,busy=false,dragLine=null;
 let saveStatus='loading',currentEntry=null;
@@ -277,7 +277,7 @@ function showEntry(item){
   if(stage!==item.stage||isPool(item.stage)&&poolIndex!==item.poolIndex||isAttack(item.stage)&&tier!==item.tier)selectStage(item.stage,item.poolIndex??0,true,item.tier);
   
   $('subtitle').textContent=item.line.text;markCurrent(true);
-  const transcript=el('li');transcript.append(stageNode('span',item.stage),document.createTextNode(' · '),MI18n.content(el('span',item.line.text)));$('transcript').append(transcript);
+  const transcript=el('li');transcript.append(stageNode('span',item.stage),document.createElement('br'),MI18n.content(el('span',item.line.text)));$('transcript').append(transcript);
 }
 function simulateActions(actions,done,before=false){
   const action=actions.shift();if(!action){done();return;}

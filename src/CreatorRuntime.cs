@@ -1,4 +1,4 @@
-﻿namespace MoreIterators
+namespace MoreIterators
 {
     using System;
     using System.IO;
@@ -335,6 +335,9 @@
             if(field==null||field.FieldType!=typeof(bool))return;
             field.SetValue(design.layers,!(bool)field.GetValue(design.layers));
             var file=RuntimePaths.DesignPath(design.oracleId);
+            // Installed resources are read-only. F8 may change their live view,
+            // but must not write into another mod or a merged resource file.
+            if(!RuntimePaths.IsLocalDesignPath(file))return;
             var json=Json.Deserialize(File.ReadAllText(file)) as Dictionary<string,object>;
             json["layers"]=Json.Deserialize(JsonUtility.ToJson(design.layers));
             File.WriteAllText(file,Json.Serialize(json));
@@ -373,7 +376,7 @@
         int receptionPhase=-1;
         static bool HasEncounter(Oracle o){foreach(var item in o.room.updateList){var encounter=item as CreatorEncounter;if(encounter!=null&&encounter.oracle==o&&!encounter.slatedForDeletetion)return true;}return false;}
         public static bool HandlesHit(Oracle o,Weapon weapon){return o!=null&&o.room!=null&&o.oracleBehavior is IteratorBehavior&&IteratorCatalog.IsAI(o.room.abstractRoom.name)&&CreatorRuntime.UsesDialogue(o.room.abstractRoom.name)&&weapon!=null&&weapon.thrownBy is Player&&(weapon is Rock||weapon is Spear)&&CreatorDialogueProfile.For(IteratorDesign.ForRoom(o.room)).affinity.enabled&&(CreatorRuntime.Mode=="story"||CreatorRuntime.Mode=="read")&&!StudioRuntime.Recording&&HasEncounter(o);}
-        public static void Hit(Oracle o,Weapon weapon){foreach(var item in o.room.updateList){var encounter=item as CreatorEncounter;if(encounter!=null&&encounter.oracle==o){encounter.ReactToHit(weapon);return;}}MiDiagnostics.Warn("MI-AFFINITY-NO-ENCOUNTER","CreatorEncounter.Hit","Owned hit arrived before encounter creation.",IteratorDesign.ForRoom(o.room).oracleId);}
+        public static void Hit(Oracle o,Weapon weapon){foreach(var item in o.room.updateList){var encounter=item as CreatorEncounter;if(encounter!=null&&encounter.oracle==o){encounter.ReactToHit(weapon);return;}}MiDiagnostics.Warn("MI-AFFINITY-NO-ENCOUNTER","CreatorEncounter.Hit",UiText.Get("Owned hit arrived before encounter creation."),IteratorDesign.ForRoom(o.room).oracleId);}
         void ReactToHit(Weapon weapon){if(lastHitWeapon==weapon&&lastHitFrame==Time.frameCount)return;lastHitWeapon=weapon;lastHitFrame=Time.frameCount;var d=D;bool spear=weapon is Spear;CreatorAffinity.Update(oracle,d);string tier=CreatorAffinity.Hit(oracle,d,spear);var rules=CreatorDialogueProfile.For(d).affinity;bool responding=reader.TryRespond((spear?rules.attackSpear:rules.attackRock).For(tier),(spear?"attackSpear:":"attackRock:")+tier,weapon.thrownBy as Player);if(responding)dialogue.Suspend();MiDiagnostics.Info("affinity.hit","oracle="+d.oracleId+" weapon="+(spear?"spear":"rock")+" preTier="+tier+" value="+CreatorAffinity.Get(oracle,d).value+" response="+responding);}
         float blend=1f;
         public bool Working=true;

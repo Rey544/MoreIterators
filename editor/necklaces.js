@@ -16,11 +16,11 @@ function buildNecklaceSettings(host,d,changed){
  }
  function colors(parent,label,p){
   let section=document.createElement('div');parent.append(section);let header=document.createElement('p');header.className='hint';header.textContent=label;section.append(header);
-  let highlight;field(section,label+' · 双色高光',p,'dual','checkbox',0,0,0,null,()=>{highlight.hidden=!p.dual;});field(section,label+' · 主体色',p,'color','color');highlight=field(section,label+' · 高光色',p,'highlight','color');highlight.hidden=!p.dual;
+  let highlight;field(section,label+'的双色高光',p,'dual','checkbox',0,0,0,null,()=>{highlight.hidden=!p.dual;});field(section,label+'的主体色',p,'color','color');highlight=field(section,label+'的高光色',p,'highlight','color');highlight.hidden=!p.dual;
  }
  function rebuild(){
   rows.replaceChildren();for(let i=0;i<d.necklaceCount;i++){
-   d.necklaces[i]??=necklaceStrand(i);let v=d.necklaces[i],section=document.createElement('details'),title=document.createElement('summary');title.textContent='第 '+(i+1)+' 条项链';section.append(title);section.open=i===0;rows.append(section);const prefix='项链 '+(i+1)+' · ';
+   d.necklaces[i]??=necklaceStrand(i);let v=d.necklaces[i],section=document.createElement('details'),title=document.createElement('summary');title.textContent='第 '+(i+1)+' 条项链';section.append(title);section.open=i===0;rows.append(section);const prefix='项链 '+(i+1)+' 的 ';
    const slider=(label,key,min,max,step,after)=>field(section,prefix+label,v,key,'range',min,max,step,null,after);
    function copySize(parent,label,get,set){let box=document.createElement('div');box.className='tools';for(let action of ['复制','粘贴']){let b=document.createElement('button');b.textContent=action+label;b.setAttribute('aria-label',prefix+action+label);b.onclick=()=>{if(action==='复制'){necklaceSizeClipboard=get();notice('已复制大小 '+necklaceSizeClipboard);}else if(necklaceSizeClipboard!==null){set(necklaceSizeClipboard);changed();}else notice('请先复制一个大小。');};box.append(b);}parent.append(box);}
    let individual,sizeDetails;slider('珍珠数量','pearls',0,32,1,()=>{if(individual)individual();if(sizeDetails)sizeDetails();});let strandSize=slider('珍珠直径','size',.6,6,.1);copySize(section,'本层大小',()=>v.size,n=>{v.size=n;strandSize.querySelector('input').value=n;strandSize.querySelector('output').textContent=n;});
@@ -28,7 +28,7 @@ function buildNecklaceSettings(host,d,changed){
    sizeDetails=()=>{perBody.replaceChildren();if(!v.pearls)return;let chooser=document.createElement('select');chooser.setAttribute('aria-label',prefix+'选择尺寸珍珠');for(let j=0;j<v.pearls;j++){let o=document.createElement('option');o.value=j;o.textContent='第 '+(j+1)+' 颗';chooser.append(o);v.beads[j]??=structuredClone(v.colorMode===1&&j%2?v.alternate:v.primary);v.beads[j].size??=0;}let detail=document.createElement('div');perBody.append(chooser,detail);const show=()=>{detail.replaceChildren();let bead=v.beads[+chooser.value],label=prefix+'第 '+(+chooser.value+1)+' 颗直径（0 跟随本层）';let row=field(detail,label,bead,'size','range',0,6,.1);copySize(detail,'此颗大小',()=>bead.size||v.size,n=>{bead.size=n;row.querySelector('input').value=n;row.querySelector('output').textContent=n;});};chooser.onchange=show;show();};sizeDetails();
    slider('线的粗细','thickness',.1,2,.05);field(section,prefix+'线的颜色',v,'stringColor','color');
    let rightX,rightY;field(section,prefix+'固定点左右对称',v,'symmetric','checkbox',0,0,0,null,()=>{rightX.hidden=rightY.hidden=v.symmetric;});
-   slider('左固定点 · 左右','leftX',-18,18,.1);slider('左固定点 · 上下','leftY',-200,200,.1);rightX=slider('右固定点 · 左右','rightX',-18,18,.1);rightY=slider('右固定点 · 上下','rightY',-200,200,.1);rightX.hidden=rightY.hidden=v.symmetric;
+   slider('左固定点左右','leftX',-18,18,.1);slider('左固定点上下','leftY',-200,200,.1);rightX=slider('右固定点左右','rightX',-18,18,.1);rightY=slider('右固定点上下','rightY',-200,200,.1);rightX.hidden=rightY.hidden=v.symmetric;
    slider('下垂幅度','sag',0,26,.1);slider('柔软与弹性','softness',0,1,.01);
    let palette=document.createElement('div');function paintOptions(){palette.replaceChildren();if(v.colorMode===0)colors(palette,prefix+'整排',v.primary);else if(v.colorMode===1){colors(palette,prefix+'奇数颗',v.primary);colors(palette,prefix+'偶数颗',v.alternate);}else{
     if(!v.pearls){palette.textContent='先增加珍珠数量。';return;}

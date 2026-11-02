@@ -5,9 +5,8 @@ import storage
 import waiting_room
 
 def rained_root():
-    configured=storage.settings.get('rainedExecutable')
-    exe=Path(configured) if configured else storage.WORKSPACE.parent/'工具/Rained_2.4.0/Rained.exe'
-    if not exe.is_file():raise ValueError('未找到本地 Rained，请在 data/config.json 设置 rainedExecutable')
+    exe=storage.locate_rained()
+    if exe is None:raise ValueError('Rained was not found. Select Rained.exe in the editor settings.')
     return exe
 
 def prepare(pid,kind,roomnames):

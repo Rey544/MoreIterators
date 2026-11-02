@@ -1,5 +1,6 @@
 namespace MoreIterators {
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
 [Serializable] public sealed class CreatorVoiceDesign {
@@ -20,6 +21,15 @@ using System.Runtime.CompilerServices;
 // Uses native SoundIDs through the game's microphone/volume path. No extracted
 // voice recordings are redistributed and the global game RNG is not consumed.
 public sealed class CreatorVoice {
+ static readonly HashSet<CreatorVoice> live=new HashSet<CreatorVoice>();
+ static bool runtimeEnabled;
+ public static void Enable(){runtimeEnabled=true;}
+ public static void Shutdown(){
+  runtimeEnabled=false;
+  foreach(var voice in new List<CreatorVoice>(live))try{voice.Stop();}
+  catch(Exception error){MiDiagnostics.Report("MI-VOICE-SHUTDOWN","CreatorVoice.Shutdown",error,UiText.Get("Stopping owned speech."));}
+  live.Clear();
+ }
  sealed class Slot {public CreatorVoice owner;}
  // Encounter updates can stop ticking speech during an action or editor pause.
  // Native OracleBehavior keeps its voice emitter alive independently, so the
@@ -48,7 +58,7 @@ public sealed class CreatorVoice {
   // Do not keep babbling throughout a long post-line hold. At most twelve
   // seconds of utterance; every path still stops at the actual line boundary.
   sequence=CreatorVoiceSequence.Make(line.text,settings);if(sequence.notes.Count==0)return;
-  active=true;elapsed=-1;index=0;note=null;speakingRoom=oracle.room;lastTick=speakingRoom.game.clock;
+  active=true;live.Add(this);elapsed=-1;index=0;note=null;speakingRoom=oracle.room;lastTick=speakingRoom.game.clock;
   guard=new Guard(this);speakingRoom.AddObject(guard);
  }
  void Refresh(){
@@ -58,7 +68,7 @@ public sealed class CreatorVoice {
  // Always query the current mark, including while a line or pre-action is running.
  // The legacy unmarkedOnly field remains readable in old projects, but translated
  // dialogue never emits babble. A hide flag is not proof that the player lacks it.
- bool Enabled{get{return settings!=null&&settings.enabled&&CreatorVoiceControl.Enabled&&!IteratorBehavior.HasCommunicationMark(oracle)&&settings.volume>0;}}
+ bool Enabled{get{return runtimeEnabled&&settings!=null&&settings.enabled&&CreatorVoiceControl.Enabled&&!IteratorBehavior.HasCommunicationMark(oracle)&&settings.volume>0;}}
  bool Available(){
   if(oracle==null||oracle.slatedForDeletetion||oracle.room==null||oracle.room!=speakingRoom||oracle.room.game==null){Stop();return false;}
   Refresh();if(!Enabled||!Visible()){Stop();return false;}return true;
@@ -97,14 +107,19 @@ public sealed class CreatorVoice {
  void Pause(){StopEmitter();if(note!=null){elapsed=note.start-1;index=Math.Max(0,index-1);note=null;}}
  bool Visible(){var cameras=oracle.room.game.cameras;if(cameras==null)return false;foreach(var camera in cameras)if(camera!=null&&camera.room==oracle.room)return true;return false;}
  public void Stop(){
-  StopEmitter();active=false;sequence=null;note=null;index=elapsed=0;
-  if(guard!=null){guard.Destroy();guard=null;}speakingRoom=null;
+  active=false;live.Remove(this);sequence=null;note=null;index=elapsed=0;
+  var oldGuard=guard;guard=null;speakingRoom=null;
   Slot slot;if(oracle!=null&&slots.TryGetValue(oracle,out slot)&&slot.owner==this)slot.owner=null;
+  try{StopEmitter();}finally{if(oldGuard!=null)oldGuard.Destroy();}
  }
  void StopEmitter(){
-  effects.Clear();if(emitter==null)return;
-  if(oracle!=null&&oracle.oracleBehavior!=null&&Object.ReferenceEquals(oracle.oracleBehavior.voice,emitter))oracle.oracleBehavior.voice=null;
-  emitter.volume=0;emitter.alive=false;emitter.Destroy();emitter=null;
+  var oldEmitter=emitter;emitter=null;
+  try{effects.Clear();}finally{
+   if(oldEmitter!=null){
+    if(oracle!=null&&oracle.oracleBehavior!=null&&Object.ReferenceEquals(oracle.oracleBehavior.voice,oldEmitter))oracle.oracleBehavior.voice=null;
+    oldEmitter.volume=0;oldEmitter.alive=false;oldEmitter.Destroy();
+   }
+  }
  }
  internal static int NextSample(Random random,int previous){int pick=random.Next(previous<0?5:4);return previous>=0&&pick>=previous?pick+1:pick;}
  internal static int VoiceTicks(CreatorVoiceDesign settings,Random random){

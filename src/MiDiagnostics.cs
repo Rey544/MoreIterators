@@ -260,27 +260,27 @@ namespace MoreIterators
         {
             string body;
             if (issue.Kind == "Exception")
-                body = UiText.Get("diagnostics.exception") + ": " + issue.ExceptionType +
-                    "\n" + UiText.Get("diagnostics.origin") + ": " +
-                    (String.IsNullOrEmpty(issue.Origin) ? UiText.Get("diagnostics.origin_unknown") : Shorten(issue.Origin, 180));
+                body = UiText.Get("Runtime exception") + ": " + issue.ExceptionType +
+                    "\n" + UiText.Get("Throwing function") + ": " +
+                    (String.IsNullOrEmpty(issue.Origin) ? UiText.Get("No stack supplied") : Shorten(issue.Origin, 180));
             else
-                body = UiText.Get(issue.Kind == "Behavior" ? "diagnostics.behavior" : "diagnostics.problem") +
-                    "\n" + Summary(issue.Detail) + "\n" + UiText.Get("diagnostics.observed") + ": " +
-                    Shorten(issue.Source + " · " + issue.Node, 160);
-            body += "\n" + UiText.Get("diagnostics.keyword") + ": " +
+                body = UiText.Get(issue.Kind == "Behavior" ? "Behavior issue" : "A runtime error was detected. The current operation may be incomplete.") +
+                    "\n" + Summary(issue.Detail) + "\n" + UiText.Get("Recorded by") + ": " +
+                    Shorten(issue.Source + " (" + issue.Node + ")", 160);
+            body += "\n" + UiText.Get("Search keywords") + ": " +
                 (issue.Kind == "Exception" ? "" : issue.Code + " / ") + "issue=" + issue.Id;
             if (issue.Kind == "Exception") body += "\n" + Shorten(issue.Message, 200);
             if (issue.Source == "MI" && !String.IsNullOrEmpty(issue.Context)) body += "\n" + Shorten(issue.Context, 160);
             if (additional.Length > 0)
             {
-                body += "\n" + UiText.Format("diagnostics.count", additional.Length + 1);
+                body += "\n" + UiText.Format("{0} issues in this batch; see the full log.", additional.Length + 1);
                 for (int i = 0; i < Math.Min(2, additional.Length); i++)
                     body += "\n" + Shorten(additional[i].Keywords, 120);
             }
             // Keep a searchable batch locator even if available height cuts the
             // other previews. The batch in the full log lists every issue ID.
-            string footer = Wrap((additional.Length > 0 ? UiText.Get("diagnostics.batch") + ": batch=" + batch + "\n" : "") +
-                UiText.Get("diagnostics.log") + "\n" + LogPath, measure, width);
+            string footer = Wrap((additional.Length > 0 ? UiText.Get("Find all issues") + ": batch=" + batch + "\n" : "") +
+                UiText.Get("Full exception log:") + "\n" + LogPath, measure, width);
             var rows = new List<string>(Wrap(body, measure, width).Split('\n'));
             bool shortened = false;
             while (true)

@@ -26,7 +26,10 @@ def require_closed():
         raise ValueError('请先退出雨世界，再删除或恢复已应用的迭代器房间。')
 
 def roots(pid):
-    return [('local-room', storage.DATA/'local-mod'), ('installed-room', storage.installed_mod(pid))]
+    result = [('local-room', storage.DATA/'local-mod')]
+    installed = storage.installed_mod(pid, required=False)
+    if installed is not None:result.append(('installed-room', installed))
+    return result
 
 def owned_files(pid, project, owned, records, deleted_at=None):
     """Registry ownership plus active references prevents deleting shared/native rooms."""

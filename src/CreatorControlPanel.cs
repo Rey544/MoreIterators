@@ -17,7 +17,7 @@ namespace MoreIterators
         ;
         static readonly string[] layerNames=
         {
-            "game.panel.head","game.panel.neck","game.panel.body","game.panel.eyes","game.panel.face","game.panel.antenna","game.panel.ears","game.panel.robe","game.panel.sleeves","game.panel.hands","game.panel.feet","game.panel.collar","game.panel.arm","game.panel.cables","game.panel.halo"
+            "Head","Neck","Torso","Eyes","Face markings","Antennae","Headphones","Gown","Sleeves","Hands","Feet","Collar","Mechanical arm","Umbilical cord","Processing rings"
         }
         ;
         public static void Tick(RainWorldGame current)
@@ -117,20 +117,20 @@ namespace MoreIterators
         {
             switch(command)
             {
-                case "draw-state":return UiText.Get("game.panel.draw_state");
-                case "affinity-":return UiText.Get("game.panel.affinity_decrease");
-                case "affinity+":return UiText.Get("game.panel.affinity_increase");
-                case "pause":return CreatorRuntime.Paused?UiText.Get("game.panel.resume"):UiText.Get("game.panel.pause");
-                case "work":return UiText.Get("game.panel.work");
-                case "reception":return UiText.Get("game.panel.reception_motion");
-                case "mode":return UiText.Format("game.menu.mode_label",UiText.Get(CreatorRuntime.Mode=="silent"?"game.menu.silent":CreatorRuntime.Mode=="story"?"game.menu.story":"game.menu.read"));
-                case "replay":return UiText.Get("game.panel.replay");
-                case "voice":return UiText.Get(CreatorVoiceControl.Enabled?"game.panel.voice_on":"game.panel.voice_off");
-                case "glow":return ToggleLabel(UiText.Get("game.panel.glow"),CreatorRuntime.RearGlow);
-                case "lightning":return ToggleLabel(UiText.Get("game.panel.lightning"),CreatorRuntime.Lightning);
-                case "pearls":return ToggleLabel(UiText.Get("game.panel.pearls"),CreatorRuntime.Pearls);
-                case "glyphs":return ToggleLabel(UiText.Get("game.panel.glyphs"),CreatorRuntime.Glyphs);
-                case "close":return UiText.Get("game.panel.close");
+                case "draw-state":return UiText.Get("View drawing state");
+                case "affinity-":return UiText.Get("Affinity −0.1");
+                case "affinity+":return UiText.Get("Affinity +0.1");
+                case "pause":return CreatorRuntime.Paused?UiText.Get("Resume motion"):UiText.Get("Pause motion");
+                case "work":return UiText.Get("Work normally");
+                case "reception":return UiText.Get("Reception (Motion only)");
+                case "mode":return UiText.Format("Mode: {0}",UiText.Get(CreatorRuntime.Mode=="silent"?"No dialogue":CreatorRuntime.Mode=="story"?"Story dialogue":"Pearl reading"));
+                case "replay":return UiText.Get("Replay first encounter");
+                case "voice":return UiText.Get(CreatorVoiceControl.Enabled?"Voice: On":"Voice: Off");
+                case "glow":return ToggleLabel(UiText.Get("Rear glow"),CreatorRuntime.RearGlow);
+                case "lightning":return ToggleLabel(UiText.Get("Lightning"),CreatorRuntime.Lightning);
+                case "pearls":return ToggleLabel(UiText.Get("Work pearls"),CreatorRuntime.Pearls);
+                case "glyphs":return ToggleLabel(UiText.Get("Pearl glyphs"),CreatorRuntime.Glyphs);
+                case "close":return UiText.Get("Close (Resume playing)");
             }
             if(command.StartsWith("layer:"))
             {
@@ -143,7 +143,7 @@ namespace MoreIterators
         }
         static string ToggleLabel(string name,bool on)
         {
-            return UiText.Format("game.panel.toggle",name,UiText.Get(on?"game.panel.visible":"game.panel.hidden"));
+            return UiText.Format("{0}: {1}",name,UiText.Get(on?"Shown":"Hidden"));
         }
         sealed class Overlay:Menu.Menu
         {
@@ -165,12 +165,12 @@ namespace MoreIterators
                 for(int i=0;i<frame.sprites.Length;i++)frame.sprites[i].color=Color.black;
                 page.subObjects.Add(frame);
                 page.subObjects.Add(new Menu.RoundedRect(this,page,new Vector2(left,bottom),new Vector2(width,top-bottom),false));
-                AddLabel(UiText.Get("game.panel.title"),top-47,true);
+                AddLabel(UiText.Get("Chamber controls"),top-47,true);
                 var d=IteratorDesign.ForId(CreatorRuntime.Id(CreatorRuntime.CurrentRoom));
                 AddLabel(d.name,top-78,false);
                 string[] names=
                 {
-                    UiText.Get("game.panel.motion"),UiText.Get("game.panel.display"),UiText.Get("game.panel.layers")
+                    UiText.Get("Motion"),UiText.Get("Display"),UiText.Get("Puppet layers")
                 }
                 ;
                 for(int i=0;i<names.Length;i++)tabs.Add(AddButton(names[i],"tab:"+i,left+16+i*102,top-128,96));
@@ -252,14 +252,14 @@ namespace MoreIterators
                     }
                     catch(Exception e)
                     {
-                        error=UiText.Get("game.panel.failed");
+                        error=UiText.Get("Action failed");
                         MiDiagnostics.Report("MI-F8-001","F8.Command",e,command);
                     }
                     PlaySound(SoundID.MENU_Button_Standard_Button_Pressed);
                 }
                 foreach(var b in controls){b.menuLabel.text=Label(b.signalText);if(b.signalText=="voice")b.toggled=CreatorVoiceControl.Enabled;if(b.signalText.StartsWith("affinity"))b.buttonBehav.greyedOut=!CreatorAffinity.CanAdjust(game,room);}
                 affinity.text=CreatorAffinity.Label(game,room);
-                status.text=error.Length>0?error:CreatorRuntime.Paused?UiText.Get("game.panel.paused"):CreatorRuntime.Behavior=="reception"?UiText.Get("game.panel.reception"):UiText.Get("game.panel.active");
+                status.text=error.Length>0?error:CreatorRuntime.Paused?UiText.Get("Motion paused"):CreatorRuntime.Behavior=="reception"?UiText.Get("Reception motion"):UiText.Get("Normal activity");
             }
             public override string UpdateInfoText()
             {

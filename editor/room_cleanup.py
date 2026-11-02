@@ -17,25 +17,28 @@ def _file(pid):
     return storage.project_file(pid).parent / 'room-ownership.json'
 
 
-def _root(pid, scope):
-    roots = dict(local=storage.DATA / 'local-mod', installed=storage.installed_mod(pid),
-                 rendered=storage.project_file(pid).parent / 'rooms/rendered')
-    if scope not in roots:
-        raise ValueError('旧房间记录的输出位置无效')
-    absolute = roots[scope].absolute()
+def _root(pid, scope, required=True):
+    if scope == 'installed':
+        base = storage.installed_mod(pid, required=required)
+        if base is None:return None
+    elif scope == 'local':base = storage.DATA / 'local-mod'
+    elif scope == 'rendered':base = storage.project_file(pid).parent / 'rooms/rendered'
+    else:raise ValueError('旧房间记录的输出位置无效')
+    absolute = base.absolute()
     resolved = absolute.resolve()
     if str(absolute).casefold() != str(resolved).casefold():
         raise ValueError('旧房间输出根目录存在链接或路径别名，已停止清理')
     return resolved
 
 
-def _resolve(pid, name, item):
-    root = _root(pid, item.get('scope'))
+def _resolve(pid, name, item, required=True):
+    root = _root(pid, item.get('scope'), required=required)
     relative = item.get('path')
     prefix = '' if item['scope'] == 'rendered' else 'world/' + name.split('_')[0].lower() + '-rooms/'
     pattern = re.escape(prefix + name) + r'(?:\.txt|_settings\.txt|_[1-9][0-9]*\.png)'
     if not isinstance(relative, str) or not re.fullmatch(pattern, relative):
         raise ValueError('旧房间记录包含不属于该房间的路径：' + str(relative))
+    if root is None:return None
     file = (root / relative).resolve()
     if not file.is_relative_to(root) or file.relative_to(root).as_posix().casefold() != relative.casefold():
         raise ValueError('旧房间记录的路径越界或存在链接，已停止清理')
@@ -62,7 +65,8 @@ def _read(pid):
         for item in room['files']:
             if not isinstance(item, dict) or not isinstance(item.get('sha256'), str) or not re.fullmatch('[a-f0-9]{64}', item['sha256']) or type(item.get('size')) is not int or item['size'] < 0:
                 raise ValueError('房间归属记录缺少有效的文件校验')
-            path = _resolve(pid, room['name'], item)
+            path = _resolve(pid, room['name'], item, required=False)
+            if path is None:path = (item['scope'], item['path'])
             if path in paths:
                 raise ValueError('房间归属记录包含重复文件')
             paths.add(path)
@@ -190,7 +194,11 @@ def preview(project_id):
         no_evidence = not room['files']
         if no_evidence: reasons.append('旧房间没有生成文件的归属校验记录，不能自动删除。')
         for item in room['files']:
-            file = _resolve(pid, room['name'], item)
+            file = _resolve(pid, room['name'], item, required=False)
+            if file is None:
+                files.append(dict(item, exists=None, unavailable=True))
+                reasons.append('Rain World was not found. Select RainWorld.exe in the editor settings.')
+                continue
             current = dict(item, exists=file.exists())
             if current['exists']:
                 if not file.is_file(): raise ValueError('房间文件位置已变成文件夹，已停止清理：' + str(file))

@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id),api=async(path,data)=>{await MI18n.ready;let r=await fetch('/api/'+path,data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});let j=await r.json();if(!r.ok)throw Error(MI18n.error(j,r.statusText));return j;};
+const $=id=>document.getElementById(id),api=async(path,data)=>{await MI18n.ready;let r=await fetch('/api/'+path,data===undefined?{headers:{'X-MI-Language':MI18n.locale}}:{method:'POST',headers:{'Content-Type':'application/json','X-MI-Language':MI18n.locale},body:JSON.stringify(data)});let j=await r.json();if(!r.ok)throw Error(MI18n.error(j,r.statusText));return j;};
 const headTexture=key=>key.startsWith('antenna')||key.startsWith('ear');
 const dimensions={earL:[24,32],earR:[24,32],forehead:[32,32],face:[32,32],antennaL:[24,48],antennaR:[24,48],gown:[64,96],sleeve:[32,64],collar:[32,16],scarf:[64,96]};
 let loading=false,creatingProject=false,savingProject=false,project,projectAssociation,projects=[],preset,canvases={},target='forehead',activeLayer=1,undo=[],redo=[],dirty=false,guide=true,control={mode:'silent',behavior:'work',paused:false,hasMark:true,rearGlow:true,lightning:true,pearls:true,glyphs:true,palettePreview:-1},images=new Map();
@@ -7,7 +7,7 @@ let loadVersion=0,listVersion=0,editVersion=0,savePending=0,applyingProject=fals
 const pc=$('paint').getContext('2d');let vc=$('puppet').getContext('2d');
 const workspace=IteratorWorkspace.mount({render:()=>render(),fitPreview:()=>fitPreviewToModel()});
 function notice(s,bad=false){$('notice').textContent=s;$('notice').dataset.kind=bad?'error':'success';$('notice').hidden=!s;$('notice').style.color=bad?'#ffb4a7':'#c8d9cf';}
-function refreshProjectIdentity(){if(!project||!projectAssociation)return;const a=projectAssociation;MI18n.content($('identity'));$('identity').textContent=MI18n.t('project.identity.rooms',{id:project.projectId,ai:a.ai,entry:a.entry})+(a.linked?' · '+a.owner:'');}
+function refreshProjectIdentity(){if(!project||!projectAssociation)return;const a=projectAssociation;MI18n.content($('identity'));$('identity').textContent=MI18n.t('project.identity.rooms',{id:project.projectId,ai:a.ai,entry:a.entry})+(a.linked?'\n'+MI18n.t('project.identity.owner',{owner:a.owner}):'');}
 function run(fn){return async(...args)=>{try{return await fn(...args);}catch(e){notice(e.message,true);console.error(e);}};}
 function canvas(w,h){let c=document.createElement('canvas');c.width=w;c.height=h;return c;}
 function imageOf(src){if(!src)return null;if(!images.has(src)){let im=new Image();im.onload=render;im.src=src;images.set(src,im);}let im=images.get(src);return im.complete&&im.naturalWidth?im:null;}
@@ -67,7 +67,7 @@ const sections=[
  ['rearGlow',[['rearGlowEnabled','显示背后柔光','bool'],['rearGlowColor','柔光颜色','color'],['rearGlowOpacity','柔光强度',0,1,.01],['rearGlowRadius','柔光范围',20,600,1]]],
  ['room',[['roomBrightness','房间亮度',.25,2,.01],['roomContrast','房间对比度',.25,2,.01],['roomSaturation','房间饱和度',0,2,.01],['roomWorkColor','工作主题色','color'],['roomReceptionColor','接待主题色','color'],['roomTransition','过渡秒数',.2,15,.1],['haloColor','演算环颜色','color'],['haloOpacity','演算环透明度',0,1,.01],['haloScale','演算环大小',.3,2,.01]]],
  ['workPearls',[['pearlCount','数量',0,80,1],['pearlColor1','配色 1','color'],['pearlColor2','配色 2','color'],['pearlColor3','配色 3','color'],['pearlColor4','配色 4','color'],['pearlGlyphColor','统一文字颜色','color'],['pearlGlyphOpacity','文字透明度',0,1,.01],['pearlGlyph1','符号 1',0,13,1],['pearlGlyph2','符号 2',0,13,1],['pearlGlyph3','符号 3',0,13,1],['pearlGlyph4','符号 4',0,13,1],['pearlClusterX','堆积点 1 室内左右',0,1,.01],['pearlClusterY','堆积点 1 室内高度',0,1,.01],['pearlCluster2X','堆积点 2 室内左右',0,1,.01],['pearlCluster2Y','堆积点 2 室内高度',0,1,.01],['pearlScatter','离散程度',0,3,.05],['pearlFixedCount','工作时固定数量',0,40,1]]],
- ['dialogue',[['firstDialogue','有印记 · 初次进入','text'],['repeatDialogue','有印记 · 再次进入','text'],['unmarkedDialogue','无印记 · 符号占位','text']]]
+ ['dialogue',[['firstDialogue','有印记 初次进入','text'],['repeatDialogue','有印记 再次进入','text'],['unmarkedDialogue','无印记 符号占位','text']]]
 ];
 function buildSettings(){
  const host=$('groups'),opened=captureSettingsOpen(host),d=project.design;host.replaceChildren();settingsConditions=[];
@@ -269,7 +269,7 @@ async function listProjects(){const version=++listVersion,items=await api('proje
 function save(){
  if(loading)throw Error(MI18n.t('appearance.projectLoading'));
  const sent=structuredClone(serialize()),revision=editVersion,version=loadVersion;savePending++;savingProject=true;syncProjectControls();
- const task=saveQueue.catch(()=>{}).then(async()=>{const r=await api('save',sent);if(project.projectId===sent.projectId&&version===loadVersion){acceptSavedFields(r.project);if(revision===editVersion)dirty=false;}await listProjects();if(project.projectId===sent.projectId&&version===loadVersion)notice('已保存 '+r.project.name+' · '+r.project.updatedAt);return r;});saveQueue=task;
+ const task=saveQueue.catch(()=>{}).then(async()=>{const r=await api('save',sent);if(project.projectId===sent.projectId&&version===loadVersion){acceptSavedFields(r.project);if(revision===editVersion)dirty=false;}await listProjects();if(project.projectId===sent.projectId&&version===loadVersion)notice(MI18n.t('project.saved',{name:r.project.name,time:r.project.updatedAt}));return r;});saveQueue=task;
  return task.finally(()=>{savingProject=--savePending>0;syncProjectControls();});
 }
 function deploymentNotice(result){
@@ -386,4 +386,4 @@ document.addEventListener('DOMContentLoaded',run(async()=>{preset=await api('pre
 
 
 for(const [id,kind] of [['editEntry','entry'],['editAI','ai']])$(id).onclick=run(async()=>{await save();const r=await api('open-room',{projectId:project.projectId,kind});notice('已在 Rained 打开 '+r.room);});
-for(const [id,kind] of [['syncEntry','entry'],['syncAI','ai']])$(id).onclick=run(async()=>{await save();const r=await api('sync-room',{projectId:project.projectId,kind});notice('已同步 '+r.room+' · '+r.cameras+' 个画面，并应用到游戏。');});
+for(const [id,kind] of [['syncEntry','entry'],['syncAI','ai']])$(id).onclick=run(async()=>{await save();const r=await api('sync-room',{projectId:project.projectId,kind});notice(MI18n.t('room.synced',{room:r.room,count:r.cameras}));});

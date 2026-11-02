@@ -17,12 +17,23 @@
     <WarningLevel>4</WarningLevel>
     <DefineConstants>TRACE</DefineConstants>
     <ManagedRoot>$(GameRoot)\RainWorld_Data\Managed</ManagedRoot>
+    <GameTextRoot Condition="'$(GameTextRoot)' == '' And Exists('mod\text')">mod\text</GameTextRoot>
+    <GameTextRoot Condition="'$(GameTextRoot)' == ''">text</GameTextRoot>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src\*.cs" />
-    <EmbeddedResource Include="localization\game\*.json">
-      <LogicalName>mi.ui.%(Filename).json</LogicalName>
-    </EmbeddedResource>
+    <Content Include="$(GameTextRoot)\text_eng\strings.txt">
+      <Link>text\text_eng\strings.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(GameTextRoot)\text_chi\strings.txt">
+      <Link>text\text_chi\strings.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(GameTextRoot)\text_tra\strings.txt">
+      <Link>text\text_tra\strings.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Reference Include="mscorlib"><HintPath>$(MSBuildToolsPath)\mscorlib.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="System"><Private>false</Private></Reference>
     <Reference Include="System.Core"><Private>false</Private></Reference>
@@ -49,6 +60,6 @@
   <Target Name="BeforeBuild">
     <Error Condition="'$(GameRoot)' == ''" Text="Set the GameRoot MSBuild property or RAIN_WORLD_ROOT environment variable to your Rain World installation." />
     <Error Condition="!Exists('$(ManagedRoot)\Assembly-CSharp.dll')" Text="The configured GameRoot does not contain RainWorld_Data/Managed/Assembly-CSharp.dll." />
-    <Error Condition="!Exists('localization\game\en.json') Or !Exists('localization\game\zh-CN.json')" Text="Both game UI translation resources are required." />
+    <Error Condition="!Exists('$(GameTextRoot)\text_eng\strings.txt') Or !Exists('$(GameTextRoot)\text_chi\strings.txt') Or !Exists('$(GameTextRoot)\text_tra\strings.txt')" Text="All native game UI translation resources are required." />
   </Target>
 </Project>

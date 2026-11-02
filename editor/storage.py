@@ -2,6 +2,7 @@
 from pathlib import Path
 import os, json, re
 import native_projects
+import install_paths
 
 WORKSPACE=Path(__file__).resolve().parent.parent
 _developer=(WORKSPACE/'version.json').exists() and not (WORKSPACE/'release-layout.json').exists()
@@ -9,7 +10,7 @@ _user_data=(Path.home()/'AppData/LocalLow/Videocult/Rain World/MoreIterators/dat
             else Path(os.environ.get('XDG_DATA_HOME',str(Path.home()/'.local/share')))/'MoreIterators/data')
 DATA=Path(os.environ.get('MORE_ITERATORS_DATA',str(WORKSPACE/'data' if _developer else _user_data))).resolve()
 CONFIG=DATA/'config.json'
-settings=json.loads(CONFIG.read_text('utf-8')) if CONFIG.exists() else {}
+settings=install_paths.read_settings(CONFIG)
 
 def studio_port(value=18747):
     if isinstance(value,bool) or not isinstance(value,int) or not 1024<=value<=65535:
@@ -18,16 +19,47 @@ def studio_port(value=18747):
 
 STUDIO_PORT=studio_port(settings.get('studioPort',18747))
 def locate_game():
-    configured=settings.get('gameRoot',os.environ.get('RAIN_WORLD_ROOT',''))
-    if configured:return Path(configured)
-    for folder in WORKSPACE.parents:
-        if (folder/'RainWorld.exe').exists():return folder
-    return Path('.')
+    result=install_paths.discover_game(settings,WORKSPACE)
+    return Path(result['path']) if result['found'] else Path('.')
 GAME=locate_game()
 PROJECTS=DATA/'projects'
 EXPORTS=DATA/'exports'
 RUNTIME=DATA/'runtime'
 LINKS=settings.get('linkedMods',[])
+
+def installation_paths():
+    """Refresh discovery, never move data or write a discovered path to config.
+
+    Callers caching GAME/ASSETS must refresh those aliases from storage.GAME.
+    """
+    global GAME
+    result=install_paths.discover(settings,WORKSPACE)
+    GAME=Path(result['game']['path']) if result['game']['found'] else Path('.')
+    return result
+
+def locate_rained():
+    game=install_paths.discover_game(settings,WORKSPACE)
+    result=install_paths.discover_rained(settings,WORKSPACE,game)
+    return Path(result['path']) if result['found'] else None
+
+def configure_installation_paths(selections):
+    value=install_paths.save_selection(CONFIG,selections)
+    settings.clear();settings.update(value)
+    # Existing modules access these shared objects; DATA and linked workspace
+    # locations remain exactly as configured before this path-only change.
+    LINKS[:]=value.get('linkedMods',[])
+    return installation_paths()
+
+def available_game_root():
+    # The missing-game sentinel must never turn the working directory into a game.
+    if not Path(GAME).is_absolute():return None
+    return install_paths.game_root(GAME)
+
+
+def require_game_root():
+    root=available_game_root()
+    if root is None:raise ValueError('Rain World was not found. Select RainWorld.exe in the editor settings.')
+    return root
 
 def archive_root():
     return Path(settings.get('archiveDirectory',str(DATA/'archive'))).resolve()
@@ -71,9 +103,11 @@ def target_mod(pid):
     v=link(pid)
     return Path(v['workspace'])/'mod' if v else DATA/'local-mod'
 
-def installed_mod(pid):
+def installed_mod(pid,required=True):
     v=link(pid)
-    return GAME/'RainWorld_Data/StreamingAssets/mods'/(v['folder'] if v else 'more_iterators_local')
+    game=require_game_root() if required else available_game_root()
+    if game is None:return None
+    return game/'RainWorld_Data/StreamingAssets/mods'/(v['folder'] if v else 'more_iterators_local')
 
 def binding(pid):
     v=link(pid)

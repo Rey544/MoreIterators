@@ -172,7 +172,7 @@
 .pearl-studio details.line-actions { display: block; width: fit-content; margin: 0 0 9px auto; padding: 0; border: 0; position: relative; }
 .pearl-studio .line-actions > summary { margin: 0; padding: 5px 10px; border: 1px solid var(--edge); border-radius: 4px; list-style: none; font-size: 11px; }
 .pearl-studio .line-actions > summary::-webkit-details-marker { display: none; }
-.pearl-studio .line-actions > summary::after { content: " ···"; }
+.pearl-studio .line-actions > summary::after { content: none; }
 .pearl-studio details.line-actions[open] > summary { margin: 0; }
 .pearl-studio .line-actions button { min-height: 33px; font-size: 12px; padding: 6px 9px; }
 .pearl-studio .line-actions .line-menu { position: absolute; right: 0; top: calc(100% + 5px); z-index: 8; display: grid; gap: 3px; min-width: 112px; padding: 5px; margin: 0; border: 1px solid #707070; border-radius: 5px; background: #303030; box-shadow: 0 8px 20px #00000055; list-style: none; }

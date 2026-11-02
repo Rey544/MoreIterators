@@ -124,7 +124,7 @@ namespace MoreIterators
             Prune(inbox);
             if(inbox.items.Count>=16)
             {
-                MiDiagnostics.Warn("MI-PEARL-OFFER-LIMIT","CreatorPearlOffers.ThrowObject","Too many pending pearl offers; throw this pearl again after a read completes.",MiDiagnostics.Context(before));
+                MiDiagnostics.Warn("MI-PEARL-OFFER-LIMIT","CreatorPearlOffers.ThrowObject",UiText.Get("Too many pending pearl offers; throw this pearl again after a read completes."),MiDiagnostics.Context(before));
                 return;
             }
             var offer=new Offer

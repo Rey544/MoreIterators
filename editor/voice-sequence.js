@@ -24,7 +24,7 @@ const VoiceSequence=(()=>{
    const offset=.3+((hash(unit)>>>8)%600)/1000;
    notes.push({start:tick,ticks:length,sample,pitch,offset});tick+=length+Math.max(1,Math.floor((3+next(6))/s.speed+.5));
   }
-  return {notes,ticks:budget,utterance:chunks.join(' · ')};
+  return {notes,ticks:budget,utterance:chunks.join(' ')};
  }
  return {make,hash};
 })();

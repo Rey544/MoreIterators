@@ -10,6 +10,10 @@ $candidates = @()
 if ($PythonExe) { $candidates += @{ Path=$PythonExe; Prefix=@() } }
 elseif ($env:MORE_ITERATORS_PYTHON) { $candidates += @{ Path=$env:MORE_ITERATORS_PYTHON; Prefix=@() } }
 else {
+    $bundled = Join-Path (Split-Path $editorDirectory -Parent) 'runtime\python313\python.exe'
+    if (Test-Path -LiteralPath $bundled -PathType Leaf) {
+        $candidates += @{ Path=$bundled; Prefix=@() }
+    }
     foreach ($name in @('py.exe','python.exe','python3.exe')) {
         $command = Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($command -and $command.Source -notlike '*\WindowsApps\*') {
@@ -28,22 +32,22 @@ else {
     }
 }
 $selected = ''
-$probe = "import sys,PIL; assert sys.version_info >= (3,10); print('__MI_PYTHON__'+sys.executable)"
+$probe = "import sys,json; from PIL import Image; assert sys.version_info >= (3,10); Image.new('RGBA',(1,1)); print('__MI_PYTHON__'+json.dumps(sys.executable,ensure_ascii=True))"
 foreach ($candidate in $candidates) {
     try {
         $command = $candidate.Path
         $prefix = $candidate.Prefix
-        $lines = @(& $command @prefix -c $probe 2>$null)
+        $lines = @(& $command @prefix -B -c $probe 2>$null)
         if ($LASTEXITCODE -ne 0) { continue }
         $found = $lines | Where-Object { $_ -like '__MI_PYTHON__*' } | Select-Object -Last 1
         if ($found) {
-            $path = $found.Substring('__MI_PYTHON__'.Length)
+            $path = $found.Substring('__MI_PYTHON__'.Length) | ConvertFrom-Json
             if (Test-Path -LiteralPath $path -PathType Leaf) { $selected=$path; break }
         }
     } catch { }
 }
 if (-not $selected) {
-    throw 'Python 3.10+ and Pillow are required. Install Python, then run: py -3 -m pip install -r editor/requirements.txt. You can also pass -PythonExe with your existing Python path.'
+    throw 'The editor runtime could not start. Restore the complete MI package, including its runtime folder, or pass -PythonExe with an existing Python 3.10+ and Pillow installation.'
 }
 $windowless = Join-Path (Split-Path $selected -Parent) 'pythonw.exe'
 if (-not (Test-Path -LiteralPath $windowless -PathType Leaf)) { $windowless=$selected }

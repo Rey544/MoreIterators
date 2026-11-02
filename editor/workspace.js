@@ -37,7 +37,7 @@
    const text=value=>globalThis.MI18n?.text(value)||value;
    for(const [id,label] of [['previewHeightDivider','上下拖动调整工作区高度'],['paintHeightDivider','上下拖动调整画布高度']]){
     const bar=byId(id);if(!bar)continue;
-    bar.setAttribute('aria-label',text(label));bar.setAttribute('title',text('上下拖动调整高度 · 双击恢复'));
+    bar.setAttribute('aria-label',text(label));bar.setAttribute('title',text('上下拖动调整高度\n双击恢复'));
    }
   }
   function zoomLabels(){

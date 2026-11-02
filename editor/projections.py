@@ -149,17 +149,17 @@ def source_entries(pid,profile,items):
     labels={'first':'首次对话','repeat':'再次对话','loop':'后续循环对话','pickup':'拿起工作珍珠','leaving':'离开','returning':'返回',
         'pearlReading.greeting':'每循环初见','pearlReading.quickReturn':'快速返回','pearlReading.revisit':'重新拜访',
         'pearlReading.greetingItems':'携带物品','pearlReading.greetingWeapons':'携带武器','pearlReading.greetingPearls':'携带珍珠','pearlReading.greetingMixed':'携带珍珠与武器',
-        'pearlReading.extractedPreRead':'取出胃中珍珠·前言','pearlReading.firstPreRead':'每循环首次读珍珠·前言',
+        'pearlReading.extractedPreRead':'取出胃中珍珠前言','pearlReading.firstPreRead':'每循环首次读珍珠前言',
         'pearlReading.greetingCreatures':'携带活体生物','pearlReading.greetingCorpses':'携带生物尸体','pearlReading.greetingFood':'携带食物',
-        'pearlReading.repeat':'读珍珠·重复','pearlReading.many':'读珍珠·多颗','pearlReading.preRead':'读珍珠·前言','pearlReading.misc':'无色珍珠',
-        'pearlReading.leaving':'读珍珠·离开','pearlReading.returning':'读珍珠·返回',
+        'pearlReading.repeat':'重复读珍珠','pearlReading.many':'多颗珍珠','pearlReading.preRead':'读珍珠前言','pearlReading.misc':'无色珍珠',
+        'pearlReading.leaving':'读珍珠时离开','pearlReading.returning':'读珍珠时返回',
         'observation.items':'观察物品','observation.weapons':'观察武器','observation.pearls':'观察珍珠','observation.mixed':'观察珍珠与武器','affinity.refusal':'低好感拒绝读取'}
     for key,title in (('items','物品'),('weapons','武器'),('pearls','珍珠'),('mixed','珍珠与武器'),('creatures','活体生物'),('corpses','生物尸体'),('food','食物')):
         labels['observation.'+key]='观察'+title
         labels['observation.repeat'+key[0].upper()+key[1:]]='再次观察'+title
     for weapon,name in (('attackRock','石头攻击'),('attackSpear','矛攻击')):
         for tier,title in (('notSpeaking','拒绝交谈'),('dislikes','反感'),('neutral','中立'),('likes','好感')):
-            labels['affinity.'+weapon+'.'+tier]=name+' · '+title
+            labels['affinity.'+weapon+'.'+tier]=name+'（'+title+'）'
     def add(kind,source,name,lines,pearl_uid='',pool_name='',pearl_name=''):
         result.append(dict(id=source+':'+pearl_uid+':'+(lines[0]['lineId'] if lines else str(len(result))),
             kind=kind,source=source,name=name,label=name,pearlUid=pearl_uid,poolName=pool_name,pearlName=pearl_name,
@@ -171,19 +171,17 @@ def source_entries(pid,profile,items):
             value=value.get(key,[]) if isinstance(value,dict) else []
         if context in ('first','repeat','loop'):add('dialogue',context,labels[context],value)
         else:
-            for index,group in enumerate(value):add('dialogue',context,labels[context]+' · '+(group.get('name') or str(index+1)),group.get('lines',[]),pool_name=group.get('name',''))
+            for index,group in enumerate(value):add('dialogue',context,group.get('name') or labels[context],group.get('lines',[]),pool_name=group.get('name') or str(index+1))
     for index,chapter in enumerate(profile.get('meetings',[]),3):
-        add('dialogue','meetings.'+chapter['id'],'第'+str(index)+'次见面 · '+(chapter.get('name') or str(index)),chapter.get('lines',[]))
+        add('dialogue','meetings.'+chapter['id'],chapter.get('name') or '第'+str(index)+'次见面',chapter.get('lines',[]))
         result[-1].update(meetingNumber=index,meetingName=chapter.get('name',''))
     for item in items:
         for reader in item.get('readers',[]):
             if reader.get('projectId')!=pid:continue
-            titles={'notSpeaking':'拒绝交谈','dislikes':'反感','neutral':'中立','likes':'好感'}
             for context,body in reader_bodies(reader):
-                title=item['name']+(' · '+titles[context.rsplit('.',1)[1]] if context!='pearl' else '')
-                add('pearl',context+'.read',title+' · 首次读取',body.get('read',[]),item['uid'],pearl_name=item['name'])
+                add('pearl',context+'.read',item['name'],body.get('read',[]),item['uid'],pearl_name=item['name'])
                 if body.get('repeatEnabled',False):
-                    for index,group in enumerate(body.get('repeat',[])):add('pearl',context+'.repeat',title+' · 重复 · '+(group.get('name') or str(index+1)),group.get('lines',[]),item['uid'],group.get('name',''),item['name'])
+                    for index,group in enumerate(body.get('repeat',[])):add('pearl',context+'.repeat',item['name'],group.get('lines',[]),item['uid'],group.get('name') or str(index+1),item['name'])
     seen=set()
     for entry in result:
         for line_id in [line['lineId'] for line in entry['lines']]+entry['unspokenLineIds']:

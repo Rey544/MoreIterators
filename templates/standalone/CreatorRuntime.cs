@@ -52,7 +52,7 @@ namespace MoreIterators
         {
             buttons.Clear();
             open=false;
-            m.pages[0].subObjects.Add(new CreatorMenuButton(m,m.pages[0],UiText.Get("game.menu.chamber"),"PLAY_MENU",new Vector2(m.manager.rainWorld.options.ScreenSize.x-230,30),new Vector2(200,40)));
+            m.pages[0].subObjects.Add(new CreatorMenuButton(m,m.pages[0],UiText.Get("Chambers"),"PLAY_MENU",new Vector2(m.manager.rainWorld.options.ScreenSize.x-230,30),new Vector2(200,40)));
         }
         public static void MenuUpdate(Menu.MainMenu m)
         {
@@ -80,14 +80,14 @@ namespace MoreIterators
                 Add(m,IteratorCatalog.Text(ps[selection],"name"),"PLAY_PROJECT",row++);
             }
             Add(m,CreatorSlugcatSelection.Label(m,ps.Count>0?IteratorCatalog.Text(ps[selection],"ai"):""),"PLAY_SLUGCAT",row++);
-            Add(m,firstStory?UiText.Get("game.menu.first"):UiText.Get("game.menu.skip"),"PLAY_FIRST",row++);
-            Add(m,Mark?UiText.Get("game.menu.mark_yes"):UiText.Get("game.menu.mark_no"),"PLAY_MARK",row++);
+            Add(m,firstStory?UiText.Get("First encounter"):UiText.Get("Skip first encounter"),"PLAY_FIRST",row++);
+            Add(m,Mark?UiText.Get("Mark of Communication: Yes"):UiText.Get("Mark of Communication: No"),"PLAY_MARK",row++);
             if(ps.Count>0)
             {
-                Add(m,UiText.Get("game.menu.enter"),"PLAY_ENTER",row++);
-                Add(m,UiText.Get("game.menu.waiting"),"PLAY_ENTRY",row++);
+                Add(m,UiText.Get("Enter chamber"),"PLAY_ENTER",row++);
+                Add(m,UiText.Get("Enter waiting room"),"PLAY_ENTRY",row++);
             }
-            Add(m,UiText.Get("game.menu.collapse"),"PLAY_MENU",row);
+            Add(m,UiText.Get("Close"),"PLAY_MENU",row);
         }
         public static bool Signal(Menu.MainMenu m,string s)
         {

@@ -43,7 +43,7 @@ function convertSleevesToFront(){
   canvases[key]=sources.map(source=>reprojectSleeve(source,uv,old,triangles));
   tex.editableBase=true;if(procedural){tex.layers[0].visible=true;tex.layers[0].opacity=1;}
  }
- project.design.sleeveMapping='front';buildSettings();updateTarget();changed();notice('已转换为正面绘制 · Ctrl+Z 可撤销');
+ project.design.sleeveMapping='front';buildSettings();updateTarget();changed();notice('已转换为正面绘制\nCtrl+Z 可撤销');
 }
 function drawSleeveGuide(ctx,w,h,right){
  const uv=sleeveFrontUV(right),n=uv.length/2,outline=[];

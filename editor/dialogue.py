@@ -1,6 +1,7 @@
 """Project-bound dialogue presets; appearance saves cannot overwrite this document."""
 import copy,json,re,math,uuid
 from pathlib import Path
+from default_text import text
 
 AFFINITY_TIERS=('notSpeaking','dislikes','neutral','likes')
 ITEM_CATEGORIES=('items','weapons','pearls','mixed','creatures','corpses','food')
@@ -70,14 +71,14 @@ def lines(text):return [dict(lineId=uuid.uuid4().hex,text=s.strip(),hold=2.0,gap
 
 def pearl_defaults():
     return dict(firstPreRead=[],greetingCreatures=[],greetingCorpses=[],greetingFood=[],greetingEnabled=True,greetingDelay=3.0,greetingItems=[],greetingWeapons=[],greetingPearls=[],greetingMixed=[],quickReturn=[],revisit=[],quickReturnWindow=30.0,returnCooldown=10.0,extractStomachPearl=False,extractedPreRead=[],presentation=presentation_defaults(),preRead=[],misc=[],
-        greeting=[dict(name='带来了什么',lines=lines('小家伙，你这次给我带了什么东西？'))],
+        greeting=[dict(name=text('default.dialogue.pearl_greeting_name'),lines=lines(text('default.dialogue.pearl_greeting')))],
         preventSameCycleRepeat=True,
-        repeat=[dict(name='已经读过',lines=lines('这颗珍珠，我记得。'))],
+        repeat=[dict(name=text('default.dialogue.pearl_repeat_name'),lines=lines(text('default.dialogue.pearl_repeat')))],
         manyEnabled=True,manyThreshold=3,
-        many=[dict(name='带来不少',lines=lines('你这一趟带来了不少珍珠。\n让我看看这一颗。'))],
+        many=[dict(name=text('default.dialogue.pearl_many_name'),lines=lines(text('default.dialogue.pearl_many')))],
         leavePolicy='resume',
-        leaving=[dict(name='离开',lines=lines('……你要离开了吗？'))],
-        returning=[dict(name='回来',lines=lines('那么，接着刚才的内容。'))])
+        leaving=[dict(name=text('default.dialogue.pearl_leaving_name'),lines=lines(text('default.dialogue.pearl_leaving')))],
+        returning=[dict(name=text('default.dialogue.pearl_returning_name'),lines=lines(text('default.dialogue.pearl_returning')))])
 
 def with_pearl_rules(p,d):
     existing=d.get('pearlReading',{})
@@ -105,10 +106,10 @@ def profile(p):
     if p.get('dialogue'):return with_pearl_rules(p,copy.deepcopy(p['dialogue']))
     d=p.get('design',{})
     result=dict(schema='moreiterators.dialogue.v1',enabled=not bool(p.get('legacyOracle')),requireMark=True,
-        first=lines(d.get('firstDialogue','……你好。')),repeat=[],
-        pickupEnabled=True,pickup=[dict(name='请放回',lines=lines('那颗珍珠我还在用。\n请先把它放回来。')),dict(name='不是食物',lines=lines('……那不是食物。\n我们继续吧。'))],
-        leaveEnabled=True,leaving=[dict(name='离开提醒',lines=lines('……要离开了吗？'))],
-        returning=[dict(name='继续',lines=lines('你回来了。\n那么，接着刚才的话。'))],cooldown=4.0)
+        first=lines(d.get('firstDialogue',text('default.dialogue.hello'))),repeat=[],
+        pickupEnabled=True,pickup=[dict(name=text('default.dialogue.pickup_return_name'),lines=lines(text('default.dialogue.pickup_return'))),dict(name=text('default.dialogue.pickup_food_name'),lines=lines(text('default.dialogue.pickup_food')))],
+        leaveEnabled=True,leaving=[dict(name=text('default.dialogue.leaving_name'),lines=lines(text('default.dialogue.leaving')))],
+        returning=[dict(name=text('default.dialogue.returning_name'),lines=lines(text('default.dialogue.returning')))],cooldown=4.0)
     import compatibility
     result=compatibility.dialogue_profile(p,result)
     return with_pearl_rules(p,result)

@@ -12,7 +12,7 @@ def binding(pid):
 
 def moon_project(default):
     p = default()
-    p.update(projectId='lttm-spearmaster', name='LTTM · 月姐（矛大师）', roomTemplate='native-dm')
+    p.update(projectId='lttm-spearmaster', name='LTTM 月姐（矛大师）', roomTemplate='native-dm')
     d = p['design']
     # OracleGraphics.SkinColor and Gown.Color for IsPastMoon.
     def gown(f):

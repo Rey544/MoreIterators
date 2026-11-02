@@ -19,11 +19,11 @@ public static class CreatorPearlPlacement {
  public PearlVariant[] quickReturn=new PearlVariant[0],revisit=new PearlVariant[0],greetingPearls=new PearlVariant[0],greetingMixed=new PearlVariant[0],extractedPreRead=new PearlVariant[0];
  public string leavePolicy="resume";
  public PearlVariant[] greetingItems=new PearlVariant[0],greetingWeapons=new PearlVariant[0],preRead=new PearlVariant[0],misc=new PearlVariant[0];
- public PearlVariant[] leaving={new PearlVariant{name="离开",lines=new[]{new CreatorDialogueLine{text="……你要离开了吗？"}}}};
- public PearlVariant[] returning={new PearlVariant{name="回来",lines=new[]{new CreatorDialogueLine{text="那么，接着刚才的内容。"}}}};
- public PearlVariant[] greeting={new PearlVariant{name="带来了什么",lines=new[]{new CreatorDialogueLine{text="小家伙，你这次给我带了什么东西？"}}}};
- public PearlVariant[] repeat={new PearlVariant{name="已经读过",lines=new[]{new CreatorDialogueLine{text="这颗珍珠，我记得。"}}}};
- public PearlVariant[] many={new PearlVariant{name="带来不少",lines=new[]{new CreatorDialogueLine{text="你这一趟带来了不少珍珠。"},new CreatorDialogueLine{text="让我看看这一颗。"}}}};
+ public PearlVariant[] leaving={new PearlVariant{name=UiText.Get("Leaving midway"),lines=new[]{new CreatorDialogueLine{text=UiText.Get("...Are you leaving?")}}}};
+ public PearlVariant[] returning={new PearlVariant{name=UiText.Get("Return"),lines=new[]{new CreatorDialogueLine{text=UiText.Get("Then, let us continue where we left off.")}}}};
+ public PearlVariant[] greeting={new PearlVariant{name=UiText.Get("Greeting"),lines=new[]{new CreatorDialogueLine{text=UiText.Get("Little creature, what have you brought me this time?")}}}};
+ public PearlVariant[] repeat={new PearlVariant{name=UiText.Get("Repeated delivery"),lines=new[]{new CreatorDialogueLine{text=UiText.Get("I remember this pearl.")}}}};
+ public PearlVariant[] many={new PearlVariant{name=UiText.Get("Several this cycle"),lines=new[]{new CreatorDialogueLine{text=UiText.Get("You have brought quite a few pearls this time.")},new CreatorDialogueLine{text=UiText.Get("Let me have a look at this one.")}}}};
 }
 
 // Persist the last completed cycle per pearl; an interrupted read is not completed.

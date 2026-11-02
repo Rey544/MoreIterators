@@ -1,15 +1,57 @@
 {
   "schema": "moreiterators.changelog.v1",
-  "plannedRelease": "0.2.0",
+  "plannedRelease": "0.3.0",
   "thanks": [
     "粉笔",
     "LL77",
     "DESANTA",
     "steelmachine",
     "timerteo",
+    "xuanzebufeng",
     "匿名测试者"
   ],
+  "acknowledgements": {
+    "zh-CN": [
+      "本次导出测试使用粉笔的 OC「渺宇一砾」（myys），包含五颗珍珠和投影动画。",
+      "特别感谢 xuanzebufeng 对本地化、运行环境打包和资源读取提出的修改建议。"
+    ],
+    "en": [
+      "Export testing for this update used 粉笔's OC 渺宇一砾 (myys), including five pearls and a projection animation.",
+      "Special thanks to xuanzebufeng for suggestions on localization, bundling the runtime, and loading mod resources."
+    ]
+  },
   "entries": [
+    {
+      "version": "0.3.0",
+      "changes": {
+        "zh-CN": [
+          "Windows 64 位工坊包内置 Python 3.13 与 Pillow 环境，可一键启动，无需手动安装。",
+          "修复旧启动配置导致编辑器版本混用的问题。",
+          "简化游戏路径识别与 Rained 初始配置。",
+          "修复未配置游戏路径时本地编辑受阻的问题。",
+          "游戏内界面改用原版翻译接口与英文原句翻译表。",
+          "工坊包仅保留独立导出所需的 C# 源码。",
+          "改用原版接口查找模组资源，支持游戏版本目录。",
+          "修复独立导出模组首次读取失败后无法恢复的问题。",
+          "修复部分提示与默认台词的语言显示。",
+          "修复禁用模组后的音乐与语音清理。",
+          "精简界面文案。"
+        ],
+        "en": [
+          "Bundle Python 3.13 and Pillow in the 64-bit Windows Workshop package for one-click startup, with no manual environment installation.",
+          "Fix old launch configurations loading editor code from a different MI package.",
+          "Simplify game path detection and initial Rained setup.",
+          "Fix local editing being blocked when the game path is not configured.",
+          "Use the native translator and English source strings for the in-game UI.",
+          "Keep only the C# sources required for standalone exports in the Workshop package.",
+          "Use the game's asset lookup with support for game-version folders.",
+          "Fix standalone mods failing to recover after an initial content-loading failure.",
+          "Fix localization of several messages and default dialogue lines.",
+          "Fix music and voice cleanup when disabling the mod.",
+          "Simplify interface text."
+        ]
+      }
+    },
     {
       "version": "0.2.0",
       "changes": {

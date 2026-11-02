@@ -199,7 +199,7 @@ def apply(project_id,raw,token,server):
                 previous=storage.design_path(project_id,old['oracleId'])
                 if previous.exists() and json.loads(previous.read_text('utf-8')).get('projectId')==project_id:transaction.remove(previous)
             info=local/'modinfo.json'
-            if not info.exists():transaction.json(info,dict(id='moreiterators.local',name='更多迭代器 · 本地作品',version='0.1.0',authors='Local',description='本机作品。不要上传。',requirements=['moreiterators.core'],requirements_names=['更多迭代器'],tags=['Regions'],target_game_version='v1.11.8',checksum_override_version=False))
+            if not info.exists():transaction.json(info,dict(id='moreiterators.local',name='更多迭代器 本地作品',version='0.1.0',authors='Local',description='本机作品。不要上传。',requirements=['moreiterators.core'],requirements_names=['更多迭代器'],tags=['Regions'],target_game_version='v1.11.8',checksum_override_version=False))
             # Synchronize only known generated outputs; never mirror foreign rooms.
             for relative in set(managed)|set(worlds):
                 if relative not in worlds:transaction.remove(installed/relative)

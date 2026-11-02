@@ -43,7 +43,7 @@ const MIActionEditor=(()=>{
       const title=document.createElement('h2'),select=document.createElement('select'),preview=document.createElement('p'),status=document.createElement('p'),apply=document.createElement('button'),name=document.createElement('input'),save=document.createElement('button'),close=document.createElement('button');
       const chooseLabel=document.createElement('label'),nameLabel=document.createElement('label'),chooseText=document.createElement('span'),nameText=document.createElement('span'),actions=document.createElement('div'),saveRow=document.createElement('div');
       chooseLabel.style.cssText=nameLabel.style.cssText='display:grid;gap:8px;margin:16px 0';actions.style.cssText=saveRow.style.cssText='display:flex;gap:12px;justify-content:flex-end;margin-top:16px';
-      name.maxLength=80;name.autocomplete='off';for(const button of [apply,save,close])button.type='button';
+      name.maxLength=80;name.autocomplete='off';preview.style.whiteSpace='pre-line';for(const button of [apply,save,close])button.type='button';
       chooseLabel.append(chooseText,select);nameLabel.append(nameText,name);actions.append(apply,close);saveRow.append(save);dialog.append(title,chooseLabel,preview,actions,nameLabel,saveRow,status);document.body.append(dialog);
       let entries=[],busy=false,selected='';
       const describe=item=>item.kind==='presentation'?presentation.describe(item.value):sequence(item.value).map(v=>typeof MI18n!=='undefined'?MI18n.text(labels[v.type]):labels[v.type]).join(' → ');
@@ -125,7 +125,7 @@ const MIActionEditor=(()=>{
     const labels={movement:{inherit:'沿用',still:'静止',small:'小幅活动',large:'大幅活动'},eyes:{inherit:'沿用',natural:'自然眨眼',open:'睁眼',closed:'闭眼'}};
     const normalize=value=>Object.fromEntries(Object.entries(labels).map(([key,options])=>[key,Object.hasOwn(options,value?.[key])?value[key]:'inherit']));
     function resolve(...layers){const result=normalize();for(const layer of layers){const value=normalize(layer);for(const key of Object.keys(labels))if(value[key]!=='inherit')result[key]=value[key];}return result;}
-    function describe(value){const state=normalize(value),text=raw=>typeof MI18n!=='undefined'?MI18n.text(raw):raw;return text('活动')+'：'+text(labels.movement[state.movement])+' · '+text('眼睛')+'：'+text(labels.eyes[state.eyes]);}
+    function describe(value){const state=normalize(value),text=raw=>typeof MI18n!=='undefined'?MI18n.text(raw):raw;return text('活动')+'：'+text(labels.movement[state.movement])+'\n'+text('眼睛')+'：'+text(labels.eyes[state.eyes]);}
     function create(value,onChange,{label='表现',mode=false}={}){
       let state=normalize(value),custom=Object.values(state).some(value=>value!=='inherit');
       const host=document.createElement('details');host.className='mi-presentation';

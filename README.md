@@ -2,9 +2,15 @@
 
 MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通过本地网页调整迭代器的外观、编写剧情、制作珍珠与广播、编辑投影动画，再到游戏中检查效果。完成的作品可以导出为独立游玩模组。
 
-当前版本：**0.2.0**。模组面向 Rain World **v1.11.8**；目前仍在开发与测试中。
+已发布版本：**0.3.0**。模组面向 Rain World **v1.11.8**。
 
-[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510) · [必要依赖：Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893) · [Rained 房间编辑器](https://github.com/pkhead/rained/releases) · [Discord](https://discord.gg/JBNxgz7E4h)
+[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510)
+
+[必要依赖：Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893)
+
+[Rained 房间编辑器](https://github.com/pkhead/rained/releases)
+
+[Discord](https://discord.gg/JBNxgz7E4h)
 
 ## 主要功能
 
@@ -16,7 +22,21 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 - **房间与导出**：管理演算室、等待房间及连接，配合 Rained 制作自定义房间，将选定的作品内容导出为独立游玩模组。
 - **本地预览与管理**：提供网页预览、游戏内测试入口、保存历史及关联内容迁移。迭代器语音属于实验性功能。
 
-## 0.2.0 更新
+## 0.3.0 更新记录
+
+- Windows 64 位工坊包内置 Python 3.13 与 Pillow 环境，可一键启动，无需手动安装。
+- 修复旧启动配置导致编辑器版本混用的问题。
+- 简化游戏路径识别与 Rained 初始配置。
+- 修复未配置游戏路径时本地编辑受阻的问题。
+- 游戏内界面改用原版翻译接口与英文原句翻译表。
+- 工坊包仅保留独立导出所需的 C# 源码。
+- 改用原版接口查找模组资源，支持游戏版本目录。
+- 修复独立导出模组首次读取失败后无法恢复的问题。
+- 修复部分提示与默认台词的语言显示。
+- 修复禁用模组后的音乐与语音清理。
+- 精简界面文案。
+
+## 0.2.0 更新记录
 
 - 修复游戏内头后线颜色同步。
 - F8 面板新增迭代器语音总开关。
@@ -39,7 +59,9 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 
 ## 感谢
 
-感谢测试与协助：粉笔、LL77、DESANTA、steelmachine、timerteo、匿名测试者。
+感谢测试与协助：粉笔、LL77、DESANTA、steelmachine、timerteo、xuanzebufeng、匿名测试者。
+
+本次导出测试使用粉笔的 OC「渺宇一砾」（myys），包含五颗珍珠和投影动画。特别感谢 xuanzebufeng 对本地化、运行环境打包和资源读取提出的修改建议。
 
 ## 许可
 
@@ -47,7 +69,27 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 
 Copyright (c) 2026 Rey544
 
-## 首次配置教程（Windows）
+## 0.3.0 使用方法（Windows 64 位）
+
+0.3.0 完整模组包内置 **Windows x64 的 Python 3.13 和 Pillow**。
+
+1. 完整解压模组包，进入包含 `modinfo.json`、`editor`、`runtime` 的 `MoreIterators` 文件夹，双击 `启动外观编辑器.cmd` 或 `Open Studio.cmd`。无需另外安装 Python/Pillow，也不需要打开 PowerShell。
+2. 需要快捷方式时，双击 `创建桌面快捷方式.cmd` 或 `Create Desktop Shortcut.cmd`。移动包之后重新生成快捷方式，不能只复制启动文件。
+3. 在网页底部打开「路径设置」。程序优先使用已有有效配置，再尝试查找游戏和 Rained。显示正确路径时不用修改；否则点「选择」，在系统文件窗口中选中 `RainWorld.exe` 或 `Rained.exe`。选择成功即保存，取消则不修改。
+4. 只编辑外观、对话等内容时不需要 Rained。要制作房间，需自行准备完整 Rained 和素材；MI 当前使用 `Rained.exe` 同级的 `Data` 目录。选中 exe 只完成路径配置，不会自动安装 Rained 或补齐素材。
+5. 在网页保存项目后点「应用到游戏」。游戏中启用生成的 `moreiterators.local`；更换插件或新增房间后重启游戏再检查。
+
+以前安装的 Python 不会被卸载或改写，显式设置的 `-PythonExe` 或 `MORE_ITERATORS_PYTHON` 仍可继续使用；未显式指定时优先使用包内环境。GitHub 的 Source code ZIP 不是包含运行环境和编译插件的完整模组包。
+
+发行布局默认读取 `%USERPROFILE%\AppData\LocalLow\Videocult\Rain World\MoreIterators\data`，已有 `MORE_ITERATORS_DATA` 配置仍有效。旧作品若保存在这个目录，可由新包继续读取；原先使用开发目录或其他自定义位置的作品需要继续指向原数据目录或导入，不会自动扫描全盘并合并。复制空白包到另一台电脑也不会带上原电脑的作品。
+
+游戏内网页入口会沿用 `BepInEx/config/moreiterators.paths.json` 的 `runtimeDirectory`，把其上一级 `data` 目录传给编辑器。直接双击新包入口不会自动采用这项游戏配置；旧作品在自定义位置时，需保留对应游戏入口、用 `MORE_ITERATORS_DATA` 指定原目录，或导入作品。
+
+先保存并备份作品，关闭旧编辑器后台，再从新包启动。旧作品的打开、保存、应用和游戏效果仍需实际检查，不能仅凭自动化检查承诺全部兼容。
+
+## 0.2.x 及更早的首次配置教程（历史流程）
+
+**下方保留原教程与全部可复制代码，供旧版本使用。0.3.0 完整模组包不需要执行其中的 Python/Pillow 安装和 PowerShell 路径配置步骤。**
 
 适用于 Windows 10/11 的普通 64 位电脑与 Steam 工坊版。外观、对话、珍珠和投影编辑需要 Python；只有要修改房间地形时才需要 Rained。
 工坊：https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510
@@ -186,7 +228,7 @@ finally:
 #### 5. 首次应用自己的作品
 
 在网页新建项目 → 保存 → 应用到游戏。保存只保存网页项目；应用才会生成游戏需要的本地内容。
-首次应用会生成“更多迭代器 · 本地作品”（moreiterators.local）。回游戏 Remix / 拓展菜单启用它并应用；若当前菜单还看不到，重启游戏后再启用。MI 核心与自己的本地作品是两个模组。启用后按游戏提示重启；新增房间后也要重启游戏，再进入检查。
+首次应用会生成“更多迭代器 本地作品”（moreiterators.local）。回游戏 Remix / 拓展菜单启用它并应用；若当前菜单还看不到，重启游戏后再启用。MI 核心与自己的本地作品是两个模组。启用后按游戏提示重启；新增房间后也要重启游戏，再进入检查。
 
 #### 6. 配置改完后，重新启动正确的 MI 后台
 
@@ -240,7 +282,7 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 ## 从源码构建
 
-普通创作者使用上面的工坊配置流程即可。这个仓库是 0.2.0 源码，不附带已编译 DLL；不要把 GitHub 的 Source code ZIP 当作可直接安装的工坊包。
+普通创作者使用完整模组包及对应版本的教程即可。本仓库源码对应 0.3.0。GitHub 的 Source code ZIP 不附带可直接安装的完整运行包。
 
 开发者需要 Windows 的 .NET Framework C# 编译器，以及自己的 Rain World v1.11.8 安装和其自带 BepInEx/游戏程序集。在仓库根目录打开 PowerShell，运行下面整段后输入包含 RainWorld.exe 的文件夹：
 
@@ -251,7 +293,7 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 }
 ```
 
-输出为 `mod/plugins/MoreIterators.dll`。仅编译，不自动替换游戏文件。检查编译器的成功提示后，再关闭游戏并将 DLL 放入用于测试的 MI 核心模组的 `plugins` 目录。源码中的网页、模板和语言文件分别位于 `editor`、`templates`、`localization`；引用库从游戏目录读取，不要提交到仓库。
+输出为 `mod/plugins/MoreIterators.dll`。仅编译，不自动替换游戏文件。检查编译器的成功提示后，再关闭游戏并将 DLL 放入用于测试的 MI 核心模组的 `plugins` 目录。源码中的网页、模板和游戏翻译表分别位于 `editor`、`templates`、`mod/text`；引用库从游戏目录读取，不要提交到仓库。
 
 公开源码保留 `release-layout.json`，网页默认仍使用用户数据目录。版本信息以 `version.json` 为准。
 
@@ -259,9 +301,15 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 MoreIterators is a free, open-source OC creation tool for **Rain World**. Use its local web editor to customize iterators, write dialogue, create pearls and broadcasts, and animate projections, then check the results in the game. Finished creations can be exported as standalone playable mods.
 
-Current version: **0.2.0**. The mod targets Rain World **v1.11.8** and is still in development and testing.
+Published version: **0.3.0**. The mod targets Rain World **v1.11.8**.
 
-[Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510) · [Required: Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893) · [Rained room editor](https://github.com/pkhead/rained/releases) · [Discord](https://discord.gg/JBNxgz7E4h)
+[Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510)
+
+[Required: Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893)
+
+[Rained room editor](https://github.com/pkhead/rained/releases)
+
+[Discord](https://discord.gg/JBNxgz7E4h)
 
 ### Features
 
@@ -273,7 +321,21 @@ Current version: **0.2.0**. The mod targets Rain World **v1.11.8** and is still 
 - **Rooms and export:** Manage iterator chambers, waiting rooms, and their connections. Use Rained for custom rooms and export selected creations as standalone playable mods.
 - **Local preview and project management:** Use browser previews, in-game testing, save history, and tools for transferring associated content. Iterator voice is an experimental feature.
 
-### What's new in 0.2.0
+### 0.3.0 update history
+
+- Bundle Python 3.13 and Pillow in the 64-bit Windows Workshop package for one-click startup, with no manual environment installation.
+- Fix old launch configurations loading editor code from a different MI package.
+- Simplify game path detection and initial Rained setup.
+- Fix local editing being blocked when the game path is not configured.
+- Use the native translator and English source strings for the in-game UI.
+- Keep only the C# sources required for standalone exports in the Workshop package.
+- Use the game's asset lookup with support for game-version folders.
+- Fix standalone mods failing to recover after an initial content-loading failure.
+- Fix localization of several messages and default dialogue lines.
+- Fix music and voice cleanup when disabling the mod.
+- Simplify interface text.
+
+### 0.2.0 update history
 
 - Fix in-game head-cable color synchronization.
 - Add an iterator voice master switch to the F8 panel.
@@ -296,7 +358,9 @@ Join our [Discord](https://discord.gg/JBNxgz7E4h) to discuss ideas and report pr
 
 ### Thanks
 
-Thanks for testing and assistance: 粉笔, LL77, DESANTA, steelmachine, timerteo, and Anonymous Tester.
+Thanks for testing and assistance: 粉笔, LL77, DESANTA, steelmachine, timerteo, xuanzebufeng, Anonymous Tester.
+
+This export test uses 粉笔's OC 渺宇一砾 (myys), including five pearls and projection animation. Special thanks to xuanzebufeng for suggestions on localization, bundling the runtime, and asset lookup.
 
 ### License
 
@@ -304,7 +368,27 @@ The project code is licensed under the [MIT License](LICENSE). Third-party asset
 
 Copyright (c) 2026 Rey544
 
-### First-time setup (Windows)
+### Using 0.3.0 (64-bit Windows)
+
+The complete 0.3.0 mod package bundles **Windows x64 Python 3.13 and Pillow**.
+
+1. Extract the complete package. Open the `MoreIterators` folder containing `modinfo.json`, `editor`, and `runtime`, then double-click `Open Studio.cmd` or `启动外观编辑器.cmd`. No separate Python/Pillow installation or PowerShell setup is required.
+2. For a desktop shortcut, run `Create Desktop Shortcut.cmd` or `创建桌面快捷方式.cmd`. Recreate it after moving the package. Keep the complete package together, rather than copying only its launch scripts.
+3. Open **Paths** at the bottom of the editor. Existing valid settings take priority, followed by automatic discovery. If a path is missing or incorrect, click **Choose** and select `RainWorld.exe` or `Rained.exe` in the system file dialog. A successful selection saves that path; cancelling changes nothing.
+4. Rained is optional unless you edit room terrain. Install the complete Rained package and its required assets separately. MI currently uses the `Data` folder beside `Rained.exe`; choosing the executable does not install Rained or its assets.
+5. Save your project, then select **Apply to game**. Enable the generated `moreiterators.local` mod in Remix. Restart the game after replacing the plugin or adding rooms.
+
+Existing Python installations are neither removed nor modified. Explicit `-PythonExe` and `MORE_ITERATORS_PYTHON` settings remain supported; otherwise the launcher tries the bundled runtime first. GitHub's Source code ZIP is not the complete mod package with its runtime and compiled plugin.
+
+The release layout defaults to `%USERPROFILE%\AppData\LocalLow\Videocult\Rain World\MoreIterators\data`, while an existing `MORE_ITERATORS_DATA` setting remains valid. Projects already in that directory can be read by the new package. Projects in a development folder or another custom location need the original data path or an import; the launcher does not scan and merge every project on the computer. Copying a blank package to another computer does not transfer your work.
+
+The in-game editor entry uses `runtimeDirectory` from `BepInEx/config/moreiterators.paths.json` and passes its parent `data` directory to the editor. Double-clicking the new package does not automatically use that game-side setting. For a custom existing data location, retain the corresponding in-game entry, point `MORE_ITERATORS_DATA` at the original data directory, or import your creations.
+
+Save and back up your work, stop the old editor backend, then launch the new package. Opening, saving, applying, and playing existing projects still require testing; automated checks alone do not establish complete compatibility.
+
+### First-time setup for 0.2.x and earlier (historical workflow)
+
+**The original tutorial and all copyable commands are retained below for older packages. The complete 0.3.0 package does not require its separate Python/Pillow installation or PowerShell path-configuration steps.**
 
 For ordinary 64-bit Windows 10/11 PCs using the Steam Workshop release. Python is needed for the local editors; Rained is only needed if you want to edit room terrain.
 Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510
@@ -443,7 +527,7 @@ If the shortcut creator cannot find Python/Pillow even though step 2 succeeded, 
 #### 5. Apply your first creation
 
 Create a project in the webpage → Save → Apply to game. Save stores the author project; Apply generates the local game content.
-The first application creates 更多迭代器 · 本地作品 (moreiterators.local). Enable this generated local content mod in Remix and apply. If it is not listed yet, restart the game, then enable it. MI's core and your local creations are separate mods. Restart when the game requests it after enabling the mod; newly added rooms also require a game restart before testing.
+The first application creates 更多迭代器 本地作品 (moreiterators.local). Enable this generated local content mod in Remix and apply. If it is not listed yet, restart the game, then enable it. MI's core and your local creations are separate mods. Restart when the game requests it after enabling the mod; newly added rooms also require a game restart before testing.
 
 #### 6. Restart the correct MI backend after configuration
 
@@ -497,7 +581,7 @@ For GitHub source users: this guide primarily covers the Workshop package. The p
 
 ### Build from source
 
-Creators can use the Workshop setup above. This repository contains the 0.2.0 source without a precompiled DLL; GitHub’s Source code ZIP is not a ready-to-install Workshop package.
+Creators should use a complete mod package and the guide for that version. This repository contains the 0.3.0 source. GitHub’s Source code ZIP is not a complete ready-to-install package.
 
 Developers need the Windows .NET Framework C# compiler, their own Rain World v1.11.8 installation, and its BepInEx/game assemblies. Open PowerShell in the repository root, paste this block, and enter the folder containing RainWorld.exe:
 
@@ -508,6 +592,6 @@ Developers need the Windows .NET Framework C# compiler, their own Rain World v1.
 }
 ```
 
-The output is `mod/plugins/MoreIterators.dll`. Building does not install it. After a successful build, close the game and place the DLL in the `plugins` directory of the MI core mod used for testing. Web files, templates, and translations are in `editor`, `templates`, and `localization`. Reference assemblies are read from your game installation; do not commit them to this repository.
+The output is `mod/plugins/MoreIterators.dll`. Building does not install it. After a successful build, close the game and place the DLL in the `plugins` directory of the MI core mod used for testing. Web files, templates, and in-game translation tables are in `editor`, `templates`, and `mod/text`. Reference assemblies are read from your game installation; do not commit them to this repository.
 
 The public source retains `release-layout.json`, so the web editor defaults to the user data directory. `version.json` is the version source.

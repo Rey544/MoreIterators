@@ -36,8 +36,8 @@ const el = (tag, text, className) => {
     return node;
 };
 const api = async (path, data) => {await MI18n.ready;
-    const response = await fetch('/api/' + path, data === undefined ? {} : {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+    const response = await fetch('/api/' + path, data === undefined ? {headers: {'X-MI-Language': MI18n.locale}} : {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-MI-Language': MI18n.locale}, body: JSON.stringify(data)
     });
     const result = await response.json();
     if (!response.ok) throw Error(MI18n.error(result, response.statusText));
@@ -88,7 +88,7 @@ function updateHeadings() {
     $('roomStudio').href='/rooms?lang='+MI18n.locale+(projectionOwner?'&project='+encodeURIComponent(projectionOwner):'');
     $('projectionStudio').href='/projections?lang='+MI18n.locale+(projectionOwner?'&project='+encodeURIComponent(projectionOwner):'');
     $('pearlTitle').textContent = project.id + '／' + project.name; MI18n.content($('pearlTitle'));
-    document.title = project.id + '／' + project.name + ' · 珍珠文本';
+    document.title = MI18n.t('pearl.title',{name:project.name || project.id});
     $('readerTitle').textContent = MI18n.t('pearl.reader', {name: reader() ? readerName() : {key: 'common.not_selected'}});
     $('readerScope').replaceChildren();
     if(reader()&&(commonStage()||affinityTier!=='general'))$('readerScope').append(el('span',commonStage()?'该迭代器共用':affinityText(missingVariant()?'fallback':'enabled')));
@@ -308,7 +308,7 @@ function drawPosition(preserveId=null){
     ctx.moveTo(x-10,y);ctx.lineTo(x-7,y);ctx.moveTo(x+7,y);ctx.lineTo(x+10,y);
     ctx.moveTo(x,y-10);ctx.lineTo(x,y-7);ctx.moveTo(x,y+7);ctx.lineTo(x,y+10);ctx.stroke();
     const px=position.x*g.width*20,py=position.y*g.height*20,solid=g.solids.some(tile=>tile[0]===Math.floor(px/20)&&tile[1]===Math.floor(py/20));
-    $('spawnPositionState').textContent=positionText('coordinates',{x:Number(px.toFixed(1)),y:Number(py.toFixed(1))})+(solid?' · '+positionText('solid'):'');
+    $('spawnPositionState').textContent=positionText('coordinates',{x:Number(px.toFixed(1)),y:Number(py.toFixed(1))})+(solid?'\n'+positionText('solid'):'');
 }
 function setPosition(value,preserveId=null){if(!positionProject||!selectedRoomKeys().includes(positionProject))return;const [store,key]=positionStore();store[key]=value;changed();drawPosition(preserveId);}
 function pointerPosition(event){if(!positionMap||busy)return;setPosition(MIPearlBranches.positionAt(event.clientX,event.clientY,$('spawnMap').getBoundingClientRect(),positionMap,project.appearance.size));}
@@ -405,7 +405,7 @@ function lineCard(line, index, lines) {
         event.preventDefault(); event.stopPropagation();
         moveLine(lines, line, lines.indexOf(line) + (event.key === 'ArrowUp' ? -1 : 1));
     };
-    const snippet = el('span', line.text.trim() || '空白台词 · 点击编辑', 'line-snippet');if(line.text.trim())MI18n.content(snippet);
+    const snippet = el('span', line.text.trim() || MI18n.t('ui.0580'), 'line-snippet');if(line.text.trim())MI18n.content(snippet);
     const timing = el('span', line.hold + ' 秒', 'line-timing');
     summary.append(handle, el('span', '第 ' + (index + 1) + ' 句', 'line-number'), snippet, timing);
     const body = el('div', undefined, 'line-body'), actions = el('details', undefined, 'line-actions');
@@ -424,7 +424,7 @@ function lineCard(line, index, lines) {
     const text = el('textarea');
     Object.assign(text, {value: line.text, maxLength: 2000, rows: 3});
     text.setAttribute('aria-label', '第 ' + (index + 1) + ' 句');
-    text.oninput = () => {line.text = text.value; snippet.toggleAttribute('data-i18n-content',!!line.text.trim());snippet.textContent = line.text.trim() || '空白台词 · 点击编辑'; changedLines();};
+    text.oninput = () => {line.text = text.value; snippet.toggleAttribute('data-i18n-content',!!line.text.trim());snippet.textContent = line.text.trim() || MI18n.t('ui.0580'); changedLines();};
     const timingFields = el('div', undefined, 'bar line-time-fields');
     for (const [key, title, min] of [['hold', '停留', .1], ['gap', '间隔', 0]]) {
         const label = el('label', title), input = el('input');
@@ -652,7 +652,7 @@ async function save(apply = false, alreadyLocked = false) {
         }
         return true;
     } catch (error) {
-        state('未完成 · 请重试', 'error'); throw error;
+        state(MI18n.t('ui.0595'), 'error'); throw error;
     } finally {window.MIUndo?.rebase();if (!alreadyLocked) setBusy(false);}
 }
 async function open(candidate, imported = false) {

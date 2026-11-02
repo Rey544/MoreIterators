@@ -9,26 +9,37 @@ public static class RuntimePaths {
  public static string ContentRoot {get{string root;if(TryContentRoot(out root))return root;throw new InvalidOperationException("Content mod is not enabled: "+ModId);}}
  public static string DataDirectory {get{return Path.Combine(Application.persistentDataPath,ModId);}}
  public static void Initialize(){}
- public static string DesignPath(string id){if(String.IsNullOrEmpty(id)||id.Contains("..")||id.IndexOfAny(Path.GetInvalidFileNameChars())>=0)throw new ArgumentException("Invalid iterator ID");return Path.Combine(ContentRoot,"designs/"+id+".json");}
+ public static string DesignPath(string id){
+  if(String.IsNullOrEmpty(id)||id.Contains("..")||id.IndexOfAny(Path.GetInvalidFileNameChars())>=0)throw new ArgumentException("Invalid iterator ID");
+  string root=ContentRoot;
+  var project=IteratorCatalog.Projects().Find(p=>IteratorCatalog.Text(p,"oracleId")==id);
+  string relative=project==null?"":IteratorCatalog.Text(project,"design");
+  if(relative=="")relative="designs/"+id+".json";
+  return ContentAssets.ResolveOwnedFile(ModId,relative);
+ }
 }
 public static class IteratorCatalog {
  static List<Dictionary<string,object>> projects;
- static string loadedRoot,lastError;
+ static string loadedRoot,loadedFile,lastError;
+ static long loadedStamp,loadedLength;
  public static string Text(Dictionary<string,object> d,string key){object v;return d.TryGetValue(key,out v)&&v is string?(string)v:"";}
  public static List<Dictionary<string,object>> Projects(){
   string root;
   // Hooks can query the catalogue before Rain World has populated ActiveMods.
   // Never commit an empty cache on that path or read a different content mod.
-  if(!RuntimePaths.TryContentRoot(out root)){projects=null;loadedRoot=null;lastError=null;return new List<Dictionary<string,object>>();}
-  if(projects!=null&&loadedRoot==root)return projects;
+  if(!RuntimePaths.TryContentRoot(out root)){projects=null;loadedRoot=loadedFile=null;lastError=null;return new List<Dictionary<string,object>>();}
   try{
-   var source=Json.Deserialize(File.ReadAllText(Path.Combine(root,"moreiterators/registry.json"))) as List<object>;
+   string file=ContentAssets.ResolveOwnedFile(RuntimePaths.ModId,"moreiterators/registry.json");
+   if(file==null)throw new FileNotFoundException("Content registry was not found.");
+   var info=new FileInfo(file);
+   if(projects!=null&&loadedRoot==root&&loadedFile==file&&loadedStamp==info.LastWriteTimeUtc.Ticks&&loadedLength==info.Length)return projects;
+   var source=Json.Deserialize(File.ReadAllText(file)) as List<object>;
    if(source==null)throw new InvalidDataException("Registry must be a JSON array");
    var loaded=new List<Dictionary<string,object>>();
    foreach(var value in source){var p=value as Dictionary<string,object>;if(p==null||Text(p,"projectId")==""||Text(p,"name")==""||Text(p,"ai")==""||Text(p,"entry")==""||Text(p,"oracleId")=="")throw new InvalidDataException("Registry contains an incomplete iterator record");p["ownerMod"]=RuntimePaths.ModId;loaded.Add(p);}
-   projects=loaded;loadedRoot=root;lastError=null;return projects;
+   projects=loaded;loadedRoot=root;loadedFile=file;loadedStamp=info.LastWriteTimeUtc.Ticks;loadedLength=info.Length;lastError=null;return projects;
   }catch(Exception e){
-   projects=null;loadedRoot=null;
+   projects=null;loadedRoot=loadedFile=null;
    string error="[More Iterators content "+RuntimePaths.ModId+"] Cannot load registry at "+root+": "+e.Message;
    if(error!=lastError){Debug.LogWarning(error);lastError=error;}
    return new List<Dictionary<string,object>>();

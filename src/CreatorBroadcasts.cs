@@ -38,26 +38,27 @@ public static class CreatorBroadcastCatalog {
  static float next;static List<BroadcastProject> items=new List<BroadcastProject>();
  public static List<BroadcastProject> All(){
   if(ModManager.ActiveMods==null)return items;
-  if(Time.realtimeSinceStartup<next)return items;next=PlaybackMode.Enabled?float.MaxValue:Time.realtimeSinceStartup+1;
+  if(Time.realtimeSinceStartup<next)return items;next=Time.realtimeSinceStartup+1;
   var found=new Dictionary<string,BroadcastProject>();
-  foreach(var m in ModManager.ActiveMods)if(!PlaybackMode.Enabled||m.id==RuntimePaths.ModId){
-#if !PLAYBACK
-   if(RuntimePaths.HasIndependentRuntime(m.path))continue;
-#endif
-   Read(Path.Combine(m.path,"moreiterators/broadcasts"),found);
-  }
+  try{foreach(var asset in ContentAssets.Files("moreiterators/broadcasts",".json",PlaybackMode.Enabled?RuntimePaths.ModId:null))
+   if(ContentAssets.Managed(asset.owner))ReadFile(asset.path,found,false);
+  }catch(Exception error){MiDiagnostics.Report("MI-BROADCAST-DIRECTORY","CreatorBroadcastCatalog.All",error,"moreiterators/broadcasts");}
   if(!PlaybackMode.Enabled)Read(Path.Combine(RuntimePaths.DataDirectory,"broadcasts"),found);
   items=new List<BroadcastProject>(found.Values);items.Sort((a,b)=>String.CompareOrdinal(a.id,b.id));return items;
  }
  static void Read(string dir,Dictionary<string,BroadcastProject> found){if(!Directory.Exists(dir))return;
   string[] files;try{files=Directory.GetFiles(dir,"*.json");}
   catch(Exception error){MiDiagnostics.Report("MI-BROADCAST-DIRECTORY","CreatorBroadcastCatalog.Read",error,dir);return;}
-  foreach(string file in files)try{
+  foreach(string file in files)ReadFile(file,found,true);
+ }
+ static void ReadFile(string file,Dictionary<string,BroadcastProject> found,bool replace){
+  try{
    var p=PearlProjectCodec.ReadObject<BroadcastProject>(Json.Deserialize(File.ReadAllText(file)));
    if(p==null||p.schema!="moreiterators.broadcast.v1"||String.IsNullOrEmpty(p.uid)||p.uid.Length!=32||p.runtimeId!="MoreIterators_Broadcast_"+p.uid||p.pages==null||p.pages.Length==0)throw new InvalidDataException("Unsupported broadcast schema, runtime identity or page list.");
+   if(!replace&&found.ContainsKey(p.runtimeId))return;
    found[p.runtimeId]=p;new ChatlogData.ChatlogID(p.runtimeId,true);
   }catch(FileNotFoundException){/* The editor may remove a file after enumeration. */}
-  catch(Exception error){MiDiagnostics.Report("MI-BROADCAST-DATA","CreatorBroadcastCatalog.Read",error,file);}
+  catch(Exception error){MiDiagnostics.Report("MI-BROADCAST-DATA","CreatorBroadcastCatalog.ReadFile",error,file);}
  }
  public static BroadcastProject Find(string id){return All().Find(p=>p.runtimeId==id);}
 }

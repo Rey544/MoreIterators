@@ -50,14 +50,11 @@ public static class CreatorPearlCatalog {
  public static string Root{get{return Path.Combine(RuntimePaths.DataDirectory,"pearls");}}
  public static List<PearlProject> All(){
   if(ModManager.ActiveMods==null)return items;
-  if(Time.realtimeSinceStartup<next)return items;next=PlaybackMode.Enabled?float.MaxValue:Time.realtimeSinceStartup+.75f;
+  if(Time.realtimeSinceStartup<next)return items;next=Time.realtimeSinceStartup+.75f;
   var found=new Dictionary<string,PearlProject>();
-  foreach(var mod in ModManager.ActiveMods)if(!PlaybackMode.Enabled||mod.id==RuntimePaths.ModId){
-#if !PLAYBACK
-   if(RuntimePaths.HasIndependentRuntime(mod.path))continue;
-#endif
-   ReadDirectory(Path.Combine(mod.path,"moreiterators/pearls"),found,mod.id);
-  }
+  try{foreach(var asset in ContentAssets.Files("moreiterators/pearls",".json",PlaybackMode.Enabled?RuntimePaths.ModId:null))
+   if(ContentAssets.Managed(asset.owner))ReadFile(asset.path,found,asset.owner,false);
+  }catch(Exception error){MiDiagnostics.Report("MI-PEARL-DIRECTORY","CreatorPearlCatalog.All",error,"moreiterators/pearls");}
   if(!PlaybackMode.Enabled&&!CreatorPearlCollection.Merge(found))ReadDirectory(Root,found);items=new List<PearlProject>(found.Values);items.Sort((a,b)=>String.CompareOrdinal(a.id,b.id));return items;
  }
  static void ReadDirectory(string dir,Dictionary<string,PearlProject> found,string owner=""){
@@ -65,14 +62,17 @@ public static class CreatorPearlCatalog {
   string[] files;
   try{files=Directory.GetFiles(dir,"*.json");}
   catch(Exception error){MiDiagnostics.Report("MI-PEARL-DIRECTORY","CreatorPearlCatalog.ReadDirectory",error,dir);return;}
-  foreach(string file in files){if(Path.GetFileName(file)=="spawn-request.json")continue;
-   try{var p=PearlProjectCodec.Read(Json.Deserialize(File.ReadAllText(file)) as Dictionary<string,object>);if(p==null||p.schema!="moreiterators.pearl.v1"||String.IsNullOrEmpty(p.uid)||p.runtimeId!="MoreIterators_"+p.uid||p.uid.Length!=32)throw new InvalidDataException("Unsupported pearl schema or runtime identity.");
-    if(owner!="")p.ownerMod=owner;
-    if(p.readers==null)p.readers=new PearlReaderProfile[0];if(p.spawns==null)p.spawns=new PearlSpawn[0];found[p.runtimeId]=p;
-    new DataPearl.AbstractDataPearl.DataPearlType(p.runtimeId,true);
-   }catch(FileNotFoundException){/* The editor may remove a file after enumeration. */}
-   catch(Exception error){MiDiagnostics.Report("MI-PEARL-DATA","CreatorPearlCatalog.ReadDirectory",error,file);}
-  }
+  foreach(string file in files)ReadFile(file,found,owner,true);
+ }
+ static void ReadFile(string file,Dictionary<string,PearlProject> found,string owner,bool replace){
+  if(Path.GetFileName(file)=="spawn-request.json")return;
+  try{var p=PearlProjectCodec.Read(Json.Deserialize(File.ReadAllText(file)) as Dictionary<string,object>);if(p==null||p.schema!="moreiterators.pearl.v1"||String.IsNullOrEmpty(p.uid)||p.runtimeId!="MoreIterators_"+p.uid||p.uid.Length!=32)throw new InvalidDataException("Unsupported pearl schema or runtime identity.");
+   if(!replace&&found.ContainsKey(p.runtimeId))return;
+   if(!String.IsNullOrEmpty(owner))p.ownerMod=owner;
+   if(p.readers==null)p.readers=new PearlReaderProfile[0];if(p.spawns==null)p.spawns=new PearlSpawn[0];found[p.runtimeId]=p;
+   new DataPearl.AbstractDataPearl.DataPearlType(p.runtimeId,true);
+  }catch(FileNotFoundException){/* The editor may remove a file after enumeration. */}
+  catch(Exception error){MiDiagnostics.Report("MI-PEARL-DATA","CreatorPearlCatalog.ReadFile",error,file);}
  }
  public static PearlProject Find(string runtimeId){return All().Find(p=>p.runtimeId==runtimeId);}
 }

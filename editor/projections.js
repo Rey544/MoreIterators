@@ -69,7 +69,8 @@ if (typeof document !== 'undefined') (() => {
   const defaultFrame = () => ({duration:1,x:.5,y:.5,scale:1,rotation:0,opacity:1,brightness:1,flicker:0,ease:'smooth'});
 
   async function api(path, data) {
-    const response = await fetch('/api/' + path, data === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    await MI18n.ready;
+    const response = await fetch('/api/' + path, data === undefined ? {headers:{'X-MI-Language':MI18n.locale}} : {method:'POST',headers:{'Content-Type':'application/json','X-MI-Language':MI18n.locale},body:JSON.stringify(data)});
     let result;
     try {result = await response.json();} catch {throw Error(t('requestFailed', {status:response.status}));}
     if (!response.ok || result.ok === false) throw Error(MI18n.error(result, t('requestFailed', {status:response.status})));
@@ -117,20 +118,25 @@ if (typeof document !== 'undefined') (() => {
   function sourceMatches(item) {const binding = group.trigger; return item.kind === binding.kind && item.source === binding.source && (item.pearlUid || '') === (binding.pearlUid || '') && (!binding.startLineId || item.lines?.some(line => (line.lineId || line.id) === binding.startLineId));}
   function chosenSource() {return sources.find(item => item.id === $('source').value);}
   function sourceTitle(item) {
-    if (item.source.startsWith('meetings.')) return MI18n.t('dialogue.meetings.number',{n:item.meetingNumber}) + (item.meetingName ? ' · ' + item.meetingName : '');
+    if (item.source.startsWith('meetings.')) return MI18n.t('dialogue.meetings.number',{n:item.meetingNumber});
     if (item.source === 'loop') return MI18n.t('dialogue.meetings.loop');
     const stage = {'first':'initialStory','repeat':'storyRepeat','pickup':'pickup','leaving':'leaving','returning':'returning','pearlReading.greeting':'greeting','pearlReading.repeat':'pearlRepeat','pearlReading.many':'pearlMany','pearlReading.leaving':'pearlLeaving','pearlReading.returning':'pearlReturning','pearl.read':'pearlRead','pearl.repeat':'pearlRepeat'}[item.source];
-    const sourceLabel = ['pearlReading.firstPreRead','pearlReading.greetingCreatures','pearlReading.greetingCorpses','pearlReading.greetingFood',
-      'observation.creatures','observation.corpses','observation.food','observation.repeatItems','observation.repeatWeapons','observation.repeatPearls','observation.repeatMixed',
-      'observation.repeatCreatures','observation.repeatCorpses','observation.repeatFood'].includes(item.source);
-    const label = stage ? t(stage) : sourceLabel ? t('sources.'+item.source) : item.label || item.name || item.source;
-    const extra = [item.pearlName,item.poolName].filter(Boolean).join(' · ') || (item.name && item.name !== item.label ? item.name : '');
-    return label + (extra ? ' · ' + extra : '');
+    const affinity = /^pearl\.affinity\.(notSpeaking|dislikes|neutral|likes)\.(read|repeat)$/.exec(item.source);
+    if (affinity) return t(affinity[2] === 'read' ? 'pearlRead' : 'pearlRepeat') + ' (' + MI18n.t('pearl.affinity.'+affinity[1]) + ')';
+    return stage ? t(stage) : t('sources.'+item.source);
   }
   function renderBinding() {
     const kind = group.trigger.kind, available = sources.filter(item => item.kind === kind && item.lines?.length);
     $('sourceFields').hidden = kind === 'work'; $('bindingError').textContent = '';
-    $('source').replaceChildren(...available.map(item => option(item.id, sourceTitle(item), true)));
+    const entries = [], categories = new Map();
+    for (const item of available) {
+      const category = sourceTitle(item), names = [item.pearlName,item.poolName,item.meetingName].filter(Boolean);
+      if (!names.length) {entries.push(option(item.id,category,true));continue;}
+      let section = categories.get(category);
+      if (!section) {section = author(document.createElement('optgroup'));section.label = category;categories.set(category,section);entries.push(section);}
+      section.append(option(item.id,names.length > 1 ? names[0]+' ('+names.slice(1).join(', ')+')' : names[0],true));
+    }
+    $('source').replaceChildren(...entries);
     const selected = available.find(sourceMatches);
     if (selected) $('source').value = selected.id;
     else $('source').selectedIndex = -1;
@@ -139,7 +145,7 @@ if (typeof document !== 'undefined') (() => {
   }
   function renderLineChoices() {
     const source = chosenSource(), lines = source?.lines || [];
-    for (const id of ['startLine','endLine']) $(id).replaceChildren(...lines.map((line, index) => option(line.lineId || line.id, (index + 1) + ' · ' + String(line.text || '').replace(/\s+/g, ' ').slice(0, 65), true)));
+    for (const id of ['startLine','endLine']) $(id).replaceChildren(...lines.map((line, index) => option(line.lineId || line.id, (index + 1) + '. ' + String(line.text || '').replace(/\s+/g, ' ').slice(0, 65), true)));
     for (const key of ['beforeSeconds','afterSeconds']) $(key).value = group.trigger[key] || 0;
     $('startLine').value = group.trigger.startLineId || ''; $('endLine').value = group.trigger.endLineId || group.trigger.startLineId || '';
     const start = lines.findIndex(line => (line.lineId || line.id) === $('startLine').value), end = lines.findIndex(line => (line.lineId || line.id) === $('endLine').value);

@@ -31,7 +31,7 @@ namespace MoreIterators
                 if (plugin != null)
                 {
                     MiDiagnostics.Warn("MI-REVIVIFY-VERSION", TargetName,
-                        "检测到多份复活模组，未安装房间扫描保护。", "Revivify Meadow");
+                        UiText.Get("Multiple copies of Revivify Meadow were detected. The room-scan guard was not installed."), "Revivify Meadow");
                     return false;
                 }
                 plugin = candidate;
@@ -48,7 +48,7 @@ namespace MoreIterators
                     MethodInfo target = plugin.GetMethod("UpdatePlr", BindingFlags.Instance | BindingFlags.NonPublic,
                         null, new Type[] { typeof(On.Player.orig_Update), typeof(Player), typeof(bool) }, null);
                     if (target == null || target.ReturnType != typeof(void))
-                        throw new InvalidOperationException("未找到预期的死亡后更新方法。");
+                        throw new InvalidOperationException(UiText.Get("The expected dead-player update method was not found."));
                     hook = new ILHook(target, Patch);
                     MiDiagnostics.Info("RevivifyCompatibility", "已安装复活模组房间扫描保护；module=" + target.Module.ModuleVersionId);
                     return true;
@@ -57,7 +57,7 @@ namespace MoreIterators
                 {
                     AppDomain.CurrentDomain.SetData(LeaseKey, null);
                     MiDiagnostics.Report("MI-REVIVIFY-VERSION", TargetName, error,
-                        "复活模组版本或方法结构不匹配，房间扫描保护未启用。");
+                        UiText.Get("The Revivify Meadow version or method structure did not match. The room-scan guard was not enabled."));
                     return false;
                 }
             }
@@ -91,7 +91,7 @@ namespace MoreIterators
                 nextWarning = now.AddSeconds(30);
                 string missing = room == null ? "room" : abstractRoom == null ? "abstractRoom" : "entities";
                 MiDiagnostics.Warn("MI-REVIVIFY-ROOM", TargetName,
-                    "死亡玩家的房间信息不完整，已跳过本次复活对象扫描。", "缺失=" + missing);
+                    UiText.Get("The dead player's room data is incomplete. This revival scan was skipped."), UiText.Format("Missing: {0}", missing));
             }
             return false;
         }
@@ -104,7 +104,7 @@ namespace MoreIterators
             if (instructions.Count < 20 || instructions[0].OpCode != OpCodes.Ldarg_1 ||
                 instructions[1].OpCode != OpCodes.Ldarg_2 || instructions[2].OpCode != OpCodes.Ldarg_3 ||
                 !Method(instructions[3], OpCodes.Callvirt, "On.Player/orig_Update", "Invoke"))
-                throw new InvalidOperationException("复活模组的原始玩家更新入口已改变。");
+                throw new InvalidOperationException(UiText.Get("Revivify Meadow's original player-update entry point has changed."));
             int originalCalls = 0, match = -1;
             for (int i = 0; i < instructions.Count; i++)
             {
@@ -126,11 +126,11 @@ namespace MoreIterators
                     !Method(instructions[i + 9], OpCodes.Callvirt, "System.Collections.Generic.List`1<AbstractWorldEntity>", "GetEnumerator")) continue;
                 Instruction aliveExit = instructions[i - 1].Operand as Instruction;
                 if (aliveExit == null || aliveExit.OpCode != OpCodes.Ret || match != -1)
-                    throw new InvalidOperationException("复活模组的死亡检查或扫描入口不唯一。");
+                    throw new InvalidOperationException(UiText.Get("Revivify Meadow's death check or scan entry point is not unique."));
                 match = i;
             }
             if (originalCalls != 1 || match < 0)
-                throw new InvalidOperationException("未找到已核对的死亡后房间扫描指令，未修改复活模组。");
+                throw new InvalidOperationException(UiText.Get("The expected dead-player room-scan instructions were not found. Revivify Meadow was left unchanged."));
             Instruction scanStart = instructions[match];
             var cursor = new ILCursor(il);
             cursor.Index = match;

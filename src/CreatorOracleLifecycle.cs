@@ -27,7 +27,7 @@ namespace MoreIterators {
     var replacement=new IteratorBehavior(oracle);
     oracle.oracleBehavior=replacement;
     if(previous!=null){previous.killFac=0;previous.lastKillFac=0;if(previous.conversation!=null){previous.conversation.Destroy();previous.conversation=null;}}
-    if(reportRecovery)ReportNative(state,"CreatorOracleLifecycle.EnsureBehavior","发现复制迭代器残留原版行为，已在更新前接管。",context);
+    if(reportRecovery)ReportNative(state,"CreatorOracleLifecycle.EnsureBehavior",UiText.Get("A copied iterator retained base-game behavior. MI took control before its next update."),context);
     else MiDiagnostics.Info("oracle.behavior.attach",context);
     return true;
    } catch(Exception error){MiDiagnostics.Report("MI-ORACLE-ATTACH","CreatorOracleLifecycle.EnsureBehavior",error,context);return false;}
@@ -41,7 +41,7 @@ namespace MoreIterators {
    if(behavior is IteratorBehavior)return meeting&&IteratorIntegrations.ForRoom(behavior.oracle.room.abstractRoom.name)==null;
    // Do not replace a controller from inside its own constructor or SeePlayer.
    // The first safe update will repair it; the native story is blocked now.
-   if(!state.constructing&&!state.attaching)ReportNative(state,node,"发现复制迭代器残留原版行为，已阻止原版剧情动作。",Context(behavior.oracle)+" action="+behavior.action);
+   if(!state.constructing&&!state.attaching)ReportNative(state,node,UiText.Get("A copied iterator retained base-game behavior. Its base-game story actions were blocked."),Context(behavior.oracle)+" action="+behavior.action);
    return true;
   }
   public static bool ClaimEncounter(Oracle oracle){

@@ -10,6 +10,7 @@ namespace MoreIterators {
   public static string DataDirectory {get{if(directory==null)Initialize();return directory;}}
   public static bool HasIndependentRuntime(string modPath){
    string manifest=Path.Combine(modPath,"content-manifest.json");
+   if(ModManager.ActiveMods!=null)foreach(var mod in ModManager.ActiveMods)if(mod.path==modPath){manifest=ContentAssets.ResolveOwnedFile(mod.id,"content-manifest.json");break;}
    if(!File.Exists(manifest))return false;
    try{
     var data=Json.Deserialize(File.ReadAllText(manifest)) as Dictionary<string,object>;object value;
@@ -31,14 +32,14 @@ namespace MoreIterators {
    if(String.IsNullOrEmpty(id)||id.IndexOfAny(Path.GetInvalidFileNameChars())>=0||id.Contains(".."))throw new ArgumentException("Invalid iterator id");
    foreach(var item in IteratorCatalog.Projects())if(IteratorCatalog.Text(item,"oracleId")==id){
     string mod=IteratorCatalog.Text(item,"ownerMod"),path=IteratorCatalog.Text(item,"design");
-    if(!String.IsNullOrEmpty(path))foreach(var active in ModManager.ActiveMods)if(active.id==mod){
-     string root=Path.GetFullPath(active.path)+Path.DirectorySeparatorChar;
-     string file=Path.GetFullPath(Path.Combine(root,path));
-     if(!file.StartsWith(root,StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Design escaped its content mod");
-     return file;
-    }
+    if(!String.IsNullOrEmpty(path))return ContentAssets.ResolveOwnedFile(mod,path);
    }
    return Path.Combine(DataDirectory,id+".json");
+  }
+  public static bool IsLocalDesignPath(string file){
+   if(String.IsNullOrEmpty(file))return false;
+   string root=Path.GetFullPath(DataDirectory).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar)+Path.DirectorySeparatorChar;
+   return Path.GetFullPath(file).StartsWith(root,StringComparison.OrdinalIgnoreCase);
   }
  }
 
@@ -49,7 +50,8 @@ namespace MoreIterators {
   public static List<Dictionary<string,object>> Projects(){
    if(Time.realtimeSinceStartup<nextRead)return projects;nextRead=Time.realtimeSinceStartup+.5f;
    var result=new Dictionary<string,Dictionary<string,object>>();
-   foreach(var mod in ModManager.ActiveMods)if(!RuntimePaths.HasIndependentRuntime(mod.path))Read(Path.Combine(mod.path,"moreiterators/registry.json"),mod.id,result);
+   try{foreach(var asset in ContentAssets.Files("moreiterators",".json"))if(String.Equals(Path.GetFileName(asset.path),"registry.json",StringComparison.OrdinalIgnoreCase)&&ContentAssets.Managed(asset.owner))Read(asset.path,String.IsNullOrEmpty(asset.owner)?null:asset.owner,result,false,false);}
+   catch(Exception error){MiDiagnostics.Report("MI_REGISTRY_DIRECTORY","IteratorCatalog.Projects",error,"moreiterators/registry.json");}
    Read(Path.Combine(RuntimePaths.DataDirectory,"creator/registry.json"),null,result);
    projects=new List<Dictionary<string,object>>(result.Values);
    projects.Sort((a,b)=>String.CompareOrdinal(Text(a,"projectId"),Text(b,"projectId")));return projects;
@@ -68,7 +70,7 @@ namespace MoreIterators {
    foreach(var item in result.Values)if(Text(item,"ownerMod")=="moreiterators.local"&&!OwnerEnabled("moreiterators.local"))pending.Add(item);
    pending.Sort((a,b)=>String.CompareOrdinal(Text(a,"projectId"),Text(b,"projectId")));return pending;
   }
-  static void Read(string file,string owner,Dictionary<string,Dictionary<string,object>> result,bool includePendingLocal=false){
+  static void Read(string file,string owner,Dictionary<string,Dictionary<string,object>> result,bool includePendingLocal=false,bool replace=true){
    if(!File.Exists(file))return;
    try{
     var list=Json.Deserialize(File.ReadAllText(file)) as List<object>;if(list==null)return;
@@ -77,8 +79,8 @@ namespace MoreIterators {
      string mod=Text(item,"ownerMod");bool enabled=OwnerEnabled(mod);
      if((!enabled&&!(includePendingLocal&&mod=="moreiterators.local"))||Text(item,"projectId")==""||Text(item,"ai")==""||Text(item,"entry")==""||Text(item,"oracleId")=="")continue;
      // Normalize once so direct menu indexing and Text() share a string fallback.
-     if(String.IsNullOrWhiteSpace(Text(item,"name"))){item["name"]=Text(item,"projectId");MiDiagnostics.Warn("MI_REGISTRY_NAME_FALLBACK","IteratorCatalog.Read","Missing or invalid display name; using project ID.",file+"; project="+Text(item,"projectId"));}
-     result[Text(item,"projectId")]=item;
+     if(String.IsNullOrWhiteSpace(Text(item,"name"))){item["name"]=Text(item,"projectId");MiDiagnostics.Warn("MI_REGISTRY_NAME_FALLBACK","IteratorCatalog.Read",UiText.Get("Missing or invalid display name; using project ID."),file+"; project="+Text(item,"projectId"));}
+     if(replace||!result.ContainsKey(Text(item,"projectId")))result[Text(item,"projectId")]=item;
     }
    }catch(Exception e){MiDiagnostics.Report("MI_REGISTRY_READ","IteratorCatalog.Read",e,file);Debug.LogWarning("[More Iterators] Invalid registry "+file+": "+e.Message);}
   }

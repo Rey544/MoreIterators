@@ -31,7 +31,7 @@ namespace MoreIterators {
    // index, which would otherwise make animation opacity a different character.
    for(int i=0;i<count;i++){string element=track.kind=="image"?atlas:glyph?WorkPearlGlyph.Element((track.glyphIndex+i)%50):"pixel";s.sprites[i]=clipAreas==null?new FSprite(element):ProjectionClip.Create(element,clipAreas.Length);}
    string shaderName=track.kind=="image"&&track.style!="plain"?"Projection":"";
-   if(shaderName!=""){FShader shader;if(camera.game.rainWorld.Shaders.TryGetValue(shaderName,out shader)){foreach(var sprite in s.sprites)sprite.shader=shader;}else MiDiagnostics.Warn("MI-PROJECTION-SHADER","ProjectionSprite.InitiateSprites","Shader unavailable: "+shaderName,track.name);}
+   if(shaderName!=""){FShader shader;if(camera.game.rainWorld.Shaders.TryGetValue(shaderName,out shader)){foreach(var sprite in s.sprites)sprite.shader=shader;}else MiDiagnostics.Warn("MI-PROJECTION-SHADER","ProjectionSprite.InitiateSprites",UiText.Format("Shader unavailable: {0}",shaderName),track.name);}
    AddToContainer(s,camera,null);
   }
   public override void AddToContainer(RoomCamera.SpriteLeaser s,RoomCamera camera,FContainer container){

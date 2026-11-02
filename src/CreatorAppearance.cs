@@ -12,7 +12,7 @@ public static class CreatorAppearance {
  public static void BeforeDraw(RoomCamera.SpriteLeaser s){foreach(var sprite in s.sprites){NativeScale saved;if(sprite!=null&&nativeScales.TryGetValue(sprite,out saved)){sprite.scaleX=saved.x;sprite.scaleY=saved.y;}}}
  public static FAtlasElement Texture(string png,string slot){
   if(String.IsNullOrEmpty(png))return null;
-  if(!MiDiagnostics.Require(!String.IsNullOrEmpty(slot),"MI-TEXTURE-SLOT","CreatorAppearance.Texture","Texture slot is missing.","Texture not applied."))return null;
+  if(!MiDiagnostics.Require(!String.IsNullOrEmpty(slot),"MI-TEXTURE-SLOT","CreatorAppearance.Texture",UiText.Get("Texture slot is missing."),UiText.Get("Texture not applied.")))return null;
   Cached c;
   if(!textures.TryGetValue(slot,out c)){c=new Cached();textures[slot]=c;}
   if(c.data!=png&&c.failed!=png){

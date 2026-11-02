@@ -1,0 +1,211 @@
+0
+A runtime error was detected. The current operation may be incomplete.|检测到运行错误；当前操作可能未完成。
+Source|来源
+Runtime exception|运行异常
+Throwing function|抛错函数
+No stack supplied|堆栈未提供
+Recorded by|记录位置
+Search keywords|搜索关键词
+Find all issues|其他问题也可搜索
+Behavior issue|行为异常
+Full exception log:|完整异常记录：
+Head|圆形头部
+Neck|脖子
+Torso|躯干
+View drawing state|查看绘制状态
+Iterator render state|迭代器绘制状态
+Captured|记录时间
+Project|项目
+Iterator ID|迭代器 ID
+Room|房间
+Culled|画面外剔除
+Body setting|躯干开关
+Sprite index|贴图编号
+Part|部件
+Element|素材
+Visible|显示
+Opacity|透明度
+Scale|缩放
+Position|位置
+Render depth|绘制深度
+Container|容器
+Mesh bounds|网格范围
+Enabled|开启
+Not enabled|关闭
+Eyes|眼睛
+Face markings|面部纹案
+Antennae|天线
+Headphones|耳机
+Gown|长袍
+Sleeves|袖子
+Hands|手
+Feet|脚
+Collar|领子
+Mechanical arm|支架
+Umbilical cord|脐带线
+Processing rings|演算环
+Resume motion|继续动作
+Pause motion|暂停动作
+Work normally|正常工作
+Reception (Motion only)|接待（僅動作）
+Replay first encounter|重播本项目初见
+Rear glow|背后柔光
+Lightning|闪电
+Work pearls|工作珍珠
+Pearl glyphs|珍珠文字
+Close (Resume playing)|收起（繼續遊玩）
+Chamber controls|演算室控制
+Motion|动作
+Display|显示
+Puppet layers|人偶图层
+Action failed|操作未完成
+Motion paused|动作已暂停
+Reception motion|接待动作
+Normal activity|正常活动
+{0}: {1}|{0}：{1}
+Shown|显示
+Hidden|隐藏
+Chambers|演算室
+Current ({0})|目前（{0}）
+Untitled project|未命名项目
+Previous ({0} / {1})|上一页（{0} / {1}）
+Next|下一页
+Back|返回
+Apply a project in the web editor first|先在编辑器应用项目
+Project: {0}|选择项目：{0}
+Status: {0}|状态：{0}
+Mode: {0}|模式：{0}
+No dialogue|无对话模式
+Story dialogue|剧情对话模式
+Pearl reading|读珍珠模式
+Mark: Yes|印記：有
+Mark: No|印記：無
+Visits: {0}|访问记录：{0}
+Start over|重新开始
+Keep|保留
+Enter chamber|进入演算室
+Enter waiting room|进入外部等待房间
+Open web editor|打开编辑网页
+Pearls|珍珠
+Broadcasts|广播
+Close|收起
+First encounter|初见剧情
+Skip first encounter|跳过初见
+Mark of Communication: Yes|交流印记：有
+Mark of Communication: No|交流印记：无
+Back to chamber|返回演算室
+Previous|上一页
+Previous page|上一页
+Next page|下一页
+(Blank)|（留白）
+[Page {0}]|〔第 {0} 页〕
+No pearls imported. Save and apply one in the web editor.|尚未匯入珍珠；在珍珠文字儲存並套用即可解鎖
+No reader is assigned to this pearl.|此珍珠尚未绑定读取者
+Reader: {0}  ›|读取者：{0}  ›
+First reading|首次读取
+Repeated delivery|重复交付
+Leaving midway|中途离开
+Return|返回
+Several this cycle|同雨循环多颗珍珠
+Broadcasts (Imported items unlocked)|廣播（已匯入即解鎖）
+Save and apply a broadcast in the web editor to show it here.|在广播编辑保存并应用，广播将在这里显示。
+Previous group|上一组
+Next group|下一组
+The room file has no camera positions.|房间文件缺少相机位置。
+The room has no camera views.|房间没有相机画面。
+This project's room could not be found. Apply the project again in the studio.|找不到这个项目的房间，请在编辑器重新应用项目。
+This project's room could not be found. Reinstall this content mod.|找不到这个项目的房间，请重新安装此内容模组。
+Looks to the Moon (Spearmaster) requires More Slugcats Expansion.|月姐（矛大师）需要启用 More Slugcats Expansion。
+The project rooms are missing from {0}. Apply the project again before entering.|项目房间尚未完整写入 {0}，请重新应用项目后进入。
+The project rooms are missing from {0}. Reinstall this content mod.|项目房间尚未完整写入 {0}，请重新安装此内容模组。
+Missing room asset: {0}. Apply the project again.|房间素材缺失：{0}。请重新应用项目。
+Missing room asset: {0}. Reinstall this content mod.|房间素材缺失：{0}。请重新安装此内容模组。
+Camera background {0} is missing: {1}. Apply the project again and restart the game.|房间第 {0} 张相机背景缺失：{1}。请重新应用项目后重启游戏。
+Camera background {0} is missing: {1}. Reinstall this content mod and restart the game.|房间第 {0} 张相机背景缺失：{1}。请重新安装此内容模组并重启游戏。
+The base-game region index has not loaded. Enable More Slugcats Expansion and restart the game.|原版地区索引尚未加载，请启用 More Slugcats Expansion 后重启游戏。
+The room region has changed. Exit Rain World completely and restart it before entering this room.|房间地区已更新，需要重启游戏。请完全退出雨世界并重新启动，再选择房间进入。
+Could not enter the room: {0}|未进入房间：{0}
+Room validation failed. See MI_LAUNCH_FAILED in the log for details.|房间验证发生错误。请查看日志中的 MI_LAUNCH_FAILED 以了解详情。
+Unknown editor page.|未知编辑页面。
+Invalid project ID.|项目编号无效。
+The web editor launcher could not be found. Check editorDirectory in your local moreiterators.paths.json.|找不到编辑器启动器，请检查本地 moreiterators.paths.json 的 editorDirectory。
+Python could not be found. Open the web editor using its local shortcut first.|找不到 Python，请先通过本地快捷方式打开编辑器。
+Open the web editor once using its local shortcut to configure the Python path.|请先通过本地快捷方式打开一次编辑器，配置 Python 启动路径。
+Could not open the web editor: {0}|无法打开编辑网页：{0}
+The launcher failed. See MI_STUDIO_LAUNCH in the log for details.|启动发生错误。请查看日志中的 MI_STUDIO_LAUNCH 以了解详情。
+{0} issues in this batch; see the full log.|本次另有问题，共 {0} 项；见完整日志。
+Affinity {0} ({1})|好感度 {0}（{1}）
+Disabled|已关闭
+Not speaking|拒绝交流
+Dislikes|反感
+Neutral|中立
+Likes|喜欢
+Affinity −0.1|好感度 −0.1
+Affinity +0.1|好感度 +0.1
+Slugcat: {0}|蛞蝓猫：{0}
+Slugcat: scene default ({0})|蛞蝓猫：跟随场景（{0}）
+More Iterators|更多迭代器
+Iterator broadcasts|迭代器广播
+Spawn: {0}|出生地点：{0}
+Waiting room|等待区
+Chamber|演算室
+Keep dialogue progress: {0}|保留对话进度：{0}
+Off|关
+On|开
+Enter preview|进入预览
+Local content is disabled|本地作品未启用
+Enable moreiterators.local in Remix.<LINE>Apply the changes and restart the game.|在「拓展」啟用本機作品模組 moreiterators.local。<LINE>套用修改並重新啟動遊戲。
+Voice: On|语音：开启
+Voice: Off|语音：关闭
+The bundled Python runtime could not be found. Check that the mod download is complete.|未找到內置 Python 環境，請檢查模組是否下載完整。
+A copied iterator retained base-game behavior. MI took control before its next update.|發現複製迭代器殘留原版行為，已在更新前接管。
+A copied iterator retained base-game behavior. Its base-game story actions were blocked.|發現複製迭代器殘留原版行為，已阻止原版劇情動作。
+Multiple copies of Revivify Meadow were detected. The room-scan guard was not installed.|偵測到多份復活模組，未安裝房間掃描保護。
+The expected dead-player update method was not found.|未找到預期的死亡後更新方法。
+The Revivify Meadow version or method structure did not match. The room-scan guard was not enabled.|復活模組版本或方法結構不符，房間掃描保護未啟用。
+The dead player's room data is incomplete. This revival scan was skipped.|死亡玩家的房間資訊不完整，已略過本次復活物件掃描。
+Missing: {0}|缺少：{0}
+Revivify Meadow's original player-update entry point has changed.|復活模組的原始玩家更新入口已改變。
+Revivify Meadow's death check or scan entry point is not unique.|復活模組的死亡檢查或掃描入口不唯一。
+The expected dead-player room-scan instructions were not found. Revivify Meadow was left unchanged.|未找到已核對的死亡後房間掃描指令，未修改復活模組。
+Merged content has multiple providers; keeping each pack's own file.|合併內容有多個來源，已保留各模組自身的檔案。
+Texture slot is missing.|缺少貼圖位置，未套用此貼圖。
+Null broadcast pages were treated as empty.|廣播頁面缺失，已按空白頁面處理。
+Null broadcast text was treated as empty.|廣播文字缺失，已按空白文字處理。
+Null legacy dialogue was treated as empty.|舊版對話文字缺失，已按空白文字處理。
+Local pearl UID conflicts with installed content; the content pearl was retained.|本機珍珠識別碼與已安裝內容衝突，已保留已安裝內容的珍珠。
+Too many pending pearl offers; throw this pearl again after a read completes.|等待讀取的珍珠過多，請在讀取完成後重新投遞這顆珍珠。
+Owned hit arrived before encounter creation.|對話尚未初始化，暫時無法處理此次攻擊反應。
+Native regurgitation did not release the requested pearl; this request will not retry.|未能取出指定的胃中珍珠，本次操作不會自動重試。
+Null string was treated as empty.|文字欄位缺失，已按空白文字處理。
+A decorative pearl group ID was repeated; the duplicate was not drawn.|裝飾珍珠組識別碼重複，重複項未顯示。
+The decorative pearl group references an unavailable attachment.|裝飾珍珠組引用的綁定部件不存在。
+Shader unavailable: {0}|著色器無法使用：{0}
+Missing or invalid display name; using project ID.|專案名稱缺失或無效，暫用專案 ID 顯示。
+Some accessory bindings are invalid. Affected accessories were hidden.|部分配件綁定無效，已隱藏受影響的配件。
+No current iterator render snapshot is available.|目前沒有可檢視的迭代器繪製記錄。
+The render snapshot belongs to a different iterator. Re-enter its chamber before opening the report.|繪製記錄屬於其他迭代器，請重新進入目前迭代器的演算室後再檢視。
+Hooks are already installed.|掛鉤已安裝，未重複註冊。
+Expected native mark check or compatible V1 guard was not found; custom spawning is disabled.|未找到相容的原版印記檢查，已停用自訂迭代器生成。
+A preview transition is already active.|正在進入預覽，請稍候。
+Original progression is unavailable.|無法讀取原來的遊戲進度，已保留備份。
+The game's Gown.owner field was not found.|未找到原版服裝歸屬欄位，已保留原版顏色。
+Oracle constructor compatibility check failed.|迭代器初始化相容性檢查失敗。
+Unnamed iterator|未命名迭代器
+Greeting|問候
+...Are you leaving?|……你要離開了嗎？
+Then, let us continue where we left off.|那麼，接著剛才的內容。
+Little creature, what have you brought me this time?|小傢伙，你這次給我帶了什麼東西？
+I remember this pearl.|這顆珍珠，我記得。
+You have brought quite a few pearls this time.|你這一趟帶來了不少珍珠。
+Let me have a look at this one.|讓我看看這一顆。
+...Hello.|……你好。
+We meet again.|又見面了。
+...Let me have a look.|……讓我看看。
+Texture not applied.|未套用貼圖。
+No duplicate hooks added.|未重複註冊鉤子。
+Original IL left unchanged.|原版 IL 保持不變。
+Original state backup retained; repeated launch ignored.|已保留原狀態備份，忽略重複啟動。
+Backup retained.|備份已保留。
+Native color retained.|保留原版顏色。
+Stopping owned speech.|正在停止本模組的語音。

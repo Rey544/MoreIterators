@@ -2,6 +2,9 @@
 from pathlib import Path
 from contextlib import contextmanager
 import argparse,json,os,subprocess,sys,time,traceback,urllib.error,urllib.parse,urllib.request,webbrowser
+ROOT=Path(__file__).resolve().parent
+# A configured embedded Python may still list another MI copy in its _pth file.
+sys.path.insert(0,str(ROOT))
 import localization
 from localization import text
 storage_error=None
@@ -10,7 +13,6 @@ try:
 except Exception as error:
     storage=None
     storage_error=error
-ROOT=Path(__file__).resolve().parent
 PORT=storage.STUDIO_PORT if storage is not None else 18747
 BASE='http://127.0.0.1:'+str(PORT)
 PAGES={'appearance':'/','dialogue':'/dialogue','pearls':'/pearls','broadcasts':'/broadcasts'}
@@ -72,7 +74,9 @@ def ensure_server():
         raise RuntimeError(text('startup.timeout',path=log_path))
 
 def register_game_launcher():
-    config=storage.GAME/'BepInEx/config/moreiterators.paths.json'
+    try:game=storage.require_game_root()
+    except ValueError:return
+    config=game/'BepInEx/config/moreiterators.paths.json'
     if not config.parent.is_dir():return
     with startup_lock():
         # The earlier startup check may already be stale. Never replace a game's

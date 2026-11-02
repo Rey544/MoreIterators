@@ -49,7 +49,7 @@ namespace MoreIterators {
   public static string Label(Menu.MainMenu menu,string room){
    var name=Resolve(menu.manager.rainWorld,room);
    string display=menu.Translate(SlugcatStats.getSlugcatName(name));
-   return UiText.Format(selected.Length==0?"game.menu.slugcat_auto":"game.menu.slugcat",display);
+   return UiText.Format(selected.Length==0?"Slugcat: scene default ({0})":"Slugcat: {0}",display);
   }
 
   public static SlugcatStats.Name Begin(RainWorld game,string room){

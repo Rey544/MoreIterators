@@ -58,7 +58,11 @@
   body.append(first?entry(first):node('p',tr('empty'),'mi-about-empty'));
   body.append(node('h3',tr('thanks')));
   const names=Array.isArray(data.changelog.thanks)?data.changelog.thanks:[];
-  body.append(authored(node('p',names.filter(name=>typeof name==='string').map(name=>name==='匿名测试者'?(locale()==='en'?'Anonymous Tester':'匿名测试者'):name).join(' · '),'mi-about-thanks')));
+  const credits=authored(node('ul',undefined,'mi-about-thanks'));
+  for(const name of names)if(typeof name==='string')credits.append(node('li',name==='匿名测试者'?(locale()==='en'?'Anonymous Tester':'匿名测试者'):name));
+  body.append(credits);
+  const acknowledgements=data.changelog.acknowledgements?.[locale()]||[];
+  for(const line of acknowledgements)if(typeof line==='string')body.append(authored(node('p',line,'mi-about-acknowledgement')));
   if(entries.length>1){body.append(node('h3',tr('history')));for(const previous of entries.slice(1))body.append(entry(previous));}
   body.scrollTop=scroll;
  }
@@ -79,7 +83,8 @@
  async function mount(){
   if(window.MI18n)await MI18n.ready;if(document.getElementById('miVersionFooter'))return;
   footer=node('footer',undefined,'mi-version-footer');footer.id='miVersionFooter';button=authored(node('button',tr('title'),'mi-version-link'));button.type='button';button.onclick=open;
-  const row=node('div',undefined,'mi-footer-row');community=authored(node('div',undefined,'mi-community'));principles=authored(node('div',undefined,'mi-tool-principles'));row.append(button,community);footer.append(principles,row);document.body.append(footer);updateEntry();
+  const row=node('div',undefined,'mi-footer-row');community=authored(node('div',undefined,'mi-community'));principles=authored(node('div',undefined,'mi-tool-principles'));row.append(button);
+  const paths=node('button',MI18n.t('paths.title'),'mi-version-link');paths.type='button';paths.onclick=()=>window.MIInstallSettings.open();row.append(paths,community);footer.append(principles,row);document.body.append(footer);updateEntry();
   refresh().catch(()=>{});
  }
  window.MIStudioAbout={open,refresh};

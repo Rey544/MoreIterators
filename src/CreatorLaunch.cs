@@ -9,15 +9,14 @@ using UnityEngine;
 public static class CreatorLaunch {
  const string UiMessage="MoreIterators.UiMessage";
  static Exception Visible(Exception error){error.Data[UiMessage]=error.Message;return error;}
- static string ContentKey(string key){return PlaybackMode.Enabled?key+".playback":key;}
  public static string Normalize(string room){return room;}
  public static int ExitNode(string room){var p=IteratorCatalog.Find(room);object value;
   if(p!=null&&IteratorCatalog.Text(p,"entry")==room&&p.TryGetValue("entryNode",out value))return Convert.ToInt32(value);
   if(p!=null&&p.TryGetValue("exitNode",out value))return Convert.ToInt32(value);return p!=null&&NativeRoomProjects.IsNative(p)?0:1;}
  public static int CameraCount(string text){
-  string[] lines=text.Split('\n');if(lines.Length<4)throw Visible(new InvalidOperationException(UiText.Get("game.launch.camera_positions_missing")));
+  string[] lines=text.Split('\n');if(lines.Length<4)throw Visible(new InvalidOperationException(UiText.Get("The room file has no camera positions.")));
   int count=0;foreach(string camera in lines[3].Split('|'))if(camera.Trim().Length>0)count++;
-  if(count==0)throw Visible(new InvalidOperationException(UiText.Get("game.launch.camera_views_missing")));return count;
+  if(count==0)throw Visible(new InvalidOperationException(UiText.Get("The room has no camera views.")));return count;
  }
  public static List<string> RoomNames(string text){
   var names=new List<string>();bool rooms=false;
@@ -47,34 +46,34 @@ public static class CreatorLaunch {
   try{
    Dictionary<string,object> project=null;foreach(var p in CreatorRuntime.Projects())if((string)p["entry"]==entry||(string)p["ai"]==entry){project=p;break;}
    string region=entry.Split('_')[0];
-   if(project==null)throw Visible(new InvalidOperationException(UiText.Get(ContentKey("game.launch.project_missing"))));
+   if(project==null)throw Visible(new InvalidOperationException(UiText.Get((PlaybackMode.Enabled?"This project's room could not be found. Reinstall this content mod.":"This project's room could not be found. Apply the project again in the studio."))));
    string ai=(string)project["ai"],outside=(string)project["entry"];
-   if(NativeRoomProjects.IsNative(project)&&!ModManager.MSC)throw Visible(new InvalidOperationException(UiText.Get("game.launch.moon_requires_msc")));
+   if(NativeRoomProjects.IsNative(project)&&!ModManager.MSC)throw Visible(new InvalidOperationException(UiText.Get("Looks to the Moon (Spearmaster) requires More Slugcats Expansion.")));
    string folder=region.ToLowerInvariant();
    string worldText=File.ReadAllText(AssetManager.ResolveFilePath("world/"+folder+"/world_"+folder+".txt"));var names=RoomNames(worldText);
-   if(!names.Contains(ai)||!names.Contains(outside))throw Visible(new InvalidOperationException(UiText.Format(ContentKey("game.launch.rooms_missing"),region)));
+   if(!names.Contains(ai)||!names.Contains(outside))throw Visible(new InvalidOperationException(UiText.Format((PlaybackMode.Enabled?"The project rooms are missing from {0}. Reinstall this content mod.":"The project rooms are missing from {0}. Apply the project again before entering."),region)));
    foreach(string room in new[]{ai,outside}){
-    foreach(string suffix in new[]{".txt","_settings.txt"})if(!File.Exists(WorldLoader.FindRoomFile(room,false,suffix,false)))throw Visible(new InvalidOperationException(UiText.Format(ContentKey("game.launch.asset_missing"),room+suffix)));
+    foreach(string suffix in new[]{".txt","_settings.txt"})if(!File.Exists(WorldLoader.FindRoomFile(room,false,suffix,false)))throw Visible(new InvalidOperationException(UiText.Format((PlaybackMode.Enabled?"Missing room asset: {0}. Reinstall this content mod.":"Missing room asset: {0}. Apply the project again."),room+suffix)));
     int cameras=CameraCount(File.ReadAllText(WorldLoader.FindRoomFile(room,false,".txt",false)));
-    for(int i=1;i<=cameras;i++)if(!File.Exists(WorldLoader.FindRoomFile(room,false,"_"+i+".png",false)))throw Visible(new InvalidOperationException(UiText.Format(ContentKey("game.launch.camera_background_missing"),i,room+"_"+i+".png")));
+    for(int i=1;i<=cameras;i++)if(!File.Exists(WorldLoader.FindRoomFile(room,false,"_"+i+".png",false)))throw Visible(new InvalidOperationException(UiText.Format((PlaybackMode.Enabled?"Camera background {0} is missing: {1}. Reinstall this content mod and restart the game.":"Camera background {0} is missing: {1}. Apply the project again and restart the game."),i,room+"_"+i+".png")));
    }
    var progression=menu.manager.rainWorld.progression;
    if(NativeRoomProjects.IsNative(project)){
-    if(!RainWorld.roomNameToIndex.ContainsKey(ai)||!RainWorld.roomNameToIndex.ContainsKey(outside))throw Visible(new InvalidOperationException(UiText.Get("game.launch.native_index_missing")));
+    if(!RainWorld.roomNameToIndex.ContainsKey(ai)||!RainWorld.roomNameToIndex.ContainsKey(outside))throw Visible(new InvalidOperationException(UiText.Get("The base-game region index has not loaded. Enable More Slugcats Expansion and restart the game.")));
     Report(entry,true,"");Debug.Log("[More Iterators] Native entry verified: "+outside+" -> "+ai+"; timeline="+project["timeline"]);return true;
    }
-   if(Array.IndexOf(progression.regionNames,region)<0)throw Visible(new InvalidOperationException(UiText.Get("game.launch.restart_required")));
+   if(Array.IndexOf(progression.regionNames,region)<0)throw Visible(new InvalidOperationException(UiText.Get("The room region has changed. Exit Rain World completely and restart it before entering this room.")));
    if(ExternalEntry(project)){
     // Existing regions can contain unrelated campaign-conditioned alternatives.
     // Only the explicit unconditional pair and both newly indexed IDs belong
     // to this project; retain the stricter whole-index check for owned regions.
-    if(!RainWorld.roomNameToIndex.ContainsKey(ai)||!RainWorld.roomNameToIndex.ContainsKey(outside)||!ConnectionsMatch(worldText,ai,outside,ExitNode(ai),ExitNode(outside)))throw Visible(new InvalidOperationException(UiText.Get("game.launch.restart_required")));
-   }else if(!Matches(names,RainWorld.roomNameToIndex,region)||!RainWorld.roomNameToIndex.ContainsKey(entry))throw Visible(new InvalidOperationException(UiText.Get("game.launch.restart_required")));
+    if(!RainWorld.roomNameToIndex.ContainsKey(ai)||!RainWorld.roomNameToIndex.ContainsKey(outside)||!ConnectionsMatch(worldText,ai,outside,ExitNode(ai),ExitNode(outside)))throw Visible(new InvalidOperationException(UiText.Get("The room region has changed. Exit Rain World completely and restart it before entering this room.")));
+   }else if(!Matches(names,RainWorld.roomNameToIndex,region)||!RainWorld.roomNameToIndex.ContainsKey(entry))throw Visible(new InvalidOperationException(UiText.Get("The room region has changed. Exit Rain World completely and restart it before entering this room.")));
    Report(entry,true,"");Debug.Log("[More Iterators] Entry verified: "+project["name"]+" -> "+entry);return true;
   }catch(Exception e){
    MiDiagnostics.Report("MI_LAUNCH_FAILED","CreatorLaunch.Ensure",e,entry);
-   string detail=e.Data[UiMessage] as string??UiText.Get("game.launch.unexpected");
-   string text=UiText.Format("game.launch.failed",detail);Report(entry,false,text);
+   string detail=e.Data[UiMessage] as string??UiText.Get("Room validation failed. See MI_LAUNCH_FAILED in the log for details.");
+   string text=UiText.Format("Could not enter the room: {0}",detail);Report(entry,false,text);
    if(menu!=null)menu.manager.ShowDialog(new Menu.DialogNotify(text,new Vector2(600,240),menu.manager,delegate{}));return false;
   }
  }
