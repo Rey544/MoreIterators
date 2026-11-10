@@ -1,0 +1,12 @@
+(async()=>{
+ let checks=0;const check=(value,message)=>{checks++;if(!value)throw Error(message);},get=id=>document.getElementById(id),change=(id,value)=>{get(id).value=value;get(id).dispatchEvent(new Event('change',{bubbles:true}));};
+ try{
+  await MI18n.ready;await MI18n.setLocale('zh-CN',false);for(let i=0;i<300&&get('save').disabled;i++)await new Promise(resolve=>setTimeout(resolve,10));check(!get('save').disabled,'Dialogue failed to load');
+  get('categories').querySelector('[data-category="affinity"]').click();change('stages','attackRock');change('playEvent','current');check(get('previewAffinityField').hidden,'Current authored hit tier exposes unused affinity');
+  change('playEvent','attackRock');check(!get('previewAffinityField').hidden,'Explicit hit simulation lacks effective affinity');change('previewAffinity','.3');get('play').click();check(Math.abs(+get('previewAffinity').value-.1)<.0001,'Visible hit affinity has no effect');
+  change('playEvent','refusal');check(get('previewAffinityField').hidden,'Direct refusal exposes unused affinity');change('playEvent','pearlRead');check(!get('previewAffinityField').hidden,'Full pearl reading lacks affinity');change('playEvent','first');check(get('previewAffinityField').hidden,'Story preview exposes unused affinity');
+  get('categories').querySelector('[data-category="interrupt"]').click();change('stages','leaving');check(get('eventToggleLabel').textContent==='启用离开与返回打断','Leaving switch scope is unclear');MIUndo.reset();get('eventEnabled').click();MIUndo.flush();change('stages','returning');check(!get('eventEnabled').checked&&get('eventToggleLabel').textContent==='启用离开与返回打断','Returning fails to show shared leaving switch');check(await MIUndo.undo()&&get('eventEnabled').checked,'Shared switch undo fails');check(get('stages').value==='returning','Undo loses selected context');
+  change('stages','pickup');check(get('eventToggleLabel').textContent==='启用拿珠打断','Pickup switch scope incorrect');await MI18n.setLocale('en',false);await new Promise(resolve=>setTimeout(resolve,40));change('stages','returning');check(get('eventToggleLabel').textContent==='Enable leaving and returning interruptions','Shared interruption scope untranslated');check(!fixtureErrors.length,fixtureErrors.join('\n'));
+  get('result').textContent=JSON.stringify({ok:true,checks});
+ }catch(error){get('result').textContent=JSON.stringify({ok:false,checks,error:error.stack,errors:fixtureErrors});}
+})();

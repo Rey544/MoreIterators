@@ -78,6 +78,7 @@ using UnityEngine;
  public bool scarfFringe=false;
  public string scarfTopColor="#384845",scarfMiddleColor="#688479",scarfBottomColor="#b5c7bd",scarfBasePng="",scarfPng="";
  public string roomWorkColor="#476d67",roomReceptionColor="#bd8152",roomTemplate="fp";public float roomTransition=3;
+ public string roomPaletteMode="mi",roomGravityMode="mi",entryGravityMode="zero";
  public float pearlClusterX=.25f,pearlClusterY=.18f,pearlCluster2X=.75f,pearlCluster2Y=.18f,pearlScatter=1;public int pearlFixedCount=8;
  public string firstDialogue=UiText.Get("...Hello."),repeatDialogue=UiText.Get("We meet again."),unmarkedDialogue="……",pearlDialogue=UiText.Get("...Let me have a look.");
  public IteratorLayers layers=new IteratorLayers();

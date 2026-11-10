@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MoreIterators {
  public sealed class ContentAsset {
@@ -11,6 +12,32 @@ namespace MoreIterators {
  // while using the game's actual resource order (including version folders).
  public static class ContentAssets {
   static readonly HashSet<string> warned=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+  sealed class ModState {
+   public string id,path,targeted,newest;public bool hasTargeted,hasNewest;
+  }
+  sealed class DirectoryState {
+   public double loaded;public List<ContentAsset> files;public List<string> ambiguous;
+  }
+  static readonly Stopwatch clock=Stopwatch.StartNew();
+  static readonly Dictionary<string,DirectoryState> directories=new Dictionary<string,DirectoryState>(StringComparer.OrdinalIgnoreCase);
+  static readonly List<ModState> mods=new List<ModState>();
+  static string gameRoot,consoleRoot;static bool initialized,hadMods;static int generation;
+  public static int Generation {get{CheckContext();return generation;}}
+  static void CheckContext(){
+   string root=RWCustom.Custom.RootFolderDirectory(),console=AssetManager.GetConsoleFilesSubfolder();
+   bool present=ModManager.ActiveMods!=null;
+   bool same=initialized&&gameRoot==root&&consoleRoot==console&&hadMods==present&&mods.Count==(present?ModManager.ActiveMods.Count:0);
+   if(same&&present)for(int i=0;i<mods.Count;i++){
+    var current=ModManager.ActiveMods[i];var previous=mods[i];
+    if(previous.id!=current.id||previous.path!=current.path||previous.hasTargeted!=current.hasTargetedVersionFolder||previous.hasNewest!=current.hasNewestFolder||
+       previous.targeted!=(current.hasTargetedVersionFolder?current.TargetedPath:null)||previous.newest!=(current.hasNewestFolder?current.NewestPath:null)){same=false;break;}
+   }
+   if(same)return;
+   directories.Clear();mods.Clear();generation++;
+   gameRoot=root;consoleRoot=console;hadMods=present;initialized=true;
+   if(present)foreach(var mod in ModManager.ActiveMods)mods.Add(new ModState{id=mod.id,path=mod.path,hasTargeted=mod.hasTargetedVersionFolder,hasNewest=mod.hasNewestFolder,
+    targeted=mod.hasTargetedVersionFolder?mod.TargetedPath:null,newest=mod.hasNewestFolder?mod.NewestPath:null});
+  }
   public static string Relative(string value){
    if(value==null)throw new ArgumentNullException("value");
    string path=value.Replace('\\','/');
@@ -35,12 +62,29 @@ namespace MoreIterators {
    return owner;
   }
   public static List<ContentAsset> Files(string directory,string extension,string owner=null){
-   directory=Relative(directory);
+   directory=Relative(directory);CheckContext();
+   DirectoryState snapshot;double now=clock.Elapsed.TotalSeconds;
+   if(!directories.TryGetValue(directory,out snapshot)||now-snapshot.loaded>=.25){
+    snapshot=ReadDirectory(directory);snapshot.loaded=clock.Elapsed.TotalSeconds;
+    if(directories.Count>=128)directories.Clear();
+    directories[directory]=snapshot;
+   }
+   foreach(string path in snapshot.ambiguous)if((String.IsNullOrEmpty(extension)||String.Equals(Path.GetExtension(path),extension,StringComparison.OrdinalIgnoreCase))&&warned.Add(path))
+    MiDiagnostics.Warn("MI-ASSET-AMBIGUOUS","ContentAssets.Files",UiText.Get("Merged content has multiple providers; keeping each pack's own file."),path);
+   var result=new List<ContentAsset>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+   foreach(var asset in snapshot.files){
+    if(!String.IsNullOrEmpty(extension)&&!String.Equals(Path.GetExtension(asset.path),extension,StringComparison.OrdinalIgnoreCase))continue;
+    if(owner!=null&&!String.Equals(owner,asset.owner,StringComparison.Ordinal))continue;
+     
+    if(seen.Add(asset.owner+"/"+Path.GetFileName(asset.path)))result.Add(new ContentAsset{path=asset.path,owner=asset.owner});
+   }
+   return result;
+  }
+  static DirectoryState ReadDirectory(string directory){
    string[] paths=AssetManager.ListDirectory(directory,false,true);
    string merged=Path.Combine(RWCustom.Custom.RootFolderDirectory(),"mergedmods");
-   var result=new List<ContentAsset>();var seen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+   var snapshot=new DirectoryState{files=new List<ContentAsset>(),ambiguous=new List<string>()};
    foreach(string path in paths){
-    if(!String.IsNullOrEmpty(extension)&&!String.Equals(Path.GetExtension(path),extension,StringComparison.OrdinalIgnoreCase))continue;
     string provider=Provider(path),name=Path.GetFileName(path);
     if(Within(path,merged)){
      // A merged common filename cannot identify which of several A01/registry
@@ -48,15 +92,14 @@ namespace MoreIterators {
      var providers=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
      foreach(string original in paths)if(!Within(original,merged)&&String.Equals(Path.GetFileName(original),name,StringComparison.OrdinalIgnoreCase))providers.Add(Provider(original));
      if(providers.Count!=1){
-      if(providers.Count>1&&warned.Add(path))MiDiagnostics.Warn("MI-ASSET-AMBIGUOUS","ContentAssets.Files",UiText.Get("Merged content has multiple providers; keeping each pack's own file."),path);
+      if(providers.Count>1)snapshot.ambiguous.Add(path);
       continue;
      }
      foreach(string candidate in providers)provider=candidate;
     }
-    if(owner!=null&&!String.Equals(owner,provider,StringComparison.Ordinal))continue;
-    if(seen.Add(provider+"/"+name))result.Add(new ContentAsset{path=path,owner=provider});
+    snapshot.files.Add(new ContentAsset{path=path,owner=provider});
    }
-   return result;
+   return snapshot;
   }
   public static string ResolveOwnedFile(string owner,string relative){
    relative=Relative(relative);if(relative.Length==0)throw new ArgumentException("Content file is required");

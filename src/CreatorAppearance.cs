@@ -17,7 +17,7 @@ public static class CreatorAppearance {
   if(!textures.TryGetValue(slot,out c)){c=new Cached();textures[slot]=c;}
   if(c.data!=png&&c.failed!=png){
    Texture2D texture=null;
-   string key="mi_creator_"+(++serial);
+   string key="moreiterators_creator_"+(++serial);
    try{
     texture=new Texture2D(2,2,TextureFormat.ARGB32,false);
     texture.filterMode=FilterMode.Point;

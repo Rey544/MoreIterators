@@ -1,4 +1,4 @@
-﻿namespace MoreIterators
+namespace MoreIterators
 {
     using System;
     using System.Collections.Generic;
@@ -61,49 +61,28 @@
         void StopCapture()
         {
 #if !PLAYBACK
-            try { StopAllCoroutines(); }
-            catch(Exception error) { MiDiagnostics.Report("MI-CAPTURE-STOP","StopCapture",error,"Stopping studio capture."); }
-            try { StudioRuntime.ReleaseCapture(); }
-            catch(Exception error) { MiDiagnostics.Report("MI-CAPTURE-RELEASE","StopCapture",error,"Releasing studio capture texture."); }
+            MiDiagnostics.Cleanup("MI-CAPTURE-STOP","StopCapture",StopAllCoroutines,"Stopping studio capture.");
+            MiDiagnostics.Cleanup("MI-CAPTURE-RELEASE","StopCapture",StudioRuntime.ReleaseCapture,"Releasing studio capture texture.");
 #endif
         }
         void RemoveHooks()
         {
-            try { CreatorVoice.Shutdown(); }
-            catch(Exception error) { MiDiagnostics.Report("MI-VOICE-SHUTDOWN","RemoveHooks",error,UiText.Get("Stopping owned speech.")); }
-            try { CreatorAudio.Shutdown(); }
-            catch(Exception error) { MiDiagnostics.Report("MI-AUDIO-SHUTDOWN","RemoveHooks",error,"Cleaning custom music."); }
-            for(int i=removeHooks.Count-1;i>=0;i--)try
-            {
-                removeHooks[i]();
-            }
-            catch(Exception error)
-            {
-                MiDiagnostics.Report("MI-HOOK-REMOVE","OnDisable",error,"index="+i);
-            }
+            MiDiagnostics.Cleanup("MI-VOICE-SHUTDOWN","RemoveHooks",CreatorVoice.Shutdown,"Stopping owned speech.");
+            MiDiagnostics.Cleanup("MI-AUDIO-SHUTDOWN","RemoveHooks",CreatorAudio.Shutdown,"Cleaning custom music.");
+            for(int i=removeHooks.Count-1;i>=0;i--)
+                MiDiagnostics.Cleanup("MI-HOOK-REMOVE","OnDisable",removeHooks[i],"index="+i);
             removeHooks.Clear();
             hooksInstalled=false;
         }
         void OnDisable()
         {
-            try
-            {
-                RestorePreviewSession();
-            }
-            catch(Exception error)
-            {
-                MiDiagnostics.Report("MI-PREVIEW-RESTORE","OnDisable",error,"Hook removal continues even if an extension reset fails.");
-            }
-            finally
-            {
-                StopCapture();
-                try { CreatorOverseers.Shutdown(); }
-                catch(Exception error) { MiDiagnostics.Report("MI-OVERSEER-SHUTDOWN","OnDisable",error,"Cleaning project observers."); }
-                try { CreatorProjections.Shutdown(); }
-                catch(Exception error) { MiDiagnostics.Report("MI-PROJECTION-SHUTDOWN","OnDisable",error,"Cleaning owned projections."); }
-                try { RemoveHooks(); }
-                finally { MiDiagnostics.Shutdown(); }
-            }
+            MiDiagnostics.Cleanup("MI-PREVIEW-RESTORE","OnDisable",RestorePreviewSession,"Restoring preview state.");
+            MiDiagnostics.Cleanup("MI-CAPTURE-STOP","OnDisable",StopCapture,"Stopping studio capture.");
+            MiDiagnostics.Cleanup("MI-PANEL-CLOSE","OnDisable",CreatorControlPanel.Close,"Closing owned control panel.");
+            MiDiagnostics.Cleanup("MI-OVERSEER-SHUTDOWN","OnDisable",CreatorOverseers.Shutdown,"Cleaning project observers.");
+            MiDiagnostics.Cleanup("MI-PROJECTION-SHUTDOWN","OnDisable",CreatorProjections.Shutdown,"Cleaning owned projections.");
+            MiDiagnostics.Cleanup("MI-HOOK-REMOVE","OnDisable",RemoveHooks,"Removing owned hooks.");
+            MiDiagnostics.Shutdown();
         }
         void InstallHooks()
         {
@@ -122,8 +101,11 @@
             CreatorNativeVoiceGuard.Install(removeHooks);
             CreatorOverseers.Install(removeHooks);
             CreatorPearlOffers.Install(removeHooks);
+            removeHooks.Add(NativePearlReaders.Remove);
+            NativePearlReaders.Install();
             WarpRoomLabels.Install(removeHooks);
 #if !PLAYBACK
+            MiOptions.Install(removeHooks);
             CreatorStudioMenu.InstallHooks(removeHooks);
 #endif
 #if !PLAYBACK
@@ -149,7 +131,7 @@
                 On.Menu.InitializationScreen.Update -= registeredHook0;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Menu.InitializationScreen.Update");
+            MiDiagnostics.Debug("hook.install","On.Menu.InitializationScreen.Update");
 #endif
             var registeredHook1=new On.AbstractPhysicalObject.hook_Realize((orig,a)=>
             {
@@ -172,7 +154,7 @@
                 On.AbstractPhysicalObject.Realize -= registeredHook1;
             }
             );
-            MiDiagnostics.Info("hook.install","On.AbstractPhysicalObject.Realize");
+            MiDiagnostics.Debug("hook.install","On.AbstractPhysicalObject.Realize");
             var registeredHook2=new On.OracleGraphics.Halo.hook_Update((orig,halo)=>
             {
                 MiDiagnostics.Hit("On.OracleGraphics.Halo.Update",CreatorRuntime.CurrentRoom);
@@ -189,7 +171,7 @@
                 On.OracleGraphics.Halo.Update -= registeredHook2;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.Halo.Update");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.Halo.Update");
             var registeredHook3=new On.SSOracleBehavior.hook_SeePlayer((orig,b)=>
             {
                 MiDiagnostics.Hit("On.SSOracleBehavior.SeePlayer",CreatorRuntime.CurrentRoom);
@@ -211,7 +193,7 @@
                 On.SSOracleBehavior.SeePlayer -= registeredHook3;
             }
             );
-            MiDiagnostics.Info("hook.install","On.SSOracleBehavior.SeePlayer");
+            MiDiagnostics.Debug("hook.install","On.SSOracleBehavior.SeePlayer");
             var registeredHook4=new On.SSOracleBehavior.hook_NewAction((orig,b,a)=>
             {
                 MiDiagnostics.Hit("On.SSOracleBehavior.NewAction",CreatorRuntime.CurrentRoom);
@@ -233,7 +215,7 @@
                 On.SSOracleBehavior.NewAction -= registeredHook4;
             }
             );
-            MiDiagnostics.Info("hook.install","On.SSOracleBehavior.NewAction");
+            MiDiagnostics.Debug("hook.install","On.SSOracleBehavior.NewAction");
             Application.runInBackground=true;
             var registeredHook5=new On.DataPearl.hook_ApplyPalette((orig,p,s,c,pal)=>
             {
@@ -257,7 +239,7 @@
                 On.DataPearl.ApplyPalette -= registeredHook5;
             }
             );
-            MiDiagnostics.Info("hook.install","On.DataPearl.ApplyPalette");
+            MiDiagnostics.Debug("hook.install","On.DataPearl.ApplyPalette");
             var registeredHook6=new On.DataPearl.hook_DrawSprites((orig,p,s,c,t,pos)=>
             {
                 MiDiagnostics.Hit("On.DataPearl.DrawSprites",CreatorRuntime.CurrentRoom);
@@ -280,7 +262,7 @@
                 On.DataPearl.DrawSprites -= registeredHook6;
             }
             );
-            MiDiagnostics.Info("hook.install","On.DataPearl.DrawSprites");
+            MiDiagnostics.Debug("hook.install","On.DataPearl.DrawSprites");
             var registeredHook7=new On.OverseerAbstractAI.hook_RoomAllowed((orig,ai,room)=>
             {
                 MiDiagnostics.Hit("On.OverseerAbstractAI.RoomAllowed",CreatorRuntime.CurrentRoom);
@@ -303,7 +285,7 @@
                 On.OverseerAbstractAI.RoomAllowed -= registeredHook7;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OverseerAbstractAI.RoomAllowed");
+            MiDiagnostics.Debug("hook.install","On.OverseerAbstractAI.RoomAllowed");
             var registeredHook8=new On.OverseerAbstractAI.hook_PlayerGuideUpdate((orig,ai,time)=>
             {
                 MiDiagnostics.Hit("On.OverseerAbstractAI.PlayerGuideUpdate",CreatorRuntime.CurrentRoom);
@@ -329,7 +311,7 @@
                 On.OverseerAbstractAI.PlayerGuideUpdate -= registeredHook8;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OverseerAbstractAI.PlayerGuideUpdate");
+            MiDiagnostics.Debug("hook.install","On.OverseerAbstractAI.PlayerGuideUpdate");
             var registeredHook9=new On.Menu.MainMenu.hook_ctor(MenuCtor);
             On.Menu.MainMenu.ctor += registeredHook9;
             removeHooks.Add(delegate
@@ -337,7 +319,7 @@
                 On.Menu.MainMenu.ctor -= registeredHook9;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Menu.MainMenu.ctor");
+            MiDiagnostics.Debug("hook.install","On.Menu.MainMenu.ctor");
             var registeredHook10=new On.RoomCamera.hook_LoadPalette(LoadRoomPalette);
             On.RoomCamera.LoadPalette += registeredHook10;
             removeHooks.Add(delegate
@@ -345,7 +327,7 @@
                 On.RoomCamera.LoadPalette -= registeredHook10;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RoomCamera.LoadPalette");
+            MiDiagnostics.Debug("hook.install","On.RoomCamera.LoadPalette");
             var registeredHook11=new On.RoomCamera.hook_ChangeRoom(ChangeCameraRoom);
             On.RoomCamera.ChangeRoom += registeredHook11;
             removeHooks.Add(delegate
@@ -353,7 +335,7 @@
                 On.RoomCamera.ChangeRoom -= registeredHook11;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RoomCamera.ChangeRoom");
+            MiDiagnostics.Debug("hook.install","On.RoomCamera.ChangeRoom");
 #if PLAYBACK
             var registeredHook12=new On.Menu.MainMenu.hook_Update((orig,m)=>
             {
@@ -377,7 +359,7 @@
                 On.Menu.MainMenu.Update -= registeredHook12;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Menu.MainMenu.Update");
+            MiDiagnostics.Debug("hook.install","On.Menu.MainMenu.Update");
 #else
             var registeredHook13=new On.Menu.MainMenu.hook_Update((orig,m)=>
             {
@@ -412,7 +394,7 @@
                 On.Menu.MainMenu.Update -= registeredHook13;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Menu.MainMenu.Update");
+            MiDiagnostics.Debug("hook.install","On.Menu.MainMenu.Update");
 #endif
             var registeredHook14=new On.Menu.MainMenu.hook_Singal(Signal);
             On.Menu.MainMenu.Singal += registeredHook14;
@@ -421,7 +403,7 @@
                 On.Menu.MainMenu.Singal -= registeredHook14;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Menu.MainMenu.Singal");
+            MiDiagnostics.Debug("hook.install","On.Menu.MainMenu.Singal");
             var registeredHook15=new On.Room.hook_ReadyForAI(Ready);
             On.Room.ReadyForAI += registeredHook15;
             removeHooks.Add(delegate
@@ -429,7 +411,7 @@
                 On.Room.ReadyForAI -= registeredHook15;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Room.ReadyForAI");
+            MiDiagnostics.Debug("hook.install","On.Room.ReadyForAI");
             var registeredHook16=new On.Room.hook_Update((orig,r)=>
             {
                 MiDiagnostics.Hit("On.Room.Update",CreatorRuntime.CurrentRoom);
@@ -451,7 +433,7 @@
                 On.Room.Update -= registeredHook16;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Room.Update");
+            MiDiagnostics.Debug("hook.install","On.Room.Update");
             var registeredHook17=new On.Player.hook_ProcessChatLog((orig,player)=>
             {
                 MiDiagnostics.Hit("On.Player.ProcessChatLog",CreatorRuntime.CurrentRoom);
@@ -468,7 +450,7 @@
                 On.Player.ProcessChatLog -= registeredHook17;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Player.ProcessChatLog");
+            MiDiagnostics.Debug("hook.install","On.Player.ProcessChatLog");
             var registeredHook18=new On.OracleGraphics.hook_SkinColor(Skin);
             On.OracleGraphics.SkinColor += registeredHook18;
             removeHooks.Add(delegate
@@ -476,7 +458,7 @@
                 On.OracleGraphics.SkinColor -= registeredHook18;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.SkinColor");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.SkinColor");
             var registeredHook19=new On.RoomCamera.hook_ChangeBothPalettes((orig,cam,a,b,mix)=>
             {
                 MiDiagnostics.Hit("On.RoomCamera.ChangeBothPalettes",CreatorRuntime.CurrentRoom);
@@ -499,7 +481,7 @@
                 On.RoomCamera.ChangeBothPalettes -= registeredHook19;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RoomCamera.ChangeBothPalettes");
+            MiDiagnostics.Debug("hook.install","On.RoomCamera.ChangeBothPalettes");
             var registeredHook20=new On.OracleGraphics.hook_ApplyPalette(Palette);
             On.OracleGraphics.ApplyPalette += registeredHook20;
             removeHooks.Add(delegate
@@ -507,7 +489,7 @@
                 On.OracleGraphics.ApplyPalette -= registeredHook20;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.ApplyPalette");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.ApplyPalette");
             var registeredHook21=new On.OracleGraphics.hook_InitiateSprites(Sprites);
             On.OracleGraphics.InitiateSprites += registeredHook21;
             removeHooks.Add(delegate
@@ -515,7 +497,7 @@
                 On.OracleGraphics.InitiateSprites -= registeredHook21;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.InitiateSprites");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.InitiateSprites");
             var registeredHook22=new On.OracleGraphics.hook_DrawSprites(Draw);
             On.OracleGraphics.DrawSprites += registeredHook22;
             removeHooks.Add(delegate
@@ -523,7 +505,7 @@
                 On.OracleGraphics.DrawSprites -= registeredHook22;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.DrawSprites");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.DrawSprites");
             var registeredHook23=new ILContext.Manipulator(SafeMark);
             IL.SSOracleBehavior.ctor += registeredHook23;
             removeHooks.Add(delegate
@@ -531,7 +513,7 @@
                 IL.SSOracleBehavior.ctor -= registeredHook23;
             }
             );
-            MiDiagnostics.Info("hook.install","IL.SSOracleBehavior.ctor");
+            MiDiagnostics.Debug("hook.install","IL.SSOracleBehavior.ctor");
             var registeredHook24=new On.PlayerProgression.hook_GetOrInitiateSaveState(PreviewSave);
             On.PlayerProgression.GetOrInitiateSaveState += registeredHook24;
             removeHooks.Add(delegate
@@ -539,7 +521,7 @@
                 On.PlayerProgression.GetOrInitiateSaveState -= registeredHook24;
             }
             );
-            MiDiagnostics.Info("hook.install","On.PlayerProgression.GetOrInitiateSaveState");
+            MiDiagnostics.Debug("hook.install","On.PlayerProgression.GetOrInitiateSaveState");
             var registeredHook25=new On.PlayerProgression.hook_SaveToDisk((orig,p,a,b,c)=>
             {
                 MiDiagnostics.Hit("On.PlayerProgression.SaveToDisk",CreatorRuntime.CurrentRoom);
@@ -561,7 +543,7 @@
                 On.PlayerProgression.SaveToDisk -= registeredHook25;
             }
             );
-            MiDiagnostics.Info("hook.install","On.PlayerProgression.SaveToDisk");
+            MiDiagnostics.Debug("hook.install","On.PlayerProgression.SaveToDisk");
             var registeredHook26=new On.PlayerProgression.hook_SaveDeathPersistentDataOfCurrentState((orig,p,a,b)=>
             {
                 MiDiagnostics.Hit("On.PlayerProgression.SaveDeathPersistentDataOfCurrentState",CreatorRuntime.CurrentRoom);
@@ -583,7 +565,7 @@
                 On.PlayerProgression.SaveDeathPersistentDataOfCurrentState -= registeredHook26;
             }
             );
-            MiDiagnostics.Info("hook.install","On.PlayerProgression.SaveDeathPersistentDataOfCurrentState");
+            MiDiagnostics.Debug("hook.install","On.PlayerProgression.SaveDeathPersistentDataOfCurrentState");
             var registeredHook27=new On.OracleGraphics.Gown.hook_Color(GownColor);
             On.OracleGraphics.Gown.Color += registeredHook27;
             removeHooks.Add(delegate
@@ -591,7 +573,7 @@
                 On.OracleGraphics.Gown.Color -= registeredHook27;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.Gown.Color");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.Gown.Color");
             var affinityHitHook=new On.Oracle.hook_HitByWeapon((orig,o,weapon)=>
             {
                 // Native Oracle.HitByWeapon is reactions only (base is empty).
@@ -603,7 +585,7 @@
             });
             On.Oracle.HitByWeapon+=affinityHitHook;
             removeHooks.Add(delegate {On.Oracle.HitByWeapon-=affinityHitHook;});
-            MiDiagnostics.Info("hook.install","On.Oracle.HitByWeapon");
+            MiDiagnostics.Debug("hook.install","On.Oracle.HitByWeapon");
             var registeredHook28=new On.Oracle.hook_Update((orig,o,eu)=>
             {
                 MiDiagnostics.Hit("On.Oracle.Update",CreatorRuntime.CurrentRoom);
@@ -630,7 +612,7 @@
                 On.Oracle.Update -= registeredHook28;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Oracle.Update");
+            MiDiagnostics.Debug("hook.install","On.Oracle.Update");
             var registeredHook29=new On.OracleGraphics.hook_Update((orig,g)=>
             {
                 MiDiagnostics.Hit("On.OracleGraphics.Update",CreatorRuntime.CurrentRoom);
@@ -664,7 +646,7 @@
                 On.OracleGraphics.Update -= registeredHook29;
             }
             );
-            MiDiagnostics.Info("hook.install","On.OracleGraphics.Update");
+            MiDiagnostics.Debug("hook.install","On.OracleGraphics.Update");
 #if !PLAYBACK
             StartCoroutine(StudioRuntime.Capture(x=>Logger.LogWarning(x)));
 #endif
@@ -688,7 +670,7 @@
                 On.Oracle.SetUpMarbles -= registeredHook30;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Oracle.SetUpMarbles");
+            MiDiagnostics.Debug("hook.install","On.Oracle.SetUpMarbles");
 #if PLAYBACK
             var registeredHook31=new On.RainWorldGame.hook_Update((orig,g)=>
             {
@@ -714,7 +696,7 @@
                 On.RainWorldGame.Update -= registeredHook31;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RainWorldGame.Update");
+            MiDiagnostics.Debug("hook.install","On.RainWorldGame.Update");
 #else
             var registeredHook32=new On.RainWorldGame.hook_Update((orig,g)=>
             {
@@ -723,7 +705,7 @@
                 {
                     MiDiagnostics.Tick(g.manager);
                     orig(g);
-                    if(Active&&StudioRuntime.Pose.testGravity>=0&&StudioRuntime.Graphics!=null)StudioRuntime.Graphics.oracle.room.gravity=StudioRuntime.Pose.testGravity;
+                    if(Active&&StudioRuntime.Graphics!=null)CreatorRoomSettings.PreviewGravity(StudioRuntime.Graphics.oracle.room,StudioRuntime.Pose.testGravity);
                     if(Active)StudioRuntime.UpdateDisplay();
                     if(Active&&System.IO.File.Exists(System.IO.Path.Combine(StudioRuntime.DirectoryPath,"launch-room.txt")))g.manager.RequestMainProcessSwitch(ProcessManager.ProcessID.MainMenu);
                     RoomCatalogSnapshot.Tick(g);
@@ -744,7 +726,7 @@
                 On.RainWorldGame.Update -= registeredHook32;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RainWorldGame.Update");
+            MiDiagnostics.Debug("hook.install","On.RainWorldGame.Update");
 #endif
             var registeredHook33=new On.RainWorldGame.hook_GrafUpdate((orig,g,t)=>
             {
@@ -767,7 +749,7 @@
                 On.RainWorldGame.GrafUpdate -= registeredHook33;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RainWorldGame.GrafUpdate");
+            MiDiagnostics.Debug("hook.install","On.RainWorldGame.GrafUpdate");
             var registeredHook34=new On.Player.hook_checkInput((orig,p)=>
             {
                 MiDiagnostics.Hit("On.Player.checkInput",CreatorRuntime.CurrentRoom);
@@ -789,20 +771,11 @@
                 On.Player.checkInput -= registeredHook34;
             }
             );
-            MiDiagnostics.Info("hook.install","On.Player.checkInput");
+            MiDiagnostics.Debug("hook.install","On.Player.checkInput");
             var registeredHook35=new On.RainWorldGame.hook_ShutDownProcess((orig,g)=>
             {
-                MiDiagnostics.Hit("On.RainWorldGame.ShutDownProcess",CreatorRuntime.CurrentRoom);
-                try
-                {
-                    CreatorControlPanel.Close();
-                    orig(g);
-                }
-                catch(Exception error)
-                {
-                    MiDiagnostics.Report("MI-HOOK-001","On.RainWorldGame.ShutDownProcess",error,CreatorRuntime.CurrentRoom);
-                    throw;
-                }
+                MiDiagnostics.CloseProcess("On.RainWorldGame.ShutDownProcess",CreatorRuntime.CurrentRoom,
+                    CreatorControlPanel.Close,delegate { orig(g); });
             }
             );
             On.RainWorldGame.ShutDownProcess += registeredHook35;
@@ -811,7 +784,7 @@
                 On.RainWorldGame.ShutDownProcess -= registeredHook35;
             }
             );
-            MiDiagnostics.Info("hook.install","On.RainWorldGame.ShutDownProcess");
+            MiDiagnostics.Debug("hook.install","On.RainWorldGame.ShutDownProcess");
             Logger.LogInfo("More Iterators core hooks installed");
         }
         void ChangeCameraRoom(On.RoomCamera.orig_ChangeRoom orig,RoomCamera cam,Room next,int position)
@@ -856,7 +829,7 @@
             try
             {
                 var target=PaletteRoom(cam);
-                var extension=IteratorIntegrations.ForRoom(target==null?null:target.abstractRoom.name);
+                var extension=target!=null&&CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(target))?null:IteratorIntegrations.ForRoom(target==null?null:target.abstractRoom.name);
                 orig(cam,extension==null?pal:extension.BasePalette(cam,pal),ref texture);
                 CreatorRuntime.Palette(texture,cam,pal);
                 if(extension!=null)extension.Palette(texture,cam,pal);
@@ -873,7 +846,7 @@
             markPatchReady=false;bool reused;
             markPatchReady=CreatorMarkGuard.TryApply(il,out reused);
             if(!MiDiagnostics.Require(markPatchReady,"MI-IL-MARK","SSOracleBehavior.ctor",UiText.Get("Expected native mark check or compatible V1 guard was not found; custom spawning is disabled."),UiText.Get("Original IL left unchanged.")))return;
-            MiDiagnostics.Info("il.mark.install",reused?"Compatible V1 mark guard reused from an enabled content runtime.":"Native mark check replaced with the V1 static guard.");
+            MiDiagnostics.Debug("il.mark.install",reused?"Compatible V1 mark guard reused from an enabled content runtime.":"Native mark check replaced with the V1 static guard.");
         }
         void MenuCtor(On.Menu.MainMenu.orig_ctor orig, Menu.MainMenu self, ProcessManager manager, bool bg)
         {
@@ -898,6 +871,9 @@
             MiDiagnostics.Hit("Signal",CreatorRuntime.CurrentRoom);
             try
             {
+#if !PLAYBACK
+                if(CreatorStudioMenu.IsTransitioning(self))return;
+#endif
                 if(CreatorBroadcastGallery.Signal(self,message)||CreatorPearlGallery.Signal(self,message))return;
                 if(CreatorRuntime.Signal(self,message)||IteratorIntegrations.Signal(self,sender,message))return;
                 if(message=="MI_ENTER")
@@ -1077,7 +1053,7 @@
             if(!CreatorOracleLifecycle.EnsureBehavior(oracle,true)||!CreatorOracleLifecycle.ClaimEncounter(oracle))return;
             try
             {
-                oracle.room.gravity=0;
+                if(!CreatorRoomSettings.RoomGravity(IteratorDesign.ForRoom(oracle.room)))oracle.room.gravity=0;
                 if(CreatorRuntime.UsesDialogue(oracle.room.abstractRoom.name))oracle.room.AddObject(new CreatorEncounter(oracle));
                 else IteratorIntegrations.CreateEncounter(oracle);
             }
@@ -1159,11 +1135,10 @@
                 var d=IteratorDesign.Current;
                 StudioRuntime.Graphics=self;
                 StudioRuntime.Sprites=s;
-                if(!CreatorRuntime.IsAI(self.oracle.room.abstractRoom.name)&&(appliedRoomPalette!=d.roomPalette||appliedRoomRevision!=IteratorDesign.Revision))
+                if(!CreatorRoomSettings.RoomPalette(d)&&!CreatorRuntime.IsAI(self.oracle.room.abstractRoom.name)&&(appliedRoomPalette!=d.roomPalette||appliedRoomRevision!=IteratorDesign.Revision))
                 {
                     appliedRoomPalette=d.roomPalette;
                     appliedRoomRevision=IteratorDesign.Revision;
-                    self.oracle.room.roomSettings.Palette=d.roomPalette;
                     cam.ChangeMainPalette(d.roomPalette);
                 }
                 int n=extras[self];
@@ -1405,14 +1380,14 @@
         public static bool HasCommunicationMark(Oracle oracle)
         {
             var game=oracle==null||oracle.room==null?null:oracle.room.game;
-            if(game!=null&&CreatorVoicePreview.WithoutMark)return false;
+            if(game!=null&&CreatorVoicePreview.WithoutMark(oracle))return false;
             // Story/co-op players share this save flag. Another grant path can set
             // it before the preview control file has refreshed its cached mark.
             return MoreIteratorsPlugin.Active&&CreatorRuntime.Mark||CreatorMarkGuard.HasMarkV1(game);
         }
         public static bool SuppressNativePalette(Room room,int first,int second)
         {
-            return room!=null&&room==nativePaletteUpdateRoom&&first==25&&second==26;
+            return room!=null&&room==nativePaletteUpdateRoom&&((first==25&&second==26)||CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(room)));
         }
         bool HasReceptionController()
         {
@@ -1467,8 +1442,18 @@
                 return StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.GetToDir:Vector2.up;
             }
         }
+        public override void UnconciousUpdate()
+        {
+            bool roomGravity=CreatorRoomSettings.RoomGravity(IteratorDesign.ForRoom(oracle.room));
+            CreatorRoomSettings.PrepareGravity(oracle.room,roomGravity);
+            float previousGravity=oracle.room.gravity;Room previousPaletteRoom=nativePaletteUpdateRoom;
+            if(CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(oracle.room)))nativePaletteUpdateRoom=oracle.room;
+            try {base.UnconciousUpdate();}
+            finally {nativePaletteUpdateRoom=previousPaletteRoom;if(roomGravity)oracle.room.gravity=previousGravity;}
+        }
         public override void Update(bool eu)
         {
+            CreatorRoomSettings.PrepareGravity(oracle.room,CreatorRoomSettings.RoomGravity(IteratorDesign.ForRoom(oracle.room)));
             CreatorReadingPresentation.Tick(oracle,StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.OracleGetToPos:new Vector2(480,350));
             if(StudioRuntime.Recording)
             {
@@ -1483,7 +1468,7 @@
                 // this chamber's slower transition; suppress only that exact native call scope.
                 Room previousPaletteRoom=nativePaletteUpdateRoom;
                 nativePaletteUpdateRoom=HasReceptionController()?oracle.room:null;
-                bool controlsRoom=CreatorOracleLifecycle.ControlsRoom(oracle);
+                bool controlsRoom=CreatorOracleLifecycle.ControlsRoom(oracle)&&!CreatorRoomSettings.RoomGravity(IteratorDesign.ForRoom(oracle.room));
                 float previousGravity=oracle.room.gravity;
                 try { base.Update(eu); }
                 finally { nativePaletteUpdateRoom=previousPaletteRoom;if(!controlsRoom)oracle.room.gravity=previousGravity; }

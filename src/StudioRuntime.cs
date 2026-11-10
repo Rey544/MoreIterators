@@ -47,9 +47,10 @@ public static class StudioRuntime {
  }
  static Texture2D captureTexture;
  public static void ReleaseCapture(){if(captureTexture!=null)UnityEngine.Object.Destroy(captureTexture);captureTexture=null;}
- public static IEnumerator Capture(Action<string> log){float next=0,ioFailureSince=0,nextIOReport=0;int ioFailures=0;
+ public static IEnumerator Capture(Action<string> log){float next=0,ioFailureSince=0,nextIOReport=0;int ioFailures=0;var demand=new StudioCaptureDemand();
   try{
   while(true){yield return new WaitForEndOfFrame();if(Time.realtimeSinceStartup<next)continue;next=Time.realtimeSinceStartup+(Pose.playMode?.25f:.05f);
+   if(!demand.WantsFrame(DirectoryPath,Time.realtimeSinceStartup,DateTime.UtcNow)){ReleaseCapture();continue;}
    if(Recording||Graphics==null||Sprites==null||Graphics.oracle.room==null||Graphics.oracle.slatedForDeletetion||!(Graphics.oracle.room.game.manager.currentMainLoop is RainWorldGame))continue;
    try{Directory.CreateDirectory(DirectoryPath);var head=Sprites.sprites[Graphics.HeadSprite];Vector2 h=head.LocalToScreen(Vector2.zero);float scale=1f/Futile.displayScaleInverse;int w=(int)(140*scale),ht=(int)(150*scale);int x=Mathf.Clamp((int)(h.x-w*.5f),0,Screen.width-w),y=Mathf.Clamp((int)(h.y-ht*.65f),0,Screen.height-ht);
     if(captureTexture==null||captureTexture.width!=w||captureTexture.height!=ht){ReleaseCapture();captureTexture=new Texture2D(w,ht,TextureFormat.RGB24,false);}captureTexture.ReadPixels(new Rect(x,y,w,ht),0,0,false);captureTexture.Apply(false);var png=ImageConversion.EncodeToPNG(captureTexture);string dest=Path.Combine(DirectoryPath,"studio-frame.png");File.WriteAllBytes(dest+".tmp",png);if(File.Exists(dest))File.Replace(dest+".tmp",dest,null);else File.Move(dest+".tmp",dest);
@@ -63,6 +64,16 @@ public static class StudioRuntime {
    catch(Exception e){MiDiagnostics.Report("MI-STUDIO-CAPTURE","StudioRuntime.Capture",e,DirectoryPath);if(log!=null)log("Studio frame: "+e.Message);next=Time.realtimeSinceStartup+1;}
   }
   }finally{ReleaseCapture();}
+ }
+}
+internal sealed class StudioCaptureDemand {
+ double nextPoll;bool requested;
+ public bool WantsFrame(string directory,double elapsedSeconds,DateTime utcNow){
+  if(elapsedSeconds<nextPoll)return requested;nextPoll=elapsedSeconds+.5;
+  try{string path=Path.Combine(directory,"studio-frame-request");double age=(utcNow-File.GetLastWriteTimeUtc(path)).TotalSeconds;requested=File.Exists(path)&&age>=0&&age<3;}
+  catch(IOException){requested=false;}
+  catch(UnauthorizedAccessException){requested=false;}
+  return requested;
  }
 }
 }

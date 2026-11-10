@@ -84,7 +84,7 @@ namespace MoreIterators {
    try{
     creature.ignoreCycle=true;creature.saveCreature=false;room.abstractRoom.AddEntity(creature);creature.RealizeInRoom();
     var overseer=creature.realizedCreature as Overseer;if(overseer==null)throw new InvalidOperationException("Native overseer realization failed");
-    overseer.conversationDelay=2;Position(overseer,PlayerIn(room));MiDiagnostics.Info("overseer.spawn",id+"; room="+name+"; owner="+config.ownerAbbreviation);
+    overseer.conversationDelay=2;Position(overseer,PlayerIn(room));MiDiagnostics.Debug("overseer.spawn",id+"; room="+name+"; owner="+config.ownerAbbreviation);
    }catch{Remove(own);instances.Remove(id);retry[id]=Time.realtimeSinceStartup+8f;throw;}
   }
   static void Position(Overseer overseer,AbstractCreature player){

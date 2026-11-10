@@ -42,7 +42,7 @@ namespace MoreIterators
             });
             On.Menu.MenuLabel.ctor+=hook;
             removeHooks.Add(delegate{On.Menu.MenuLabel.ctor-=hook;signalFields.Clear();});
-            MiDiagnostics.Info("hook.install","On.Menu.MenuLabel.ctor: registered Warp room labels only");
+            MiDiagnostics.Debug("hook.install","On.Menu.MenuLabel.ctor: registered Warp room labels only");
         }
     }
 }

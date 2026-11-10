@@ -36,8 +36,9 @@ namespace MoreIterators
             Field(html,"Project",design.projectId);Field(html,"Iterator ID",design.oracleId);
             Field(html,"Room",graphics.oracle.room==null?"-":graphics.oracle.room.abstractRoom.name);
             Field(html,"Culled",OnOff(graphics.culled));Field(html,"Body setting",OnOff(design.layers==null||design.layers.body));
+            CameraDetails(html,graphics.oracle.room);
             html.Append("</dl><div class='table'><table><thead><tr>");
-            foreach(string column in new[]{"Sprite index","Part","Element","Visible","Opacity","Scale","Position","Render depth","Container","Mesh bounds"})
+            foreach(string column in new[]{"Sprite index","Part","Element","Visible","Opacity","Color opacity","Parent opacity","Shader","Vertex opacity","Scale","Position","Render depth","Container","Mesh bounds"})
                 html.Append("<th>").Append(E(UiText.Get(column))).Append("</th>");
             html.Append("</tr></thead><tbody>");
             var containers=new Dictionary<FContainer,int>();
@@ -49,14 +50,42 @@ namespace MoreIterators
                 Cell(html,sprite==null||sprite.element==null?"-":sprite.element.name);
                 Cell(html,OnOff(sprite!=null&&sprite.isVisible));
                 Cell(html,sprite==null?"-":N(sprite.alpha));
+                Cell(html,sprite==null?"-":N(sprite.color.a));
+                Cell(html,sprite==null||sprite.container==null?"-":N(OracleSpriteDiagnostics.ParentAlpha(sprite)));
+                Cell(html,sprite==null?"-":OracleSpriteDiagnostics.ShaderName(sprite));
+                Cell(html,OracleSpriteDiagnostics.VertexAlpha(sprite as TriangleMesh));
                 Cell(html,sprite==null?"-":N(sprite.scaleX)+", "+N(sprite.scaleY));
                 Cell(html,sprite==null?"-":N(sprite.x)+", "+N(sprite.y));
                 Cell(html,sprite==null?"-":sprite.depth.ToString(CultureInfo.InvariantCulture));
                 string container="-";
                 if(sprite!=null&&sprite.container!=null){int id;if(!containers.TryGetValue(sprite.container,out id)){id=containers.Count+1;containers.Add(sprite.container,id);}container=sprite.container.GetType().Name+" #"+id;}
-                Cell(html,container);Cell(html,MeshBounds(sprite as TriangleMesh));html.Append("</tr>");
+                string layer=CameraLayer(graphics.oracle.room,sprite==null?null:sprite.container);
+                Cell(html,String.IsNullOrEmpty(layer)?container:layer+" / "+container);Cell(html,MeshBounds(sprite as TriangleMesh));html.Append("</tr>");
             }
             return html.Append("</tbody></table></div></body></html>").ToString();
+        }
+
+        static readonly string[] cameraLayers={"Shadows","BackgroundShortcuts","Background","Midground","Items","Foreground","Sand","ForegroundLights","Shortcuts","Water","GrabShaders","Bloom","WarpPoint","HUD","HUD2"};
+        static string CameraLayer(Room room,FContainer container){
+            if(room==null||room.game==null||room.game.cameras==null||container==null)return "";
+            foreach(var camera in room.game.cameras){
+                if(camera==null||camera.room!=room)continue;
+                foreach(string name in cameraLayers)if(camera.ReturnFContainer(name)==container)return UiText.Get("Camera")+" "+camera.cameraNumber+" / "+name;
+            }
+            return "";
+        }
+        static void CameraDetails(StringBuilder html,Room room){
+            if(room==null||room.game==null||room.game.cameras==null)return;
+            foreach(var camera in room.game.cameras){
+                if(camera==null||camera.room!=room)continue;
+                Field(html,"Camera",camera.cameraNumber.ToString(CultureInfo.InvariantCulture));
+                Field(html,"Room image material",Material(camera.levelGraphic));
+                Field(html,"Screen effect material",Material(camera.fullScreenEffect));
+            }
+        }
+        static string Material(FSprite sprite){
+            if(sprite==null)return "-";
+            return OracleSpriteDiagnostics.ShaderName(sprite)+" / "+UiText.Get("Opacity")+": "+N(sprite.alpha)+" / "+UiText.Get("Color opacity")+": "+N(sprite.color.a)+" / "+UiText.Get("Parent opacity")+": "+N(OracleSpriteDiagnostics.ParentAlpha(sprite))+" / "+UiText.Get("Visible")+": "+OnOff(sprite.isVisible);
         }
 
         static string Part(OracleGraphics g,int index)

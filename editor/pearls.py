@@ -5,6 +5,28 @@ import storage,dialogue,pearl_projects,audio_assets
 from default_text import text
 
 SCHEMA='moreiterators.pearl.v1'
+NATIVE_READERS=('DM','CL','SL','SS')
+
+def native_reader(binding):
+    return isinstance(binding,dict) and binding.get('nativeOracleId') in NATIVE_READERS
+
+def reader_key(binding):
+    return 'native:'+binding['nativeOracleId'] if native_reader(binding) else binding.get('projectId','')
+
+def validate_native_features(binding):
+    if not native_reader(binding):return
+    if binding.get('affinity') or binding.get('leaving') or binding.get('returning') or binding.get('many') or binding.get('repeatPrependCommon') or binding.get('leavePolicy','resume')!='resume':
+        raise ValueError('Native pearl readers support first and repeated reading text only.')
+    def inspect(value):
+        if isinstance(value,dict):
+            if value.get('kind')=='action':raise ValueError('Native pearl readers support first and repeated reading text only.')
+            for key,item in value.items():
+                if key in ('action','beforeAction','readAction') and isinstance(item,dict) and item.get('type','none')!='none':raise ValueError('Native pearl readers support first and repeated reading text only.')
+                if key=='presentation' and isinstance(item,dict) and any(v!='inherit' for v in item.values()):raise ValueError('Native pearl readers support first and repeated reading text only.')
+                inspect(item)
+        elif isinstance(value,list):
+            for item in value:inspect(item)
+    inspect(binding)
 
 def reference_project(pid):
     from project_lifecycle import reference_project as load_reference
@@ -31,7 +53,14 @@ def listing(collection_id=None):
 def list_all():
     return [item for project in pearl_projects.catalog()['projects'] for item in listing(project['id'])]
 def lines(text):return [dict(lineId=uuid.uuid4().hex,text=s,hold=2.5,gap=.6) for s in text.split('\n') if s.strip()]
-def reader(pid):return dict(projectId=pid,requireMark=True,repeatEnabled=False,repeatPrependCommon=False,presentation=dialogue.presentation_defaults(),repeat=[],leavePolicy='resume',read=lines(text('default.dialogue.pearl')),leaving=[],returning=[])
+def reader(pid):
+    native=pid[7:] if isinstance(pid,str) and pid.startswith('native:') else ''
+    if native:
+        if native not in NATIVE_READERS:raise ValueError('Unknown native pearl reader.')
+    else:reference_project(storage.valid_id(pid))
+    result=dict(projectId='' if native else pid,requireMark=True,repeatEnabled=False,repeatPrependCommon=False,presentation=dialogue.presentation_defaults(),repeat=[],leavePolicy='resume',read=lines(text('default.dialogue.pearl')),leaving=[],returning=[])
+    if native:result['nativeOracleId']=native
+    return result
 def default(collection_id=None):
     cid=pearl_projects.resolve(collection_id);used={p['id'] for p in listing(cid)}
     pid=next(chr(65+i//99)+str(i%99+1).zfill(2) for i in range(26*99) if chr(65+i//99)+str(i%99+1).zfill(2) not in used)
@@ -85,8 +114,12 @@ def validate(p):
         r.setdefault('repeatPrependCommon',False)
         if type(r['repeatPrependCommon']) is not bool:raise ValueError('先播放通用重复读取开关无效')
         if type(r['repeatEnabled']) is not bool:raise ValueError('单独重复读取开关无效')
-        pid=storage.valid_id(r.get('projectId'))
-        reference_project(pid)
+        if r.get('nativeOracleId'):
+            if not native_reader(r) or r.get('projectId','')!='':raise ValueError('Invalid native pearl reader.')
+            r['projectId']='';pid=reader_key(r)
+        else:
+            pid=storage.valid_id(r.get('projectId'))
+            reference_project(pid)
         if pid in seen:raise ValueError('同一个迭代器不能重复绑定')
         seen.add(pid)
         if r.get('leavePolicy') not in ('resume','restart','cancel') or type(r.get('requireMark')) is not bool:raise ValueError('离开规则或印记开关无效')
@@ -107,6 +140,7 @@ def validate(p):
                 if type(branch['repeatPrependCommon']) is not bool:raise ValueError('先播放通用重复读取开关无效')
                 if type(branch['repeatEnabled']) is not bool:raise ValueError('珍珠好感度重复读取开关无效')
                 check_pool(branch['repeat'])
+        validate_native_features(r)
     if not isinstance(p.get('spawnProjects'),list) or len(set(p['spawnProjects']))!=len(p['spawnProjects']):raise ValueError('测试房间列表无效')
     for pid in p['spawnProjects']:reference_project(storage.valid_id(pid))
     positions=p.get('spawnPositions',{})
@@ -232,7 +266,11 @@ def compile_project(p,roomnames):
             position=p['spawnRoomPositions'][room];validate_position(position,room_geometry(room),p['appearance']['size']);spawn['position']=copy.deepcopy(position)
         out['spawns'].append(spawn);seen.add(room)
     for r in out['readers']:
-        project=reference_project(r['projectId']);r['oracleId']=roomnames(project)[2];r['name']=project['name']
+        if r.get('nativeOracleId'):
+            if not native_reader(r) or r.get('projectId','')!='':raise ValueError('Invalid native pearl reader.')
+            validate_native_features(r);r['oracleId']=r['nativeOracleId'];r['name']=r['nativeOracleId']
+        else:
+            project=reference_project(r['projectId']);r['oracleId']=roomnames(project)[2];r['name']=project['name']
     return out
 def apply(p,roomnames):
     # Applying a pearl publishes only its entire collection, never a mixture.

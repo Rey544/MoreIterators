@@ -1,11 +1,12 @@
 """OC Creator: loopback-only project store, TEST room compiler, partial exports."""
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from pathlib import Path
-import json,os,re,datetime,threading,shutil,hashlib,base64,io,zipfile,urllib.parse
+import json,os,re,datetime,threading,shutil,hashlib,base64,io,zipfile,urllib.parse,time
 from PIL import Image,ImageColor
 ROOT=Path(__file__).resolve().parent
 import sys
 sys.path.insert(0,str(ROOT))
+import server_lifecycle
 from necklaces import validate_necklaces
 from pearl_accessories import validate_pearl_accessories
 import wardrobe
@@ -28,6 +29,8 @@ import broadcasts
 import voice_samples
 import room_editor
 import room_bindings
+import room_preview
+import room_controls
 import room_migration
 import project_purge
 import room_cleanup
@@ -42,11 +45,25 @@ import studio_drafts
 import action_presets
 import install_picker
 import default_text
+import project_packages
+import region_packages
+import chamber_presets
+import room_source_choices
 PROJECTS=storage.PROJECTS; EXPORTS=storage.EXPORTS
 GAME=storage.GAME
 ASSETS=GAME/'RainWorld_Data/StreamingAssets'; MOD=storage.DATA/'local-mod'; DESIGNS=storage.RUNTIME
 PORT=storage.STUDIO_PORT; LOCK=threading.RLock()
 LIVE_CACHE={}
+FRAME_REQUESTS={}
+
+def request_studio_frame():
+    
+    with LOCK:
+        path=DESIGNS/'studio-frame-request';now=time.monotonic()
+        previous=FRAME_REQUESTS.get(path)
+        if previous is not None and now-previous<1 and path.exists():return
+        path.parent.mkdir(parents=True,exist_ok=True);path.touch()
+        FRAME_REQUESTS[path]=now
 
 def installation_paths(changes=None):
     global GAME, ASSETS
@@ -93,7 +110,7 @@ def default():
       hemProfile='1,1,1,1,1,1,1,1,1,1,1',haloColor='#83b39e',haloPreset='original',haloScale=1,haloOpacity=.5,haloSpeed=1,roomPalette=26,rearGlowColor='#98b4a5',rearGlowOpacity=.12,rearGlowRadius=250,rearGlowEnabled=True,
       pearlCount=32,pearlColor1='#000000',pearlColor2='#658c7b',pearlColor3='#a2bfb1',pearlColor4='#e5dcca',pearlGlyphColor='#acbcb2',pearlGlyphOpacity=.65,
       pearlGlyph1=0,pearlGlyph2=3,pearlGlyph3=6,pearlGlyph4=9,pearlClusterX=.25,pearlClusterY=.18,pearlCluster2X=.75,pearlCluster2Y=.18,pearlScatter=1,pearlFixedCount=8,
-      roomWorkColor='#476d67',roomReceptionColor='#bd8152',roomTransition=3,firstDialogue=default_text.text('default.dialogue.hello'),repeatDialogue=default_text.text('default.dialogue.repeat'),unmarkedDialogue='……',pearlDialogue=default_text.text('default.dialogue.pearl'),
+      roomPaletteMode='mi',roomGravityMode='mi',entryGravityMode='zero',roomWorkColor='#476d67',roomReceptionColor='#bd8152',roomTransition=3,firstDialogue=default_text.text('default.dialogue.hello'),repeatDialogue=default_text.text('default.dialogue.repeat'),unmarkedDialogue='……',pearlDialogue=default_text.text('default.dialogue.pearl'),
       layers={k:True for k in ['head','body','neck','eyes','face','antenna','ears','robe','sleeves','hands','feet','collar','mechanicalArm','cables','halo']}),textures={},editor={},overseer=overseers.defaults(),overseerRevision=0)
 LIMITS={'puppetScale':(.65,1.6),'torsoLength':(.7,1.4),'armLength':(.7,1.4),'legLength':(.7,1.4),'earWidth':(1,12),'earHeight':(2,18),'earOffsetX':(-4,6),'earOffsetY':(-8,8),'antennaHeight':(3,32),'antennaWidth':(.3,5),'antennaSpread':(5,14),'antennaOffsetY':(-8,8),'robeLength':(18,45),'robeHemWidth':(.45,2.2),'sleeveWidth':(2,8),'collarWidth':(.5,1.8),'collarHeight':(0,8),'collarNotch':(-4,4),'pearlCount':(0,80),'pearlScatter':(0,3),'pearlFixedCount':(0,40),'roomTransition':(.2,15),'haloOpacity':(0,1),'haloScale':(.3,2),'haloSpeed':(0,3)}
 TEXTURES={'earL':(24,32),'earR':(24,32),'forehead':(32,32),'face':(32,32),'antennaL':(24,48),'antennaR':(24,48),'gown':(64,96),'sleeve':(32,64),'collar':(32,16),'scarf':(64,96)}
@@ -127,6 +144,7 @@ def validate(p):
     base['layers']={'body':True,'neck':base.get('layers',{}).get('head',True),**base.get('layers',{})}
     audio_assets.validate_design(base)
     voice_settings.validate_design(base)
+    room_controls.validate(base)
     head_segments.validate(base)
     eyes.validate(base)
     color_gradients.validate(base)
@@ -232,11 +250,7 @@ def sync_saved_project_names():
         try:sync_project_name(json.loads(file.read_text('utf-8')))
         except (OSError,ValueError,KeyError):continue
 def composite(texture,size):
-    result=Image.new('RGBA',size)
-    for layer in texture.get('layers',[]):
-        if not layer.get('visible',True) or not layer.get('png'):continue
-        im=Image.open(io.BytesIO(base64.b64decode(layer['png'].split(',',1)[1]))).convert('RGBA');alpha=im.getchannel('A').point(lambda x:round(x*layer.get('opacity',1)));im.putalpha(alpha);result=Image.alpha_composite(result,im)
-    b=io.BytesIO();result.save(b,format='PNG');return b.getvalue()
+    return pngbytes(paint_layers.compose(texture,size))
 
 def pngbytes(im):
     b=io.BytesIO();im.save(b,format='PNG');return b.getvalue()
@@ -269,7 +283,7 @@ def procedural_cloth(p,key):
     im.putdata(pixels)
     return im
 
-def cloth_base(p,key):
+def raw_cloth_base(p,key):
     tex=p.get('textures',{}).get(key,{})
     if tex.get('layers') and tex['layers'][0].get('visible',True) is False:return Image.new('RGBA',texture_size(p,key))
     painted=Image.open(io.BytesIO(composite({'layers':tex.get('layers',[])[:1]},texture_size(p,key)))).convert('RGBA')
@@ -283,9 +297,12 @@ def cloth_base(p,key):
     if opacity<1:result.putalpha(result.getchannel('A').point(lambda value:round(value*opacity)))
     return result
 
+def cloth_base(p,key):
+    return paint_layers.split(p.get('textures',{}).get(key,{}),texture_size(p,key),raw_cloth_base(p,key))[0]
+
 def pattern_texture(p,key):
     tex=p.get('textures',{}).get(key,{})
-    return {'layers':tex.get('layers',[])[1:]} if fabric(key) else tex
+    return paint_layers.overlay_texture(tex) if fabric(key) else tex
 
 def material(p,key):
     if key.startswith(('antenna','ear')):return pngbytes(Image.alpha_composite(antenna_layer(p,key,0),antenna_layer(p,key,1)))
@@ -328,7 +345,7 @@ def copy_room(source,directory,name,palette=None,replace=False):
         if suffix=='.txt':
             lines=src.read_text('utf-8-sig').splitlines();lines[0]=name;dest.write_text('\n'.join(lines)+'\n',encoding='utf-8')
         elif suffix=='_settings.txt':
-            text=src.read_text('utf-8-sig');text=re.sub(r'(?m)^Template:.*','Template: NONE',text)
+            text=src.read_text('utf-8-sig')
             if palette is not None:text=re.sub(r'(?m)^Palette:.*','Palette: '+str(palette),text)
             dest.write_text(text,encoding='utf-8')
         else:shutil.copy2(src,dest)
@@ -415,10 +432,9 @@ def default_room_source(p,name,kind):
     return ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else entry_room_template()
 
 def rained_settings_source(p,name,kind):
-    installed=storage.installed_mod(p['projectId'])/'world'/(name.split('_')[0].lower()+'-rooms')/(name+'_settings.txt')
-    authored=storage.target_mod(p['projectId'])/'world'/(name.split('_')[0].lower()+'-rooms')/(name+'_settings.txt')
-    for value in (installed,authored):
-        if value.is_file():return value
+    cached=room_editor.cache_base(p['projectId'],name)
+    settings=project_packages.selected_room_settings(p,name,cached)
+    if settings.is_file():return settings
     source=ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else entry_room_template()
     return Path(str(source)+'_settings.txt')
 
@@ -442,8 +458,7 @@ def sync_linked_rooms(p,ai,entry):
         if source is None:continue
         relative=Path('world')/(name.split('_')[0].lower()+'-rooms')
         rooms=target/relative
-        copy_room(source,rooms,name,replace=True)
-        if kind=='entry':zero_gravity(rooms/(name+'_settings.txt'))
+        room_controls.copy_owned_room(p,source,rooms,name,kind,sys.modules[__name__],replace=True)
         if installed.is_dir():copy_room(rooms/name,installed/relative,name,replace=True)
 
 def deploy(p):
@@ -451,22 +466,25 @@ def deploy(p):
 
 def _deploy(p):
     storage.require_game_root()
-    p=save(p);d=compile_design(p);p=waiting_room.prepare(p);ai,entry,oid=roomnames(p)
+    package_assets=project_packages.before_deploy(p,sys.modules[__name__])
+    p=save(p);d=compile_design(p)
+    if not package_assets['files']:p=waiting_room.prepare(p)
+    ai,entry,oid=roomnames(p)
     audio_assets.copy_referenced([d],storage.target_mod(p['projectId']))
     audio_assets.copy_referenced([d],storage.installed_mod(p['projectId']))
     path=storage.design_path(p['projectId'],oid);atomic(path,d)
     if storage.link(p['projectId']):
         storage.sync_design(p['projectId'],oid)
         sync_linked_rooms(p,ai,entry)
-    elif not native_projects.binding(p['projectId']):
+    elif not native_projects.binding(p['projectId']) and not package_assets['files']:
         rooms=MOD/'world'/(ai.split('_')[0].lower()+'-rooms');rooms.mkdir(parents=True,exist_ok=True)
         # Local map templates stay in data, outside the distributable creator.
         ai_source=default_room_source(p,ai,'ai')
-        copy_room(ai_source,rooms,ai,palette=26,replace=room_editor.cached_source(p['projectId'],ai) is not None)
+        room_controls.copy_owned_room(p,ai_source,rooms,ai,'ai',sys.modules[__name__],replace=room_editor.cached_source(p['projectId'],ai) is not None)
         if p.get('roomBinding',{}).get('entryMode')!='existing':
             entry_source=default_room_source(p,entry,'entry')
-            copy_room(entry_source,rooms,entry,replace=room_editor.cached_source(p['projectId'],entry) is not None)
-            zero_gravity(rooms/(entry+'_settings.txt'))
+            room_controls.copy_owned_room(p,entry_source,rooms,entry,'entry',sys.modules[__name__],replace=room_editor.cached_source(p['projectId'],entry) is not None)
+    project_packages.write_deploy_assets(package_assets)
     with LOCK:
         registry=DESIGNS/'creator/registry.json';items=json.loads(registry.read_text('utf-8')) if registry.exists() else []
         items=[x for x in items if x['projectId']!=p['projectId']]+[storage.registry_record(p,ai,entry,oid)]
@@ -498,20 +516,25 @@ def room_reference_files(project_id):
     with room_migration.staging_directory() as staged:
         for name,kind in ((ai,'ai'),(entry,'entry')):
             source=standalone.room_source(project,name,kind,sys.modules[__name__])
-            copy_room(source,staged,name)
-        for file in sorted(staged.iterdir()):
-            result.append((file.name,file.read_bytes()))
+            settings=project_packages.selected_room_settings(project,name,source)
+            setting_files=project_packages.room_settings_files(project,name,settings)
+            rendered=project_packages._collect_render(source,settings,name,setting_files)
+            for filename,content in rendered.items():(staged/filename).write_bytes(content)
+            for filename,path in setting_files.items():standalone.copy_room_palettes(project,path,staged/filename,staged)
+        for file in sorted(staged.rglob('*')):
+            if file.is_file():result.append((file.relative_to(staged).as_posix(),file.read_bytes()))
     return result
 
 def export(p,parts):
     validate(p);allowed={'appearance','textures','room','dialogue'}
+    p=room_source_choices.export_project(p)
     if not parts or set(parts)-allowed:raise ValueError('请选择导出的部分')
     room_files=room_reference_files(p['projectId']) if 'room' in parts else []
-    EXPORTS.mkdir(parents=True,exist_ok=True);name=p['projectId']+'-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S')+'.zip';d=compile_design(p)
-    with zipfile.ZipFile(EXPORTS/name,'w',zipfile.ZIP_DEFLATED) as z:
+    EXPORTS.mkdir(parents=True,exist_ok=True);name=p['projectId']+'-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S%f')+'.zip';d=compile_design(p)
+    with zipfile.ZipFile(EXPORTS/name,'x',zipfile.ZIP_DEFLATED) as z:
         audio_files=audio_assets.write_archive(z,[d] if 'appearance' in parts else [])
         z.writestr('manifest.json',json.dumps(dict(schema='moreiterators.export.v1',projectId=p['projectId'],name=p['name'],components=parts,runtime='MoreIterators >= 0.1.0',independentMod=False,audioAssets=audio_files),ensure_ascii=False,indent=2))
-        if 'appearance' in parts:z.writestr('appearance.json',json.dumps(appearance_without_textures({k:v for k,v in d.items() if not k.endswith('Dialogue') and k!='dialogueJson' and not k.startswith(('room','pearl'))}),ensure_ascii=False,indent=2))
+        if 'appearance' in parts:z.writestr('appearance.json',json.dumps(appearance_without_textures({k:v for k,v in d.items() if not k.endswith('Dialogue') and k!='dialogueJson' and not (k.startswith(('room','pearl')) or k=='entryGravityMode')}),ensure_ascii=False,indent=2))
         if 'textures' in parts:
             eyes.export_textures(z,p['design'])
             z.writestr('editable-textures.json',json.dumps(p.get('textures',{}),ensure_ascii=False))
@@ -522,7 +545,7 @@ def export(p,parts):
                 if fabric(key):z.writestr('overlays/'+key+'.png',composite(pattern_texture(p,key),texture_size(p,key)))
         if 'dialogue' in parts:z.writestr('dialogue.json',json.dumps(dialogue.profile(p),ensure_ascii=False,indent=2))
         if 'room' in parts:
-            z.writestr('room-settings.json',json.dumps({k:v for k,v in d.items() if k.startswith(('room','pearl'))},ensure_ascii=False,indent=2))
+            z.writestr('room-settings.json',json.dumps({k:v for k,v in d.items() if k.startswith(('room','pearl')) or k=='entryGravityMode'},ensure_ascii=False,indent=2))
             for room_file,content in room_files:z.writestr('room-reference/'+room_file,content)
         z.writestr('README.txt','供内容模组选择性集成的素材包；不是独立模组。\nmanifest 列出本次选择的组件。房间名称与入口需在正式地区中重新分配，不能直接连接 TEST。\n两层面部纹案独立；gown 使用 11×11 网格 UV，PNG 顶部为肩部。\n')
     return '/exports/'+name
@@ -533,16 +556,58 @@ def legacy_control(control):
     pose.update(animate=True,playMode=True,recording=False,pose='idle',bpPearl='none',hasMark=control.get('hasMark',True),manualLeft=False,manualRight=False,bodyAngle=0,testGravity=-1)
     atomic(f,pose)
 
+def export_projects(ids):
+    if not isinstance(ids,list) or not 0<len(ids)<=100 or any(not isinstance(pid,str) for pid in ids) or len(ids)!=len(set(ids)):
+        raise ValueError(default_text.text('standalone.error.projects'))
+    return [storage.load_project(storage.valid_id(pid)) for pid in ids]
+
+
+def export_checked_rooms(data,projects):
+    extras=data.get('extraRooms',[])
+    if data.get('scope')!='region':return extras
+    region=data.get('region')
+    if not isinstance(region,str) or not room_bindings.REGION_RE.fullmatch(region):raise room_source_choices.RoomChoiceError('room_choices_invalid')
+    names={row['name'] for item in room_bindings.catalog().get('regions',[]) if item.get('name')==region for row in item.get('rooms',[])}
+    return sorted({row['name'] for project in projects for row in (project_packages.load_metadata(project['projectId']) or {}).get('rooms',[])
+                   if row.get('kind')=='extra' and row.get('sourceOrigin')!='enabled' and row.get('name') in names})
+
+
+def export_with_room_choices(data,build,ids=None,projects=None):
+    selected=projects if projects is not None else export_projects(ids if ids is not None else data.get('projects',[]))
+    payload=data.get('roomSourceChoices')
+    if payload is not None and not isinstance(payload,dict):raise room_source_choices.RoomChoiceError('room_choices_invalid')
+    payload=dict(payload or {},extraRooms=export_checked_rooms(data,selected))
+    result=None
+    try:
+        with room_source_choices.resolution_scope(selected,payload):result=build()
+    except Exception:
+        if isinstance(result,dict) and isinstance(result.get('url'),str) and result['url'].startswith('/exports/'):
+            name=result['url'][len('/exports/'):]
+            output=(storage.EXPORTS/name).resolve()
+            if name==Path(name).name and output.is_relative_to(storage.EXPORTS.resolve()) and output.suffix.lower()=='.zip':output.unlink(missing_ok=True)
+        raise
+    return result
+
+
+def export_room_plan(data):
+    meta=standalone.metadata(data)
+    selected=[room_source_choices.export_project(project) for project in export_projects(data.get('projects',[]))]
+    names=standalone.export_room_names(selected,meta['id'])
+    plan=standalone.extra_room_plan(data,selected,names,sys.modules[__name__])
+    return dict(rooms=[dict(sourceRoom=row['sourceRoom'],name=row['name'],dependency=row['dependency']) for row in plan])
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
     def reply(self,status,data,ctype='application/json; charset=utf-8'):
         b=data if isinstance(data,bytes) else json.dumps(data,ensure_ascii=False).encode();self.send_response(status);self.send_header('Content-Type',ctype);self.send_header('Content-Length',str(len(b)));self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(b)
     @default_text.request_language
+    @server_lifecycle.request
     def do_GET(self):
         if self.headers.get('Host') not in (f'127.0.0.1:{PORT}',f'localhost:{PORT}'):return self.reply(403,{'error':'仅限本机'})
         path=urllib.parse.urlparse(self.path).path
         try:
-            if path=='/api/health':return self.reply(200,dict(service='more-iterators-studio',protocol=1,pid=os.getpid(),dataDirectory=str(storage.DATA.resolve()),editorDirectory=str(ROOT)))
+            if path=='/api/health':return self.reply(200,dict(service='more-iterators-studio',protocol=1,pid=os.getpid(),dataDirectory=str(storage.DATA.resolve()),editorDirectory=str(ROOT),closing=getattr(self.server,'closing',False)))
             if path=='/api/install-paths':return self.reply(200,installation_paths())
             if path.startswith('/api/audio/') and path.endswith('.mp3'):
                 return self.reply(200,audio_assets.asset_path(path[len('/api/audio/'):-4]).read_bytes(),'audio/mpeg')
@@ -578,6 +643,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200,voice_samples.sample(storage.GAME,query.get('bank',[''])[0],int(query.get('index',['-1'])[0])),'audio/wav')
             if path=='/api/broadcasts':return self.reply(200,broadcasts.listing())
             if path=='/api/rooms':return self.reply(200,room_bindings.catalog())
+            if path=='/api/chamber-presets':return self.reply(200,chamber_presets.listing())
+            if path=='/api/chamber-preset-state':return self.reply(200,chamber_presets.state(urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]))
+            if path=='/api/chamber-preset-preview':
+                key=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
+                return self.reply(200,chamber_presets.preview(key),'image/png')
+            if path=='/api/project-package-rooms':
+                pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
+                with LOCK:value=project_packages.inspect_choices(pid,sys.modules[__name__])
+                return self.reply(200,value)
+            if path=='/api/region-package-choices':
+                ids=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projects',[''])[0].split(',')
+                with LOCK:value=region_packages.choices([pid for pid in ids if pid])
+                return self.reply(200,value)
             if path=='/api/overseer':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projectId',[''])[0]
                 with LOCK:value=overseers.read(pid)
@@ -594,6 +672,14 @@ class Handler(BaseHTTPRequestHandler):
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projectId',[''])[0]
                 p=storage.load_project(storage.valid_id(pid))
                 return self.reply(200,dict(room_bindings.describe(p),projectId=pid,name=p['name']))
+            if path=='/api/room-picker-map':
+                query=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                with LOCK:value=room_preview.map_catalog(query.get('region',[''])[0],query.get('projectId',[''])[0],query.get('lang',['zh-CN'])[0])
+                return self.reply(200,value)
+            if path=='/api/room-picker-preview':
+                query=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                with LOCK:value=room_preview.preview(query.get('room',[''])[0],query.get('projectId',[''])[0])
+                return self.reply(200,value)
             if path=='/api/broadcast-default':return self.reply(200,broadcasts.default())
             if path=='/api/broadcast-rooms':
                 if 'refresh=1' in self.path:broadcasts.room_index(True)
@@ -620,7 +706,7 @@ class Handler(BaseHTTPRequestHandler):
                 with LOCK:value=pearls.default(collection)
                 return self.reply(200,value)
             if path=='/api/pearl-reader':
-                pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0];storage.load_project(pid);return self.reply(200,pearls.reader(pid))
+                pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0];return self.reply(200,pearls.reader(pid))
             if path=='/api/default':return self.reply(200,project_templates.create(default()))
             if path=='/api/association':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
@@ -652,6 +738,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200,result)
             if path=='/api/diagnostics':return self.reply(200,diagnostics.snapshot())
             if path=='/api/frame.png':
+                request_studio_frame()
                 f=DESIGNS/'studio-frame.png';return self.reply(200,f.read_bytes(),'image/png') if f.exists() else self.reply(404,{'error':'尚无实机画面'})
             if path=='/api/preset.json':return self.reply(200,(storage.WORKSPACE/'templates/native-preset.json').read_bytes())
             if path in ('/api/legacy-cf.json','/api/legacy-ir.json'):
@@ -660,7 +747,7 @@ class Handler(BaseHTTPRequestHandler):
                 name=path.split('/')[-1]
                 if not re.fullmatch(r'[a-z0-9-]+\.zip',name):raise ValueError('文件名无效')
                 return self.reply(200,(EXPORTS/name).read_bytes(),'application/zip')
-            file={'/studio-status.css':'studio-status.css','/studio-status.js':'studio-status.js','/standalone.js':'standalone.js','/broadcasts':'broadcasts.html','/broadcasts.html':'broadcasts.html','/broadcasts.js':'broadcasts.js','/broadcasts.css':'broadcasts.css','/':'index.html','/index.html':'index.html','/app.js':'app.js','/preview-background.js':'preview-background.js','/sleeve-mapping.js':'sleeve-mapping.js','/pearl-accessories.js':'pearl-accessories.js','/head-segments.js':'head-segments.js','/color-gradients.js':'color-gradients.js','/puppet-arms.js':'puppet-arms.js','/wardrobe.js':'wardrobe.js','/necklaces.js':'necklaces.js','/legacy-preview.js':'legacy-preview.js','/style.css':'style.css','/dialogue':'dialogue.html','/dialogue.html':'dialogue.html','/dialogue.js':'dialogue.js','/line-actions.js':'line-actions.js','/dialogue.css':'dialogue.css','/pearls':'pearls.html','/pearls.html':'pearls.html','/pearls.js':'pearls.js','/pearl-icons.js':'pearl-icons.js','/pearls.css':'pearls.css'}.get(path)
+            file={'/scene-assets.js':'scene-assets.js','/scene-assets.css':'scene-assets.css','/studio-status.css':'studio-status.css','/studio-status.js':'studio-status.js','/standalone.js':'standalone.js','/broadcasts':'broadcasts.html','/broadcasts.html':'broadcasts.html','/broadcasts.js':'broadcasts.js','/broadcasts.css':'broadcasts.css','/':'index.html','/index.html':'index.html','/app.js':'app.js','/preview-background.js':'preview-background.js','/sleeve-mapping.js':'sleeve-mapping.js','/pearl-accessories.js':'pearl-accessories.js','/head-segments.js':'head-segments.js','/color-gradients.js':'color-gradients.js','/puppet-arms.js':'puppet-arms.js','/wardrobe.js':'wardrobe.js','/necklaces.js':'necklaces.js','/legacy-preview.js':'legacy-preview.js','/style.css':'style.css','/dialogue':'dialogue.html','/dialogue.html':'dialogue.html','/dialogue.js':'dialogue.js','/line-actions.js':'line-actions.js','/dialogue.css':'dialogue.css','/pearls':'pearls.html','/pearls.html':'pearls.html','/pearls.js':'pearls.js','/pearl-icons.js':'pearl-icons.js','/pearls.css':'pearls.css'}.get(path)
             if path in ('/projections','/projections.html','/projections.js','/projections.css','/projection-depth.js'):file='projections.html' if path in ('/projections','/projections.html') else path.lstrip('/')
             if path in ('/rooms','/rooms.html','/rooms.js','/rooms.css','/overseer-preview.js'):file='rooms.html' if path in ('/rooms','/rooms.html') else path.lstrip('/')
             if path in ('/studio-theme.css','/paint-layers.js','/project-actions.js','/studio-chrome.js'):file=path.lstrip('/')
@@ -684,11 +771,20 @@ class Handler(BaseHTTPRequestHandler):
         except (OSError,ValueError,KeyError,TypeError) as e:self.reply(400,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
         except Exception as e:self.reply(500,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
     @default_text.request_language
+    @server_lifecycle.request
     def do_POST(self):
         if self.headers.get('Origin') not in (f'http://127.0.0.1:{PORT}',f'http://localhost:{PORT}'):return self.reply(403,{'error':'拒绝外部来源'})
         try:
             n=int(self.headers.get('Content-Length','0'))
-            if not 0<n<16000000:raise ValueError('项目体积超限')
+            if self.path in ('/api/project-package-inspect','/api/import-project-package'):
+                if not 0<n<=project_packages.MAX_COMPRESSED:raise ValueError('项目包压缩体积超限')
+                payload=self.rfile.read(n)
+                if len(payload)!=n:raise ValueError('项目包上传不完整')
+                with LOCK:
+                    result=project_packages.inspect_import(payload,sys.modules[__name__]) if self.path.endswith('-inspect') else project_packages.import_package(payload,sys.modules[__name__],replace=self.headers.get('X-MI-Replace-Project')=='1')
+                return self.reply(200,result)
+            limit=128*1024*1024 if self.path in ('/api/export-playable','/api/export-settings') else 16000000
+            if not 0<n<limit:raise ValueError('导出配置体积超限' if self.path in ('/api/export-playable','/api/export-settings') else '项目体积超限')
             data=json.loads(self.rfile.read(n));path=self.path
             if path=='/api/install-paths':
                 if not isinstance(data,dict):raise ValueError('Installation settings must be an object.')
@@ -744,7 +840,38 @@ class Handler(BaseHTTPRequestHandler):
                 with LOCK:result=room_migration.apply(data['projectId'],data['binding'],data.get('token'),sys.modules[__name__])
                 return self.reply(200,result)
             if path=='/api/export-standalone':
-                with LOCK:result=standalone.build(data,sys.modules[__name__])
+                with LOCK:result=export_with_room_choices(data,lambda:standalone.build(data,sys.modules[__name__]))
+                return self.reply(200,result)
+            if path=='/api/export-playable':
+                import playable_export
+                with LOCK:result=export_with_room_choices(data,lambda:playable_export.build(data,sys.modules[__name__]))
+                return self.reply(200,result)
+            if path=='/api/export-settings':
+                import playable_export
+                with LOCK:result=playable_export.save_preferences(data,sys.modules[__name__])
+                return self.reply(200,result)
+            if path=='/api/export-room-plan':
+                with LOCK:result=export_with_room_choices(data,lambda:export_room_plan(data))
+                return self.reply(200,result)
+            if path=='/api/export-project-package':
+                with LOCK:result=export_with_room_choices(data,lambda:project_packages.export_package(data['projectId'],data.get('extraRooms',[]),sys.modules[__name__]),[data['projectId']])
+                return self.reply(200,result)
+            if path=='/api/export-room-check':
+                with LOCK:
+                    selected=export_projects(data.get('projects',[]))
+                    result=room_source_choices.preflight(selected,export_checked_rooms(data,selected))
+                return self.reply(200,result)
+            if path=='/api/chamber-preset-project':
+                with LOCK:result=chamber_presets.create(data,sys.modules[__name__])
+                return self.reply(200,result)
+            if path=='/api/chamber-preset-replace':
+                with LOCK:result=chamber_presets.replace(data,sys.modules[__name__])
+                return self.reply(200,result)
+            if path=='/api/region-package-inspect':
+                with LOCK:result=region_packages.inspect(data['region'],data.get('projects',[]))
+                return self.reply(200,result)
+            if path=='/api/export-region-package':
+                with LOCK:result=export_with_room_choices(dict(data,scope='region'),lambda:region_packages.build(data['region'],data.get('metadata',{}),data.get('projects',[])))
                 return self.reply(200,result)
             if path=='/api/pearl-projects':
                 with LOCK:value=pearl_projects.save(data)
@@ -800,10 +927,19 @@ class Handler(BaseHTTPRequestHandler):
                     atomic_text(DESIGNS/'launch-room.txt',r['entry'])
                 return self.reply(200,r)
             if path=='/api/export':
-                with LOCK:result=export(data['project'],data['parts'])
-                return self.reply(200,{'ok':True,'url':result})
+                with LOCK:
+                    result=export_with_room_choices(data,lambda:dict(ok=True,url=export(data['project'],data['parts'])),projects=[data['project']]) if 'room' in data['parts'] else dict(ok=True,url=export(data['project'],data['parts']))
+                return self.reply(200,result)
             self.reply(404,{'error':'未知操作'})
         except (ValueError,KeyError,TypeError,OSError) as e:self.reply(400,diagnostics.error_payload(e,self.path))
         except Exception as e:self.reply(500,diagnostics.error_payload(e,self.path))
 if __name__=='__main__':
-    PROJECTS.mkdir(parents=True,exist_ok=True);(DESIGNS/'creator').mkdir(parents=True,exist_ok=True);ensure_native_projects();sync_saved_project_names();ThreadingHTTPServer(('127.0.0.1',PORT),Handler).serve_forever()
+    import argparse
+    parser=argparse.ArgumentParser();server_lifecycle.add_arguments(parser)
+    try:
+        with server_lifecycle.owner_from(parser.parse_args()) as owner:
+            PROJECTS.mkdir(parents=True,exist_ok=True);(DESIGNS/'creator').mkdir(parents=True,exist_ok=True)
+            ensure_native_projects();sync_saved_project_names()
+            server_lifecycle.EditorServer(('127.0.0.1',PORT),Handler,owner,
+                storage.archive_root()/'logs/server-lifecycle.log',install_picker.cancel_pending).run()
+    except server_lifecycle.GameClosed:pass

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>珍珠文本</title>
   <link rel="stylesheet" href="/pearls.css">
-<script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"></head>
+<script src="/i18n.js"></script><link rel="stylesheet" href="/studio-status.css"><script src="/studio-status.js"></script><link rel="stylesheet" href="/studio-theme.css"><link rel="stylesheet" href="/studio-about.css"><link rel="stylesheet" href="/room-picker.css"></head>
 <body class="pearl-studio mi-studio">
   <header class="studio-header">
     <div class="studio-brand"><strong>珍珠文本</strong></div>
@@ -43,6 +43,7 @@
     <aside id="pearlAppearanceColumn" class="appearance-column panel pearl-column" aria-labelledby="appearanceHeading"><div class="pearl-column-body">
       <div class="section-heading"><h2 id="appearanceHeading">珍珠外观</h2></div>
       <canvas id="preview" width="300" height="160" aria-label="珍珠外观预览"></canvas>
+      <div id="appearancePreviewControls"></div>
       <div class="pearl-identity-fields">
         <label>编号<input id="pearlId" placeholder="A01" maxlength="8" pattern="[A-Z]{1,4}[0-9]{2,4}" autocomplete="off" spellcheck="false" required></label>
         <label>名称<input id="name" maxlength="100" placeholder="大都会-公民服务记录文件" autocomplete="off" required></label>
@@ -89,8 +90,12 @@
           <label>中途离开<select id="leavePolicy"><option value="resume">暂停，回来后续读</option><option value="restart">回来后从头读</option><option value="cancel">停止此次读取</option></select></label>
         </div>
         <div id="repeatOptions" class="bar option-panel" hidden>
+          <strong data-i18n="hierarchy.thisPearl">本珍珠</strong>
           <label><input id="privateRepeat" type="checkbox">单独设置这颗珍珠的重复读取随机组</label>
           <label id="prependCommonRepeatField" hidden><input id="prependCommonRepeat" type="checkbox">先播放迭代器通用重复递交组</label>
+        </div>
+        <div id="sharedRepeatOptions" class="bar option-panel" hidden>
+          <strong data-i18n="hierarchy.sharedReader">迭代器共用</strong>
           <label><input id="preventRepeat" type="checkbox">同一雨循环内不重复读正文</label>
         </div>
         <div id="manyOptions" class="bar option-panel" hidden>
@@ -162,6 +167,6 @@
 <script src="/pearl-icons.js"></script>
 <script src="/pearl-workspace.js"></script>
 <script src="/studio-undo.js"></script>
-<script src="/pearls.js"></script>
+<script src="/room-picker.js"></script><script src="/pearls.js"></script>
 <script src="/studio-navigation.js"></script><script src="/studio-chrome.js"></script><script src="/install-settings.js"></script><script src="/studio-about.js"></script></body>
 </html>

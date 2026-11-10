@@ -65,7 +65,7 @@ namespace MoreIterators
             {
                 On.Player.ThrowObject-=throwHook;
                 Reset();
-                MiDiagnostics.Info("hook.remove","CreatorPearlOffers ThrowObject");
+                MiDiagnostics.Debug("hook.remove","CreatorPearlOffers ThrowObject");
             });
             var grabHook=new On.Player.hook_SlugcatGrab((orig,player,item,grasp)=>
             {
@@ -85,9 +85,9 @@ namespace MoreIterators
             removals.Add(delegate
             {
                 On.Player.SlugcatGrab-=grabHook;
-                MiDiagnostics.Info("hook.remove","CreatorPearlOffers SlugcatGrab");
+                MiDiagnostics.Debug("hook.remove","CreatorPearlOffers SlugcatGrab");
             });
-            MiDiagnostics.Info("hook.install","CreatorPearlOffers: native ThrowObject offers; SlugcatGrab invalidation");
+            MiDiagnostics.Debug("hook.install","CreatorPearlOffers: native ThrowObject offers; SlugcatGrab invalidation");
         }
         static bool Supports(DataPearl pearl,Oracle oracle)
         {
@@ -133,7 +133,7 @@ namespace MoreIterators
             };
             latest.Add(pearl,offer);
             inbox.items.Add(offer);
-            MiDiagnostics.Info("pearl.offer","oracle="+IteratorDesign.ForRoom(before).oracleId+" pearl="+pearl.abstractPhysicalObject.ID+" queued="+inbox.items.Count);
+            MiDiagnostics.Debug("pearl.offer","oracle="+IteratorDesign.ForRoom(before).oracleId+" pearl="+pearl.abstractPhysicalObject.ID+" queued="+inbox.items.Count);
         }
         static string InvalidReason(Offer offer)
         {
@@ -165,7 +165,7 @@ namespace MoreIterators
             if(offer.revoked)
                 return;
             offer.revoked=true;
-            MiDiagnostics.Info("pearl.offer.cancel",offer.identity+" reason="+reason);
+            MiDiagnostics.Debug("pearl.offer.cancel",offer.identity+" reason="+reason);
         }
         static void Revoke(DataPearl pearl,string reason)
         {
@@ -214,7 +214,7 @@ namespace MoreIterators
             latest.Remove(offer.pearl);
             pearl=offer.pearl;
             giver=offer.giver;
-            MiDiagnostics.Info("pearl.offer.consume",offer.identity);
+            MiDiagnostics.Debug("pearl.offer.consume",offer.identity);
             return true;
         }
         public static void Clear(Oracle oracle,string reason="reset")

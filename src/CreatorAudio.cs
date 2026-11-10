@@ -75,7 +75,7 @@ public sealed class CreatorAudioChannel {
    if(request.result!=UnityWebRequest.Result.Success)throw new IOException(request.error??"MP3 decoding failed.");
    clip=DownloadHandlerAudioClip.GetContent(request);if(clip==null||clip.length<=0||clip.length>601)throw new InvalidDataException("The MP3 could not be decoded or exceeds ten minutes.");
    source=Player.gameObj.AddComponent<AudioSource>();source.clip=clip;source.loop=track.loop;source.spatialBlend=0;source.volume=0;source.Play();
-   MiDiagnostics.Info("audio.loaded","asset="+asset+" seconds="+clip.length);
+   MiDiagnostics.Debug("audio.loaded","asset="+asset+" seconds="+clip.length);
   }catch(Exception error){Fail(error);}finally{if(request!=null){request.Dispose();request=null;}}
  }
  internal void Apply(bool selected){

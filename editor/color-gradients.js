@@ -14,13 +14,13 @@ function gradientSample(ramp,f,solid='#ffffff'){
  const rgb=c=>c.match(/\w\w/g).map(h=>parseInt(h,16));const x=rgb(a.color),y=rgb(b.color);
  return '#'+x.map((v,i)=>Math.round(v+(y[i]-v)*mix).toString(16).padStart(2,'0')).join('');
 }
-function buildGradientSettings(buckets,d){
+function buildGradientSettings(buckets,d,roomParent=buckets.room){
  gradientDefaults(d);
- function rampFields(host,ramp,solid,optional=true){
-  if(optional)garmentField(host,ramp,'enabled','启用渐变','checkbox');
+ function rampFields(host,ramp,solid,optional=true,label='启用渐变'){
+  if(optional)garmentField(host,ramp,'enabled',label,'checkbox');
   const body=optional?settingDependency(host,()=>ramp.enabled):host;
   let rows=document.createElement('div');body.append(rows);
-  function rebuild(){rows.replaceChildren();ramp.stops.forEach((stop,i)=>{const box=garmentSection(rows,MI18n.t('gradient.stop',{index:i+1}));
+  function rebuild(){rows.replaceChildren();ramp.stops.forEach((stop,i)=>{const box=garmentSection(rows,MI18n.t('gradient.stop',{index:i+1}));box.dataset.sectionId='gradientStop'+i;
     garmentField(box,stop,'color','颜色','color');
     const input=garmentField(box,stop,'position','位置','range',0,1,.01);
     input.addEventListener('change',()=>{ramp.stops.sort((a,b)=>a.position-b.position);rebuild();});
@@ -28,13 +28,13 @@ function buildGradientSettings(buckets,d){
    });}
   garmentButton(body,'添加色标',()=>{if(ramp.stops.length>=5)return;let positions=[0,...ramp.stops.map(s=>s.position),1].sort((a,b)=>a-b),i=0;for(let j=1;j<positions.length-1;j++)if(positions[j+1]-positions[j]>positions[i+1]-positions[i])i=j;let position=ramp.stops.length?(positions[i]+positions[i+1])/2:0;ramp.stops.push({position,color:gradientSample(ramp,position,solid)});ramp.stops.sort((a,b)=>a.position-b.position);rebuild();changed();});rebuild();
  }
- const arm=buckets.extras.querySelector('[data-section-id="mechanicalArm"]'),cables=buckets.extras.querySelector('[data-section-id="cables"]');
+ const arm=buckets.extras.querySelector('[data-section-id="mechanicalArm"] > .setting-dependents'),cables=buckets.extras.querySelector('[data-section-id="cables"] > .setting-dependents');
  for(const [key,[solid,title]] of Object.entries(gradientChannels))rampFields(garmentSection(key==='armGradient'?arm:cables,title),d[key],d[solid]);
- const section=garmentSection(buckets.room,MI18n.t('gradient.roomLighting')),r=d.roomGradient;
+ const section=garmentSection(roomParent,MI18n.t('gradient.roomLighting')),r=d.roomGradient;section.dataset.sectionId='roomGradient';
  garmentField(section,r,'renderMode',MI18n.t('gradient.renderMode'),'select',{lighting:MI18n.t('gradient.nativeLight'),overlay:MI18n.t('gradient.overlay')});
  garmentField(section,r,'enabled','启用房间渐变','checkbox');const body=settingDependency(section,()=>r.enabled);
  garmentField(body,r,'direction','渐变方向','select',{radial:'内侧 → 外侧',horizontal:'左 → 右',vertical:'上 → 下'});
- garmentField(body,r,'opacity','光晕强度','range',0,1,.01);r.ramp.enabled=true;rampFields(body,r.ramp,d.roomWorkColor,false);
+ garmentField(body,r,'opacity','光晕强度','range',0,1,.01);rampFields(body,r.ramp,d.roomWorkColor,true,MI18n.t('hierarchy.gradientColors'));
  for(const [i,label] of ['左上角','右上角','左下角','右下角'].entries()){
   const c=r.corners[i],sub=garmentSection(section,label);garmentField(sub,c,'enabled','启用角落光晕','checkbox');const body=settingDependency(sub,()=>c.enabled);
   garmentField(body,c,'color','颜色','color');garmentField(body,c,'opacity','光晕强度','range',0,1,.01);garmentField(body,c,'radius','扩散范围','range',.05,2,.01);

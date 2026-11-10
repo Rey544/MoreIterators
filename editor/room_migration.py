@@ -11,6 +11,7 @@ import pearls
 import room_bindings
 import room_cleanup
 import room_editor
+import room_controls
 import storage
 
 
@@ -169,7 +170,7 @@ def apply(project_id,raw,token,server):
     with staging_directory() as staged:
         # Finish camera validation and copies before changing the active project.
         for item in plan['roomCopies']:server.copy_room(Path(item['source']),staged,item['name'],replace=True)
-        if new['entryMode']=='copy':server.zero_gravity(staged/(new['entry']+'_settings.txt'))
+        if new['entryMode']=='copy' and not room_controls.entry_gravity(project):server.zero_gravity(staged/(new['entry']+'_settings.txt'))
         try:
             for relative in set(managed)|set(worlds):transaction.watch(local/relative)
             transaction.watch(marker)

@@ -243,8 +243,18 @@ body.mi-studio.appearance-studio .paint-material-row .texture-actions{top:calc(1
 body.mi-studio.appearance-studio .paint-tools{border:0;border-image:none;padding-block:4px;margin-bottom:8px}
 body.mi-studio.appearance-studio #groups details{border:0;border-image:none;background:transparent}
 body.mi-studio.appearance-studio .paint-brush-rails .paint-size-rail{border:0;border-image:none;background:transparent}
-body.mi-studio.appearance-studio .layer{border:0;border-left:2px solid transparent;border-image:none;border-radius:0;background:transparent}
-body.mi-studio.appearance-studio .layer.active{border-left-color:var(--mi-active);background:transparent}
+body.mi-studio.appearance-studio #layerList{padding:5px}
+body.mi-studio.appearance-studio .layer{border:1.5px solid transparent;border-image:none;border-radius:9px;background:transparent;transition:border-color .15s ease}
+body.mi-studio.appearance-studio .layer:hover{border-color:var(--mi-text)}
+body.mi-studio.appearance-studio .layer:is(.active,:focus-within){border-color:var(--mi-active);background:transparent;box-shadow:0 0 0 2px var(--mi-bg),0 0 0 3.5px #eeeeee70}
+body.mi-studio.appearance-studio .layer .layer-name{text-decoration:none}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){body.mi-studio.appearance-studio .layer:hover{animation:mi-outline-pulse 1.5s ease-in-out infinite}}
+body.mi-studio.appearance-studio .room-control-group{margin:16px 0 20px}
+body.mi-studio.appearance-studio .room-control-group>h4{margin:0 0 10px;color:var(--mi-active);font-size:14px}
+body.mi-studio.appearance-studio .room-control-group>.field{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin:12px 0}
+body.mi-studio.appearance-studio .room-control-group>.field>span{color:var(--mi-muted)}
+body.mi-studio.appearance-studio .room-control-group>.field>select{width:100%;min-width:0;max-width:none;box-sizing:border-box}
+body.mi-studio.appearance-studio .room-control-group>.field:has(input[type=checkbox]){flex-direction:row;align-items:center}
 
 /* Quiet surfaces; only controls carry an outline. Selection remains visible. */
 body.mi-studio select{appearance:none;-webkit-appearance:none;background-image:none;padding-right:10px}

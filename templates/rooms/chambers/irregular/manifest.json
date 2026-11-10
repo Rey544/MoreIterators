@@ -1,0 +1,25 @@
+{
+  "schema": "moreiterators.chamber-template.v1",
+  "id": "mi-chamber-irregular",
+  "name": {
+    "zh-CN": "不规则",
+    "en": "Irregular"
+  },
+  "source": "source/chamber.txt",
+  "sourceBase": "source/chamber",
+  "renderedBase": "chamber",
+  "aiNode": 0,
+  "width": 48,
+  "height": 36,
+  "cameraCount": 1,
+  "preview": "thumbnail.png",
+  "origin": "Rained EditorSamples/SS_AI",
+  "files": {
+    "chamber.txt": "34434c3b2f0e0ffceaebe00a650ada6e1f76d24aafab9e26f96081e1af1862c9",
+    "chamber_1.png": "636ecac60f6de61b5134e00cb819f4575308f0036426509cf8cd490ec61098db",
+    "chamber_settings.txt": "78c804dcdbb601d46db2f0f923febd319315ff3682a0f93fe665190c5a3d2e3a",
+    "source/chamber.png": "0b0d4be03c96130e5bdb2573ce4c5b02be611ceeb48754230a8d9f32f7c77b3a",
+    "source/chamber.txt": "5a0447eec70dbd256e820dc7b1fc2ef8ef816e3bb9a7fcd002e5abe14cad5fff",
+    "thumbnail.png": "594d02ada8bd9bab1517de6f6adc82a78939c920d0648e9c75589d141e5a7b04"
+  }
+}

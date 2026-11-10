@@ -31,7 +31,7 @@ AUDIO_TRACK={'mode':str,'asset':str,'volume':float,'loop':bool}
 PEARL={'schema':str,'id':str,'uid':str,'name':str,'collectionId':str,'revision':int,'runtimeId':str,'ownerMod':str,
     'appearance':{'musicTrack':AUDIO_TRACK,**dict.fromkeys(('baseColor','highlightColor','secondaryColor','effectColor','effect'),str),
         **dict.fromkeys(('twoTone','music'),bool),**dict.fromkeys(('size','effectOpacity','effectSize','pulseSpeed','musicVolume'),float)},
-    'readers':[{'projectId':str,'oracleId':str,'name':str,'requireMark':bool,'repeatEnabled':bool,
+    'readers':[{'projectId':str,'nativeOracleId':str,'oracleId':str,'name':str,'requireMark':bool,'repeatEnabled':bool,
         'leavePolicy':str,**PEARL_BODY,'affinity':{tier:PEARL_BODY for tier in dialogue.AFFINITY_TIERS},**{k:[POOL] for k in ('leaving','returning')}}],
     'spawns':[{'projectId':str,'entry':str,'position':{'x':float,'y':float}}]}
 BROADCAST={'schema':str,'id':str,'uid':str,'name':str,'revision':int,'runtimeId':str,
@@ -197,7 +197,7 @@ def compiler_sources(destination,meta,projects=()):
             if count!=1:raise ValueError('Playback plugin identity replacement failed')
             if any(p.get('legacyOracle') for p in projects):text=text.replace('Instance=this; RuntimePaths.Initialize();','Instance=this; RuntimePaths.Initialize(); IteratorIntegrations.Register(new PlaybackAppearanceIntegration());')
         if file.name=='MoreIteratorsPlugin.cs':
-            text=text.replace('orig(cam,extension==null?pal:extension.BasePalette(cam,pal),ref texture);','orig(cam,extension==null?(target!=null&&IteratorCatalog.IsAI(target.abstractRoom.name)&&IteratorDesign.ForRoom(target).roomTemplate=="ir"?13:pal):extension.BasePalette(cam,pal),ref texture);')
+            text=text.replace('orig(cam,extension==null?pal:extension.BasePalette(cam,pal),ref texture);','orig(cam,extension==null?(target!=null&&IteratorCatalog.IsAI(target.abstractRoom.name)&&!CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(target))&&IteratorDesign.ForRoom(target).roomTemplate=="ir"?13:pal):extension.BasePalette(cam,pal),ref texture);')
         if file.name=='CreatorLaunch.cs':
             text=text.replace('请在编辑器重新应用项目。','请重新安装此内容模组。').replace('请重新应用项目后进入。','请重新安装此内容模组。').replace('请重新应用项目。','请重新安装此内容模组。').replace('请重新应用项目后重启游戏。','请重新安装此内容模组并重启游戏。')
         target=destination/file.name;target.write_text(text,'utf-8');sources.append(target)
@@ -237,12 +237,18 @@ def room_source(p,name,kind,server):
     if current and name!=current[kind]:raise ValueError('只能导出此项目当前绑定的房间：'+current[kind])
     if kind=='entry' and p.get('roomBinding',{}).get('entryMode')=='existing':return room_bindings.resolve_room_source(name)
     if native_projects.binding(p['projectId']):return server.ASSETS/('mods/moreslugcats/world/'+name.split('_')[0].lower()+'-rooms')/name.lower()
+    import room_source_choices
+    selected=room_source_choices.selected_source(p['projectId'],name)
+    if selected is not None:return selected
     room_editor.ensure_synced(p['projectId'],name)
     cached=room_editor.cached_source(p['projectId'],name)
-    if cached:return cached
     root=storage.target_mod(p['projectId'])/'world'
     source=root/(name.split('_')[0].lower()+'-rooms')/name
-    if source.with_suffix('.txt').exists():return source
+    installed=storage.installed_mod(p['projectId'],required=False)
+    installed_source=installed/'world'/(name.split('_')[0].lower()+'-rooms')/name if installed else None
+    if cached or source.with_suffix('.txt').is_file() or installed_source and installed_source.with_suffix('.txt').is_file():
+        import project_packages
+        return project_packages.selected_room_source(p,name,rows={})
     if current or storage.binding(p['projectId']):raise ValueError(p['name']+' 当前绑定的房间素材缺失：'+name+'；请同步当前房间后重新导出，不会回退到旧房间或默认模板。')
     return server.ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else server.entry_room_template()
 
@@ -269,13 +275,32 @@ def room_connections(p,ai,entry,server):
 
 def room_palette_ids(text):
     """Only explicit room palette dependencies; never enumerate a mod's assets."""
-    return {int(value) for value in re.findall(r'(?m)^(?:Palette|FadePalette):\s*(\d+)\b',text)}
+    return {int(value) for value in re.findall(r'(?m)^(?:Palette|FadePalette|MorePalette[0-9]+):[ \t]*(\d+)\b',text)}
+
+def uses_more_palettes(text):
+    return bool(re.search(r'(?m)^MorePalette[0-9]+:',text))
+
+def room_palette_requirements(stage,rooms,templates=(),room_files=None):
+    files=[stage/relative for room in rooms for relative in (room_files[room] if room_files else _room_files(stage,room))
+           if re.fullmatch(re.escape(room)+r'(?:_settings(?:-[A-Za-z0-9_-]+)?|_properties)\.txt',Path(relative).name)]
+    files.extend(stage/relative for relative in templates)
+    return {'regionkit':'RegionKit'} if any(uses_more_palettes(file.read_text('utf-8-sig')) for file in files) else {}
 
 def _palette_file(root,index):
     root=Path(root).resolve();candidate=root/'palettes'/('palette'+str(index)+'.png')
     resolved=candidate.resolve()
     if not resolved.is_relative_to(root):raise ValueError('调色板素材路径越界：palette'+str(index))
     return resolved if resolved.is_file() else None
+
+def _owner_asset_roots(root):
+    
+    root=Path(root).resolve()
+    assets=(storage.GAME/'RainWorld_Data/StreamingAssets').resolve()
+    if root==assets:return [root]
+    try:version=(assets/'GameVersion.txt').read_text('utf-8-sig').strip()
+    except OSError:version=''
+    candidates=([root/version] if re.fullmatch(r'v\d+(?:\.\d+)+',version) else [])+[root/'newest',root]
+    return [candidate.resolve() for candidate in candidates if candidate.is_dir() and candidate.resolve().is_relative_to(root)]
 
 def room_palette_source(project,source,index):
     """Resolve the selected room's owning asset root before base-game palettes.
@@ -284,13 +309,23 @@ def room_palette_source(project,source,index):
     Authored renders/templates use this project's target mod. Never guess a
     palette from an unrelated installed mod or copy its directory wholesale.
     """
+    import room_source_choices
+    selected=room_source_choices.selected_asset(project['projectId'],'palettes/palette'+str(index)+'.png')
+    if selected is not None:return selected
     source=Path(source).resolve()
+    project_root=storage.project_file(project['projectId']).parent.resolve()
+    if source.is_relative_to(project_root/'rooms'):
+        import project_packages
+        bundled=project_packages.palette_source(project['projectId'],index)
+        if bundled is not None:return bundled
     base=(storage.GAME/'RainWorld_Data/StreamingAssets').resolve()
     target=storage.target_mod(project['projectId']).resolve()
     roots={Path(root).resolve() for root in room_bindings._asset_roots()};roots.add(target)
     matches=[root for root in roots if source.is_relative_to(root)]
     owner=max(matches,key=lambda root:len(root.parts)) if matches else target
-    asset=_palette_file(owner,index)
+    if (owner.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',owner.name)) and owner.parent in roots:
+        owner=owner.parent
+    asset=next((value for root in _owner_asset_roots(owner) if (value:=_palette_file(root,index)) is not None),None)
     if asset is None:asset=_palette_file(base,index)
     if asset is None:
         raise ValueError('所选房间引用的调色板来源无法确定：palette'+str(index)+'；请把依赖放在该房间所属模组的 palettes 目录后再导出。')
@@ -308,6 +343,65 @@ def copy_room_palettes(project,source,settings,stage):
         if destination.exists() and destination.read_bytes()!=content:
             raise ValueError('所选房间使用同号但内容不同的调色板：palette'+str(index)+'；请先为它们分配不同编号。')
         destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(content)
+    for relative,asset in room_settings_assets(project,source,settings.read_text('utf-8-sig')).items():
+        content=asset.read_bytes();destination=stage/relative
+        if destination.exists() and destination.read_bytes()!=content:raise ValueError('所选房间使用同名但内容不同的素材：'+relative)
+        destination.parent.mkdir(parents=True,exist_ok=True);destination.write_bytes(content)
+
+
+def room_settings_assets(project,source,text):
+    
+    import project_packages,room_asset_dependencies
+    source=Path(source).resolve();pid=project['projectId'];project_root=storage.project_file(pid).parent.resolve()
+    target=storage.target_mod(pid).resolve();roots=[Path(root).resolve() for root in room_bindings.enabled_asset_roots()]
+    installed=storage.installed_mod(pid,required=False)
+    own=[target]+([installed.resolve()] if installed is not None else [])
+    owners=[root for root in [*own,*roots] if source.is_relative_to(root)]
+    owner=max(owners,key=lambda root:len(root.parts)) if owners else target
+    selected_roots=_owner_asset_roots(owner)+[root for root in roots if root!=owner]
+    result={}
+    groups=[(item,True) for item in room_asset_dependencies.references(text,str(source))]
+    groups.extend((item,False) for item in room_asset_dependencies.optional_references(text,str(source)))
+    for candidates,required in groups:
+        selected=None
+        import room_source_choices
+        for relative in candidates:
+            chosen=room_source_choices.selected_asset(pid,relative)
+            if chosen is not None:selected=(relative,chosen);break
+        authored=source.is_relative_to(project_root/'rooms') or any(source.is_relative_to(root) for root in own)
+        def authored_copy(relative):
+            copies=[file for root in own if (file:=room_asset_dependencies.existing(root,relative)) is not None]
+            bundled=project_packages.asset_source(pid,relative)
+            if bundled is not None:copies.append(bundled)
+            return (relative,max(copies,key=lambda path:path.stat().st_mtime_ns)) if copies else None
+        
+        if selected is None and authored and not candidates[0].startswith('terrainpalettes/'):
+            for relative in candidates:
+                selected=authored_copy(relative)
+                if selected is not None:break
+        if selected is None and candidates[0].startswith('terrainpalettes/'):
+            
+            
+            for relative in candidates:
+                if authored:selected=authored_copy(relative)
+                if selected is not None:break
+                for root in roots:
+                    file=room_asset_dependencies.existing(root,relative)
+                    if file is not None:selected=(relative,file);break
+                if selected is not None:break
+        elif selected is None:
+            for root in selected_roots:
+                for relative in candidates:
+                    file=room_asset_dependencies.existing(root,relative)
+                    if file is not None:selected=(relative,file);break
+                if selected is not None:break
+        if selected is None:
+            if required:raise ValueError('所选房间引用的素材缺失：'+candidates[0])
+            continue
+        relative,file=selected
+        if room_asset_dependencies.native_ambient_reference(relative,file):continue
+        room_asset_dependencies.validate(relative,file.read_bytes());result[relative]=file
+    return result
 
 def dump(file,value):
     file.parent.mkdir(parents=True,exist_ok=True);file.write_text(json.dumps(value,ensure_ascii=False,indent=2),'utf-8')
@@ -351,7 +445,8 @@ def official_room_requirement(room):
     assets=(storage.GAME/'RainWorld_Data/StreamingAssets').resolve()
     if source.is_relative_to(assets/'world'):return None
     for mod in ('moreslugcats','watcher'):
-        if source.is_relative_to(assets/'mods'/mod/'world'):return official_requirement(mod)[0]
+        if any(source.is_relative_to(root/'world') for root in _owner_asset_roots(assets/'mods'/mod)):
+            return official_requirement(mod)[0]
     provider=source.parent.name
     roots=sorted((root.resolve() for root in room_bindings._asset_roots()),key=lambda root:len(root.parts),reverse=True)
     for root in roots:
@@ -413,6 +508,7 @@ def export_pearl_spawns(spawns,room_map,mapping):
         if target in seen:continue
         seen.add(target);spawn['entry']=target
         if target in owners:spawn['projectId']=owners[target]
+        elif target in room_map.values():spawn.pop('projectId',None)
         else:
             spawn.pop('projectId',None)
             requirement=pearl_room_requirement(room)
@@ -420,7 +516,7 @@ def export_pearl_spawns(spawns,room_map,mapping):
         result.append(spawn)
     return result,requirements
 
-def selected_pearl_content(request,selected_projects):
+def selected_pearl_content(request,selected_projects,included_rooms=()):
     if 'pearlCollectionIds' in request or isinstance(request.get('pearlCollectionId'),(list,dict)):
         raise ValueError('一次只能选择一套珍珠项目，或不导出珍珠。')
     if request.get('pearlCollectionId') is not None and not isinstance(request['pearlCollectionId'],str):raise ValueError('请选择有效的珍珠项目')
@@ -429,11 +525,11 @@ def selected_pearl_content(request,selected_projects):
     if not isinstance(collection,str):raise ValueError('请选择有效的珍珠项目')
     if collection not in {item['id'] for item in catalog['projects']}:raise ValueError('请选择有效的珍珠项目')
     selected=set(selected_projects)
-    candidates=pearls.listing(collection);selected_rooms=set()
+    candidates=pearls.listing(collection);selected_rooms=set(request.get('extraRooms',[]))|set(included_rooms)
     if any(p.get('spawnRooms') for p in candidates):
         for pid in selected:
             binding=room_bindings.binding(storage.load_project(pid));selected_rooms.update((binding['ai'],binding['entry']))
-    items=[p for p in candidates if any(r['projectId'] in selected for r in p['readers']) or selected.intersection(p['spawnProjects']) or selected_rooms.intersection(p.get('spawnRooms',[]))]
+    items=[p for p in candidates if any(pearls.native_reader(r) or r['projectId'] in selected for r in p['readers']) or selected.intersection(p['spawnProjects']) or selected_rooms.intersection(p.get('spawnRooms',[]))]
     return collection,items
 
 def export_room_names(projects,mod_id):
@@ -462,14 +558,189 @@ def export_room_names(projects,mod_id):
         result[pid]=names
     return result
 
-def build(request,server,save_preferences=True):
+def _extra_room_row(row,name):
+    if not isinstance(row,dict) or row.get('name')!=name or row.get('conditional'):
+        raise ValueError('额外房间包含未支持的条件连接：'+name)
+    links=row.get('connections',[]);tags=row.get('tags','')
+    if not isinstance(links,list) or any(not isinstance(x,str) or x!='DISCONNECTED' and not room_bindings.ROOM_RE.fullmatch(x) for x in links):
+        raise ValueError('额外房间连接无效：'+name)
+    if not isinstance(tags,str) or '\n' in tags or '\r' in tags or any(x in tags for x in ('[',']','//')):
+        raise ValueError('额外房间标签无效：'+name)
+    if 'GATE' in tags.upper().split(' : '):raise ValueError('额外房间包含尚未支持的跨区域业力门：'+name)
+    return dict(name=name,connections=list(links),tags=tags)
+
+def _extra_room_owner(source):
+    
+    source=Path(source).resolve();assets=(storage.GAME/'RainWorld_Data/StreamingAssets').resolve()
+    if not room_bindings.is_enabled_asset(source.with_suffix('.txt')):
+        raise ValueError('额外房间不属于当前启用的内容')
+    if source.is_relative_to(assets/'world'):return None
+    for root in sorted(room_bindings.enabled_asset_roots(),key=lambda p:len(p.parts),reverse=True):
+        root=root.resolve()
+        if not source.is_relative_to(root/'world'):continue
+        owner=root.parent if root.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',root.name) else root
+        info=owner/'modinfo.json'
+        if not info.is_file():continue
+        value=json.loads(info.read_text('utf-8-sig'));identifier=value.get('id');name=value.get('name')
+        if not isinstance(identifier,str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*',identifier) or not isinstance(name,str) or not name.strip():
+            raise ValueError('额外房间所属模组的信息无效')
+        if identifier.startswith('moreiterators'):
+            raise ValueError('此房间属于 MI 本地内容，请从所属项目导出')
+        if identifier in ('moreslugcats','watcher'):name=official_requirement(identifier)[1]
+        return dict(id=identifier,name=name.strip())
+    raise ValueError('无法确认额外房间所属模组')
+
+def _requested_extra_rooms(request):
+    requested=request.get('extraRooms',[])
+    if not isinstance(requested,list) or len(requested)>500 or any(not isinstance(x,str) or not room_bindings.ROOM_RE.fullmatch(x) for x in requested) or len(set(requested))!=len(requested):
+        raise ValueError('请选择不重复的额外房间')
+    return requested
+
+def extra_room_plan(request,projects,room_names,server):
+    requested=_requested_extra_rooms(request)
+    if not requested:return []
+    import project_packages
+    core_sources={name for p in projects for name in server.roomnames(p)[:2]}
+    if core_sources.intersection(requested):raise ValueError('当前两房间会自动导出，无需重复选择：'+sorted(core_sources.intersection(requested))[0])
+    exported={name for pair in room_names.values() for name in pair};owned_regions={name.split('_')[0] for name in exported}
+    default_region=room_names[projects[0]['projectId']][0].split('_')[0]
+    archived={};catalog=None;result=[]
+    for project in projects:
+        meta=project_packages.load_metadata(project['projectId'])
+        for row in (meta or {}).get('rooms',[]):
+            if row.get('name') in requested:archived.setdefault(row['name'],[]).append((project,row))
+    for name in requested:
+        matches=archived.get(name,[])
+        if len(matches)>1:raise ValueError('所选项目的额外房间编号重复：'+name+'；不会覆盖或自动改名。')
+        if matches:
+            project,row=matches[0];source=project_packages.selected_room_source(project,name,rows={})
+            origin='project';dependency=None
+            target=name if name.split('_')[0] in owned_regions else default_region+'_'+name
+        else:
+            if catalog is None:catalog=room_bindings.catalog()
+            rows=[r for region in catalog.get('regions',[]) for r in region.get('rooms',[]) if r.get('name')==name]
+            if len(rows)!=1:raise ValueError('额外房间不在当前启用目录中，或编号重复：'+name)
+            row=rows[0];source=room_bindings.resolve_room_source(name);project=projects[0]
+            origin='enabled';dependency=_extra_room_owner(source);target=default_region+'_'+name
+        row=_extra_room_row(row,name)
+        if origin=='project':
+            links,tags=project_packages.selected_room_connections(project,name,source,rows={})
+            row=_extra_room_row(dict(name=name,connections=links,tags=tags),name)
+        if not room_bindings.ROOM_RE.fullmatch(target):raise ValueError('额外房间导出编号过长：'+target)
+        if target in exported:raise ValueError('导出房间编号重复：'+target+'；不会覆盖或自动改名。')
+        if len(row['connections'])!=room_bindings.geometry(source.with_suffix('.txt'))['exitCount']:
+            raise ValueError('额外房间连接数量与地形出口不一致：'+name)
+        exported.add(target)
+        result.append(dict(sourceRoom=name,name=target,source=origin,project=project,sourcePath=source,
+                           connections=row['connections'],tags=row['tags'],dependency=dependency))
+    return result
+
+def _selected_room_links(project,name,fallback):
+    
+    import project_packages
+    source=project_packages.selected_room_source(project,name,rows={})
+    links,tags=project_packages.selected_room_connections(project,name,source,rows={})
+    row=_extra_room_row(dict(name=name,connections=links,tags=tags),name);links=row['connections']
+    if len(links)!=len(fallback):raise ValueError('房间连接数量与当前地形不一致：'+name)
+    for index,target in enumerate(fallback):
+        if target!='DISCONNECTED':links[index]=target
+    return links,row['tags']
+
+def _world_row(name,links,tags,room_map):
+    row=name+' : '+', '.join(room_map.get(target,'DISCONNECTED') for target in links)
+    return row+(' : '+tags if tags else '')
+
+def _room_files(stage,name):
+    prefix='world/'+name.split('_')[0].lower()+'-rooms/'+name
+    rows=(stage/(prefix+'.txt')).read_text('utf-8-sig').splitlines()
+    cameras=[x for x in rows[3].split('|') if x.strip()] if len(rows)>3 else []
+    variants=sorted(path.relative_to(stage).as_posix() for path in (stage/prefix).parent.iterdir()
+                    if re.fullmatch(re.escape(name)+r'(?:_settings-[A-Za-z0-9_-]+|_properties)\.txt',path.name) and path.is_file())
+    return [prefix+'.txt',prefix+'_settings.txt']+[prefix+'_'+str(i)+'.png' for i in range(1,len(cameras)+1)]+variants
+
+def _room_region_file(project,source,name,filename):
+    import project_packages
+    source=Path(source).resolve();region=name.split('_')[0]
+    if source.parent.parent.name.lower()=='world':
+        owner=source.parent.parent.parent
+        if owner.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',owner.name):owner=owner.parent
+        roots=_owner_asset_roots(owner)
+    else:
+        installed=storage.installed_mod(project['projectId'],required=False)
+        roots=([installed] if installed is not None else [])+[storage.target_mod(project['projectId'])]
+    for root in roots:
+        candidate=Path(root)/'world'/region.lower()/filename
+        if candidate.is_file():return candidate
+    return project_packages.region_file(project['projectId'],region,filename)
+
+def _check_room_template(project,name,source,text):
+    template=re.search(r'(?m)^Template:\s*([^\r\n]+)',text)
+    if template and template.group(1).strip().upper()=='NONE':return
+    properties=_room_region_file(project,source,name,'properties.txt')
+    implicit=properties and re.search(r'(?m)^Room Setting Templates:\s*([^\r\n]+)',properties.read_text('utf-8-sig'))
+    if template or implicit:
+        raise ValueError('房间 '+name+' 使用尚未支持完整导出的模板依赖：'+(template.group(1).strip() if template else implicit.group(1).strip())+'；不会修改为 NONE 或生成缺少模板的包。')
+
+def copy_selected_room(project,source,old,new,directory,server):
+    
+    import project_packages
+    import room_controls
+    settings=project_packages.selected_room_settings(project,old,source)
+    setting_files=project_packages.room_settings_files(project,old,settings)
+    text=settings.read_text('utf-8-sig');_check_room_template(project,old,source,text)
+    room_controls.require_portable_subset(text,old)
+    for filename,path in setting_files.items():
+        variant=path.read_text('utf-8-sig')
+        _check_room_template(project,old,source,variant);room_controls.require_portable_subset(variant,filename)
+    if old.split('_')[0]!=new.split('_')[0] and not re.search(r'(?m)^Palette:',text):
+        properties=_room_region_file(project,source,old,'properties.txt')
+        inherited=re.search(r'(?m)^Palette:\s*(\d+)\b',properties.read_text('utf-8-sig')) if properties else None
+        if inherited:text=text.rstrip('\r\n')+'\nPalette: '+inherited.group(1)+'\n'
+    rendered=project_packages._collect_render(source,settings,old,setting_files)
+    directory.mkdir(parents=True,exist_ok=True)
+    for filename,content in rendered.items():
+        suffix=filename[len(old):]
+        if suffix=='.txt':
+            rows=content.decode('utf-8-sig').splitlines();rows[0]=new;content=('\n'.join(rows)+'\n').encode('utf-8')
+        (directory/(new+suffix)).write_bytes(content)
+    (directory/(new+'_settings.txt')).write_text(text,'utf-8')
+    return settings
+
+
+def copy_selected_room_palettes(project,settings,old,new,directory,stage):
+    import project_packages
+    for filename,source in project_packages.room_settings_files(project,old,settings).items():
+        copy_room_palettes(project,source,directory/(new+filename[len(old):]),stage)
+
+def region_template_names(text):
+    values=re.findall(r'(?m)^Room Setting Templates:\s*([^\r\n]*)',text)
+    if len(values)>1:raise ValueError('区域房间模板注册重复')
+    names=[name.strip().lower() for name in values[0].split(',') if name.strip()] if values else []
+    if len(set(names))!=len(names) or any(not re.fullmatch(r'[a-z0-9-]+',name) for name in names):
+        raise ValueError('区域房间模板名称无效')
+    return names
+
+def copy_region_templates(project,source,region,stage):
+    properties=stage/'world'/region.lower()/'properties.txt';result=[]
+    for name in region_template_names(properties.read_text('utf-8-sig')):
+        filename=region.lower()+'_settingstemplate_'+name+'.txt'
+        candidate=source.parent/filename if source is not None else None
+        if candidate is None or not candidate.is_file() or candidate.is_symlink() or not candidate.resolve().is_relative_to(source.parent.resolve()):
+            raise ValueError('缺少区域注册的房间模板：'+filename)
+        relative='world/'+region.lower()+'/'+filename;destination=stage/relative
+        destination.write_bytes(candidate.read_bytes());copy_room_palettes(project,candidate,destination,stage)
+        result.append(relative)
+    return result
+
+def build(request,server,save_preferences=True,finalize=None,verify=None,region_context=None):
     meta=metadata(request);ids=request.get('projects',[])
+    _requested_extra_rooms(request)
     if not isinstance(ids,list) or not ids or len(ids)>100 or any(not isinstance(pid,str) for pid in ids) or len(set(ids))!=len(ids):raise ValueError('请选择 1–100 个不重复的迭代器项目。')
     ids=[storage.valid_id(pid) for pid in ids]
     components={k:request.get(k,False) for k in ('dialogue','pearls','broadcasts','workPearls')}
     components['projections']=request.get('projections',True)
     if any(type(v) is not bool for v in components.values()):raise ValueError('导出选项无效')
-    pearl_collection,pearl_items=selected_pearl_content(request,ids)
+    pearl_collection,pearl_items=selected_pearl_content(request,ids,region_context.rooms if region_context else ())
     pearl_uids={p['uid'] for p in pearl_items}
     projection_items=[p for p in projections.listing() if p.get('projectId') in ids and components['projections']
         and (p.get('trigger',{}).get('kind') not in ('dialogue','pearl') or components['dialogue' if p['trigger']['kind']=='dialogue' else 'pearls'])
@@ -477,12 +748,24 @@ def build(request,server,save_preferences=True):
     # Persist old anchors before capturing the selected runtime dialogue/pearl data.
     source_sets={pid:projections.sources(pid,server.roomnames,pearl_collection or None)['sources'] for pid in {p['projectId'] for p in projection_items}}
     projects=[server.validate(copy.deepcopy(storage.load_project(storage.valid_id(pid)))) for pid in ids]
+    import room_source_choices
+    projects=[room_source_choices.export_project(project) for project in projects]
     cover=cover_bytes(meta['cover'])
     room_names=export_room_names(projects,meta['id'])
+    extra_plan=extra_room_plan(request,projects,room_names,server)
+    if region_context and extra_plan:raise ValueError('完整区域不能同时使用局部房间编号映射')
     regions=sorted({names[0].split('_')[0] for names in room_names.values()})
-    registry=[];mapping={};room_map={};connections={region:[] for region in regions};design_schema=runtime_design_schema()
+    registry=[];mapping={};room_map={name:name for name in region_context.rooms} if region_context else {};connections={region:[] for region in regions};design_schema=runtime_design_schema()
+    if extra_plan:
+        for project in projects:
+            for old,new in zip(server.roomnames(project)[:2],room_names[project['projectId']]):
+                if old in room_map and room_map[old]!=new:raise ValueError('额外房间无法确认重复来源房间的连接：'+old)
+                room_map[old]=new
+        room_map.update({item['sourceRoom']:item['name'] for item in extra_plan})
+    extra_manifest=[];room_templates=list(region_context.templates) if region_context else []
     with tempfile.TemporaryDirectory(prefix='mi-content-') as temp:
         temporary=Path(temp);stage=temporary/meta['id'];stage.mkdir();sources=temporary/'source';sources.mkdir()
+        if region_context:region_context.copy_to(stage)
         copy_game_ui(stage)
         suffix=compile_runtime(stage,sources,meta,projects)
         for i,p in enumerate(projects,1):
@@ -504,14 +787,31 @@ def build(request,server,save_preferences=True):
             record=dict(projectId=pid,name=p['name'],ai=new_ai,entry=new_entry,oracleId=oid,design='designs/'+oid+'.json',ownerMod=meta['id'],exitNode=exits[ai].index(entry),entryNode=exits[entry].index(ai))
             if native:record['timeline']=native.get('timeline','')
             registry.append(record);mapping[pid]=record;room_map.update({ai:new_ai,entry:new_entry})
-            for old,new,other,new_other in [(ai,new_ai,entry,new_entry),(entry,new_entry,ai,new_ai)]:connections[region].append(new+' : '+', '.join(new_other if target==other else 'DISCONNECTED' for target in exits[old]))
+            for old,new,other,new_other in [(ai,new_ai,entry,new_entry),(entry,new_entry,ai,new_ai)]:
+                if extra_plan:
+                    links,tags=_selected_room_links(p,old,exits[old]);connections[region].append(_world_row(new,links,tags,room_map))
+                else:connections[region].append(new+' : '+', '.join(new_other if target==other else 'DISCONNECTED' for target in exits[old]))
             rooms=stage/('world/'+region.lower()+'-rooms')
             for old,new,kind in [(ai,new_ai,'ai'),(entry,new_entry,'entry')]:
+                if region_context:
+                    if old!=new or new not in region_context.rooms:raise ValueError('完整区域的迭代器房间编号不一致')
+                    continue
                 source=room_source(p,old,kind,server)
-                server.copy_room(source,rooms,new)
+                settings_source=copy_selected_room(p,source,old,new,rooms,server)
                 settings=rooms/(new+'_settings.txt')
-                if kind=='entry':server.zero_gravity(settings)
-                copy_room_palettes(p,source,settings,stage)
+                copy_selected_room_palettes(p,settings_source,old,new,rooms,stage)
+        for item in extra_plan:
+            name=item['name'];region=name.split('_')[0];directory=stage/('world/'+region.lower()+'-rooms')
+            settings_source=copy_selected_room(item['project'],item['sourcePath'],item['sourceRoom'],name,directory,server)
+            copy_selected_room_palettes(item['project'],settings_source,item['sourceRoom'],name,directory,stage)
+            links=[room_map.get(target,'DISCONNECTED') for target in item['connections']]
+            connections[region].append(_world_row(name,item['connections'],item['tags'],room_map))
+            record=dict(sourceRoom=item['sourceRoom'],name=name,region=region,source=item['source'],connections=links,tags=item['tags'],files=_room_files(stage,name))
+            if item['source']=='project':record['projectId']=item['project']['projectId']
+            if item['dependency']:
+                if item['dependency']['id']==meta['id']:raise ValueError('额外房间不能依赖当前导出模组自身')
+                record['dependency']=item['dependency']
+            extra_manifest.append(record)
         overseer_requirements=set();excluded=None
         for project,record in zip(projects,registry):
             design_file=stage/record['design'];design=json.loads(design_file.read_text('utf-8'))
@@ -529,6 +829,7 @@ def build(request,server,save_preferences=True):
             dump(design_file,design)
         dump(stage/'moreiterators/registry.json',registry)
         for region in regions:
+            if region_context:continue
             world=stage/('world/'+region.lower());world.mkdir(parents=True)
             rows=['ROOMS']+connections[region]
             (world/('world_'+region.lower()+'.txt')).write_text('\n'.join(rows+['END ROOMS','','CREATURES','END CREATURES'])+'\n','utf-8')
@@ -536,16 +837,20 @@ def build(request,server,save_preferences=True):
             defaults={'properties.txt':'Palette: 26\noverseersSpawnChance: 0\noverseersMin: 0\noverseersMax: 0\n','displayname.txt':(region if authored else meta['name'])+'\n'}
             for filename,text in defaults.items():
                 if authored:
-                    owner=storage.target_mod(authored['projectId']).resolve();source=owner/'world'/region.lower()/filename
-                    if not source.resolve().is_relative_to(owner):raise ValueError('区域素材路径越界：'+region+'/'+filename)
-                    if source.is_file():text=source.read_text('utf-8-sig')
+                    old_ai=server.roomnames(authored)[0]
+                    source=_room_region_file(authored,room_source(authored,old_ai,'ai',server),old_ai,filename)
+                    if source is not None:text=source.read_text('utf-8-sig')
+                    if filename=='properties.txt':properties_source=source
                 (world/filename).write_text(text,'utf-8')
-            if authored:copy_room_palettes(authored,owner/'world'/region.lower(),world/'properties.txt',stage)
-        registration=stage/'modify/world/regions.txt';registration.parent.mkdir(parents=True);registration.write_text(''.join('[ADD]'+region+'\n' for region in regions),'utf-8')
+            if authored:
+                copy_room_palettes(authored,properties_source or storage.target_mod(authored['projectId'])/'world'/region.lower(),world/'properties.txt',stage)
+                room_templates.extend(copy_region_templates(authored,properties_source,region,stage))
+        if not region_context:
+            registration=stage/'modify/world/regions.txt';registration.parent.mkdir(parents=True,exist_ok=True);registration.write_text(''.join('[ADD]'+region+'\n' for region in regions),'utf-8')
         pearl_requirements={}
         if components['pearls']:
             for p in pearl_items:
-                readers=[r for r in p['readers'] if r['projectId'] in mapping];spawns=[pid for pid in p['spawnProjects'] if pid in mapping]
+                readers=[r for r in p['readers'] if pearls.native_reader(r) or r['projectId'] in mapping];spawns=[pid for pid in p['spawnProjects'] if pid in mapping]
                 if not readers and not spawns and not set(p.get('spawnRooms',[])).intersection(room_map):continue
                 p=copy.deepcopy(p);p['readers']=readers;p['spawnProjects']=spawns
                 item=pearls.compile_project(p,lambda q:(mapping[q['projectId']]['ai'],mapping[q['projectId']]['entry'],mapping[q['projectId']]['oracleId']))
@@ -564,6 +869,15 @@ def build(request,server,save_preferences=True):
                 dump(stage/'moreiterators/broadcasts'/(p['id']+'.json'),runtime_fields(p,BROADCAST,'broadcast'))
         info={k:meta[k] for k in ('id','name','authors','description','version')}
         info.update(requirements=['warp'],requirements_names=['Warp Menu'],tags=['Regions','Creatures'],target_game_version='v1.11.8',checksum_override_version=False)
+        selected_rooms=[name for pair in room_names.values() for name in pair]+[item['name'] for item in extra_plan]
+        palette_requirements=room_palette_requirements(stage,selected_rooms,room_templates)
+        if palette_requirements:
+            import region_packages
+            dependencies=region_packages.Collector()
+            for dependency_id in palette_requirements:dependencies.dependency(dependency_id)
+            for dependency_id,dependency in sorted(dependencies.dependencies.items()):
+                if dependency_id not in info['requirements']:
+                    info['requirements'].append(dependency_id);info['requirements_names'].append(dependency['name'])
         # Broadcasts and Halcyon assets use the official expansion, never MI.
         if components['broadcasts'] or any(native_projects.binding(p['projectId']) for p in projects) or any(p.get('appearance',{}).get('music') and p.get('appearance',{}).get('effect')=='halcyon' and p.get('appearance',{}).get('musicTrack',{}).get('mode','native')=='native' for p in pearl_items):
             info['requirements'].append('moreslugcats');info['requirements_names'].append('More Slugcats Expansion')
@@ -575,27 +889,46 @@ def build(request,server,save_preferences=True):
             if dependency_id==meta['id']:raise ValueError('珍珠生成房间依赖当前导出模组自身，请同时选择其所属迭代器导出。')
             if dependency_id not in info['requirements']:
                 info['requirements'].append(dependency_id);info['requirements_names'].append(dependency_name)
+        for item in extra_manifest:
+            dependency=item.get('dependency')
+            if dependency and dependency['id'] not in info['requirements']:
+                info['requirements'].append(dependency['id']);info['requirements_names'].append(dependency['name'])
+        if region_context:
+            for dependency in sorted(region_context.dependencies.values(),key=lambda item:item['id']):
+                if dependency['id'] not in info['requirements']:
+                    info['requirements'].append(dependency['id']);info['requirements_names'].append(dependency['name'])
         dump(stage/'modinfo.json',info)
         if cover:(stage/'thumbnail.png').write_bytes(cover)
         manifest=dict(schema='moreiterators.playback-export.v1',independentMod=True,projects=[dict(projectId=p['projectId'],name=p['name']) for p in projects],components=components,region=regions[0],regions=regions,runtimeVersion=json.loads((storage.WORKSPACE/'version.json').read_text('utf-8'))['version'])
         if pearl_collection:manifest['pearlCollectionId']=pearl_collection
+        if extra_manifest:
+            manifest['selectedExtraRooms']=list(request['extraRooms']);manifest['extraRooms']=extra_manifest
+        if room_templates:manifest['roomTemplates']=sorted(room_templates)
         dump(stage/'content-manifest.json',manifest)
         (stage/'README.txt').write_text('把这个文件夹放进 RainWorld_Data/StreamingAssets/mods，然后在拓展菜单里启用就行。\n\n这个包做了 MoreIterators 的适配（register），不过现在是被单独导出的模组，所以没有 MoreIterators 的时候它也能正常独立运行，不需要额外装工具包。\n\n进游戏后点主菜单右下角的按钮，可以选择预设。进入演算室之后按 F8 可以打开控制面板。\n\n关于迭代器的台词：默认是有交流印记的，能看到对方说话；如果没有印记，只有动画。\n','utf-8')
         audio_documents=[json.loads(file.read_text('utf-8')) for directory in (stage/'designs',stage/'moreiterators/pearls') for file in directory.glob('*.json')]
         audio_assets.copy_referenced(audio_documents,stage)
-        audit(stage,ids)
+        audit(stage,ids,request.get('extraRooms',[]),region_context=region_context)
+        if finalize is not None:
+            manifest=finalize(stage,manifest,room_map)
         storage.EXPORTS.mkdir(parents=True,exist_ok=True)
         name=meta['id'].replace('.','-')+'-'+meta['version'].replace('.','-')+'-'+datetime.datetime.now().strftime('%Y%m%d-%H%M%S%f')+'.zip'
         with zipfile.ZipFile(storage.EXPORTS/name,'w',zipfile.ZIP_DEFLATED) as z:
             for f in sorted(stage.rglob('*')):
                 if f.is_file():z.write(f,meta['id']+'/'+f.relative_to(stage).as_posix())
+        if verify is not None:
+            try:verify(stage,storage.EXPORTS/name)
+            except Exception:
+                (storage.EXPORTS/name).unlink(missing_ok=True)
+                raise
         if save_preferences:
             settings_pid=request.get('settingsProject','')
             target=storage.project_file(storage.valid_id(settings_pid)).parent/'export-settings.json' if settings_pid in ids else storage.DATA/'export-settings.json'
-            dump(target,{**meta,**components,'projects':ids,'pearlCollectionId':pearl_collection})
+            previous=json.loads(target.read_text('utf-8')) if target.is_file() else {}
+            dump(target,{**previous,**meta,**components,'projects':ids,'pearlCollectionId':pearl_collection,'extraRooms':list(request.get('extraRooms',[]))})
         return dict(ok=True,url='/exports/'+name,manifest=manifest)
 
-def audit(stage,ids):
+def audit(stage,ids,extra_rooms=None,region_context=None):
     stage=Path(stage);selected=set(ids);design_schema=runtime_design_schema()
     def reject(message,file=''):
         raise ValueError(message+('：'+str(file) if file else ''))
@@ -617,7 +950,36 @@ def audit(stage,ids):
     if not isinstance(regions,list) or not regions or any(not isinstance(value,str) or not room_bindings.REGION_RE.fullmatch(value) for value in regions) or len(set(regions))!=len(regions) or region not in regions or any(type(components.get(k)) is not bool for k in ('dialogue','pearls','broadcasts','workPearls')):reject('导出清单格式无效')
     oracles={p['oracleId'] for p in registry};rooms={p[k] for p in registry for k in ('ai','entry')}
     if len(oracles)!=len(registry) or len(rooms)!=len(registry)*2:reject('导出项目的迭代器或房间编号重复')
-    if {room.split('_')[0] for room in rooms}!=set(regions):reject('导出区域与实际房间不一致')
+    core_rooms=set(rooms);extra_manifest=manifest.get('extraRooms',[]);extra_dependencies=set()
+    if region_context:
+        region_context.verify(stage)
+        if not rooms.issubset(set(region_context.rooms)):reject('完整区域缺少所选迭代器房间')
+        rooms=set(region_context.rooms)
+    if not isinstance(extra_manifest,list):reject('额外房间清单无效')
+    requested=_requested_extra_rooms({'extraRooms':manifest.get('selectedExtraRooms',[])})
+    if extra_rooms is not None and requested!=extra_rooms:reject('额外房间清单与选择不一致')
+    if [row.get('sourceRoom') for row in extra_manifest if isinstance(row,dict)]!=requested:reject('额外房间清单与选择不一致')
+    for row in extra_manifest:
+        if not isinstance(row,dict) or set(row)-{'sourceRoom','name','region','source','projectId','connections','tags','files','dependency'}:reject('额外房间清单字段无效')
+        name=row.get('name');origin=row.get('source');dependency=row.get('dependency')
+        if not isinstance(name,str) or not room_bindings.ROOM_RE.fullmatch(name) or name in rooms:reject('额外房间编号重复或无效')
+        if row.get('region')!=name.split('_')[0] or row['region'] not in regions:reject('额外房间区域无效',name)
+        if origin=='project':
+            if row.get('projectId') not in selected or dependency is not None:reject('额外房间所属项目无效',name)
+        elif origin=='enabled':
+            if 'projectId' in row:reject('外部房间不能冒充项目房间',name)
+            verified=_extra_room_owner(room_bindings.resolve_room_source(row['sourceRoom']))
+            if verified!=dependency:reject('额外房间依赖与实际来源不符',name)
+        else:reject('额外房间来源无效',name)
+        if dependency is not None:
+            if not isinstance(dependency,dict) or set(dependency)!={'id','name'}:reject('额外房间依赖无效',name)
+            dependency_id=dependency['id']
+            if dependency_id not in requirements or names[requirements.index(dependency_id)]!=dependency['name']:reject('额外房间缺少所属模组依赖',name)
+            extra_dependencies.add(dependency_id)
+        _extra_room_row(row,name);rooms.add(name)
+    if region_context:
+        if regions!=region_context.regions:reject('导出区域与完整区域清单不一致')
+    elif {room.split('_')[0] for room in rooms}!=set(regions):reject('导出区域与实际房间不一致')
     expected_designs=set()
     for p in registry:
         design=p.get('design','')
@@ -661,10 +1023,11 @@ def audit(stage,ids):
     local_path=re.compile(r'(?:[A-Za-z]:[\\/]|\\\\[^\\\s]+[\\/]|file://|/(?:Users|home|mnt|tmp)/|(?:https?://)?(?:127\.0\.0\.1|localhost)(?::\d+)?(?:/|\b))',re.I)
     def inspect(value,file,key=''):
         if isinstance(value,dict):
+            native=pearls.native_reader(value) and value.get('projectId')=='' and value.get('oracleId')==value.get('nativeOracleId')
             for field,item in value.items():
                 if field in ('runtimeDirectory','editorDirectory','previewToken','legacySource'):reject('独立包包含本地开发字段',file)
-                if field=='projectId' and item not in selected:reject('独立包引用了未选择的项目',file)
-                if field=='oracleId' and item not in oracles:reject('独立包引用了未选择的迭代器',file)
+                if field=='projectId' and item not in selected and not native:reject('独立包引用了未选择的项目',file)
+                if field=='oracleId' and item not in oracles and not native:reject('独立包引用了未选择的迭代器',file)
                 inspect(item,file,field)
         elif isinstance(value,list):
             for item in value:inspect(item,file,key)
@@ -677,13 +1040,29 @@ def audit(stage,ids):
                 inspect(nested,file)
 
     allowed={'modinfo.json','content-manifest.json','README.txt','thumbnail.png','moreiterators/registry.json','modify/world/regions.txt'}|expected_designs|set(GAME_UI_FILES)
-    for region in regions:allowed.update(('world/'+region.lower()+'/properties.txt','world/'+region.lower()+'/displayname.txt','world/'+region.lower()+'/world_'+region.lower()+'.txt'))
+    if region_context:allowed.update(region_context.file_names)
+    else:
+        for region in regions:allowed.update(('world/'+region.lower()+'/properties.txt','world/'+region.lower()+'/displayname.txt','world/'+region.lower()+'/world_'+region.lower()+'.txt'))
     suffix=hashlib.sha256(info['id'].encode()).hexdigest()[:12]
     allowed.add('plugins/IteratorContent_'+suffix+'.dll')
     required=allowed-{'thumbnail.png'}
-    palettes=set();cameras=set()
+    palettes=set();cameras=set();room_asset_refs=[];room_optional_refs=[]
+    import room_asset_dependencies
+    templates=[]
+    for region in regions:
+        properties=stage/('world/'+region.lower()+'/properties.txt')
+        if not properties.is_file():continue
+        for name in region_template_names(properties.read_text('utf-8-sig')):
+            relative='world/'+region.lower()+'/'+region.lower()+'_settingstemplate_'+name+'.txt'
+            file=stage/relative
+            if not file.is_file():reject('缺少区域注册的房间模板',relative)
+            templates.append(relative);allowed.add(relative)
+            palettes.update('palettes/palette'+str(value)+'.png' for value in room_palette_ids(file.read_text('utf-8-sig')))
+            room_asset_refs.extend(room_asset_dependencies.references(file.read_text('utf-8-sig'),relative))
+            room_optional_refs.extend(room_asset_dependencies.optional_references(file.read_text('utf-8-sig'),relative))
+    if manifest.get('roomTemplates',[])!=sorted(region_context.templates if region_context else templates):reject('区域房间模板清单不一致')
     for room in rooms:
-        prefix='world/'+room.split('_')[0].lower()+'-rooms/'+room
+        prefix=region_context.room_files[room][0][:-4] if region_context else 'world/'+room.split('_')[0].lower()+'-rooms/'+room
         allowed.update((prefix+'.txt',prefix+'_settings.txt'))
         required.update((prefix+'.txt',prefix+'_settings.txt'))
         terrain=stage/(prefix+'.txt');settings=stage/(prefix+'_settings.txt')
@@ -693,10 +1072,42 @@ def audit(stage,ids):
         positions=[x for x in rows[3].split('|') if x.strip()]
         if not positions or any(not re.fullmatch(r'-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?',x.strip()) for x in positions):reject('房间相机数据无效',room)
         for index in range(1,len(positions)+1):cameras.add(prefix+'_'+str(index)+'.png')
-        for value in room_palette_ids(settings.read_text('utf-8-sig')):palettes.add('palettes/palette'+str(value)+'.png')
+        setting_files=[relative for relative in (region_context.room_files[room] if region_context else _room_files(stage,room))
+                       if re.fullmatch(re.escape(room)+r'(?:_settings(?:-[A-Za-z0-9_-]+)?|_properties)\.txt',Path(relative).name)]
+        for relative in setting_files:
+            allowed.add(relative);required.add(relative);text=(stage/relative).read_text('utf-8-sig')
+            for value in room_palette_ids(text):palettes.add('palettes/palette'+str(value)+'.png')
+            room_asset_refs.extend(room_asset_dependencies.references(text,relative))
+            room_optional_refs.extend(room_asset_dependencies.optional_references(text,relative))
+    for row in extra_manifest:
+        expected=_room_files(stage,row['name'])
+        if row.get('files')!=expected:reject('额外房间文件白名单不一致',row['name'])
+    palette_dependencies=set()
+    palette_requirements=room_palette_requirements(stage,rooms,templates,region_context.room_files if region_context else None)
+    if palette_requirements:
+        import region_packages
+        dependencies=region_packages.Collector()
+        for dependency_id in palette_requirements:dependencies.dependency(dependency_id)
+        for dependency_id,dependency in dependencies.dependencies.items():
+            if dependency_id not in requirements or names[requirements.index(dependency_id)]!=dependency['name']:
+                reject('额外色板缺少 RegionKit 依赖 '+dependency_id,'modinfo.json')
+            palette_dependencies.add(dependency_id)
     for region in regions:
         properties=stage/('world/'+region.lower()+'/properties.txt')
-        if properties.is_file():palettes.update('palettes/palette'+str(value)+'.png' for value in room_palette_ids(properties.read_text('utf-8-sig')))
+        if properties.is_file():
+            palettes.update('palettes/palette'+str(value)+'.png' for value in room_palette_ids(properties.read_text('utf-8-sig')))
+            room_asset_refs.extend(room_asset_dependencies.references(properties.read_text('utf-8-sig'),str(properties)))
+            room_optional_refs.extend(room_asset_dependencies.optional_references(properties.read_text('utf-8-sig'),str(properties)))
+    for candidates in room_asset_refs:
+        present=[relative for relative in candidates if (stage/relative).is_file()]
+        if not present and room_asset_dependencies.has_native_ambient_reference(candidates):continue
+        if len(present)!=1:reject('房间附加素材缺失或来源不明确',candidates[0])
+        relative=present[0];room_asset_dependencies.validate(relative,(stage/relative).read_bytes())
+        allowed.add(relative);required.add(relative)
+    for candidates in room_optional_refs:
+        for relative in candidates:
+            if not (stage/relative).is_file():continue
+            room_asset_dependencies.validate(relative,(stage/relative).read_bytes());allowed.add(relative)
     for relative in palettes:
         file=stage/relative
         if not file.is_file():
@@ -723,7 +1134,10 @@ def audit(stage,ids):
     dll=stage/('plugins/IteratorContent_'+suffix+'.dll')
     if not dll.read_bytes().startswith(b'MZ'):reject('运行 DLL 格式无效')
     connections={}
-    for region in regions:
+    if region_context:
+        rows=region_context.validate_world(stage,[record['ai'] for record in registry])
+        connections={row['name']:row['connections'] for row in rows}
+    for region in ([] if region_context else regions):
         world=stage/('world/'+region.lower()+'/world_'+region.lower()+'.txt');region_rooms=set()
         for row in world.read_text('utf-8-sig').splitlines():
             parts=row.split(' : ')
@@ -731,10 +1145,16 @@ def audit(stage,ids):
                 if parts[0] in connections:reject('世界文件的房间编号重复',parts[0])
                 region_rooms.add(parts[0]);connections[parts[0]]=[x.strip() for x in parts[1].split(',')]
         if region_rooms!={room for room in rooms if room.startswith(region+'_')}:reject('世界文件的区域房间集合不一致',region)
-    if set(connections)!=rooms:reject('世界文件的房间集合不一致')
+    if region_context:
+        if not set(connections).issubset(rooms) or not core_rooms.issubset(connections):reject('世界文件的生效房间集合不一致')
+    elif set(connections)!=rooms:reject('世界文件的房间集合不一致')
+    for room,links in connections.items():
+        if any(target not in rooms and target!='DISCONNECTED' for target in links):reject('房间连接引用未选择的房间',room)
+    for row in extra_manifest:
+        if connections[row['name']]!=row['connections']:reject('额外房间连接与清单不一致',row['name'])
     for record in registry:
         ai,entry=record['ai'],record['entry'];exit_node=record.get('exitNode')
-        if entry not in connections[ai] or ai not in connections[entry] or any(x not in (ai,entry,'DISCONNECTED') for room in (ai,entry) for x in connections[room]):reject('房间连接不属于选定房间对')
+        if entry not in connections[ai] or ai not in connections[entry] or not region_context and not extra_manifest and any(x not in (ai,entry,'DISCONNECTED') for room in (ai,entry) for x in connections[room]):reject('房间连接不属于选定房间对')
         if type(exit_node) is not int or not 0<=exit_node<len(connections[ai]) or connections[ai][exit_node]!=entry:reject('房间出口编号无效')
         entry_node=record.get('entryNode',connections[entry].index(ai))
         if type(entry_node) is not int or not 0<=entry_node<len(connections[entry]) or connections[entry][entry_node]!=ai:reject('等待房间出口编号无效')
@@ -760,7 +1180,10 @@ def audit(stage,ids):
                 if not item.get('readers') and not item.get('spawns'):reject('珍珠没有选定项目的绑定',rel)
                 for reader in item.get('readers',[]):
                     p=records.get(reader.get('projectId'))
-                    if not p or reader.get('oracleId')!=p['oracleId'] or reader.get('name')!=p['name']:reject('珍珠读取者不属于选定项目',rel)
+                    if pearls.native_reader(reader):
+                        if reader.get('projectId')!='' or reader.get('oracleId')!=reader['nativeOracleId'] or reader.get('name')!=reader['nativeOracleId']:reject('原版珍珠读取者无效',rel)
+                        pearls.validate_native_features(reader)
+                    elif not p or reader.get('oracleId')!=p['oracleId'] or reader.get('name')!=p['name']:reject('珍珠读取者不属于选定项目',rel)
                     def check_actions(body):
                         if 'readAction' in body:dialogue.validate_action(body['readAction'])
                         for line in body.get('read',[]):
@@ -776,8 +1199,8 @@ def audit(stage,ids):
                     if spawn.get('projectId'):
                         if not p or room not in (p['ai'],p['entry']):reject('珍珠生成位置不属于选定项目',rel)
                     else:
-                        if room in rooms:reject('项目内珍珠生成位置缺少项目编号',rel)
-                        dependency=pearl_room_requirement(room)
+                        if room in core_rooms:reject('项目内珍珠生成位置缺少项目编号',rel)
+                        dependency=None if room in rooms else pearl_room_requirement(room)
                         if dependency:
                             dependency_id,dependency_name=dependency
                             if dependency_id not in requirements or names[requirements.index(dependency_id)]!=dependency_name:reject('珍珠生成房间缺少已确认的地图依赖 '+dependency_id,rel)
@@ -803,7 +1226,8 @@ def audit(stage,ids):
         allowed.add(rel)
     audio_documents=[read(p['design']) for p in registry]+exported_pearls
     allowed.update(audio_assets.audit_referenced(audio_documents,stage))
-    unreferenced_dependencies=set(requirements)-{'warp','moreslugcats','watcher'}-pearl_dependencies
+    unreferenced_dependencies=set(requirements)-{'warp','moreslugcats','watcher'}-pearl_dependencies-extra_dependencies-palette_dependencies
+    if region_context:unreferenced_dependencies-=set(region_context.dependencies)
     if unreferenced_dependencies:reject('导出包包含未被已选内容引用的地图依赖 '+', '.join(sorted(unreferenced_dependencies)))
     for f in stage.rglob('*'):
         if f.is_symlink():reject('独立包不能包含符号链接',f)

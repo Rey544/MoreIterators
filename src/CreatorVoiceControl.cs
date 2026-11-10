@@ -11,11 +11,11 @@ namespace MoreIterators {
   static string FilePath {get{return Path.Combine(RuntimePaths.DataDirectory,"voice-control.json");}}
   public static bool Enabled {get{Load();return enabled;}}
   static void Load(){
-   string file=FilePath;if(file==loadedFile)return;loadedFile=file;enabled=true;
+   string file=FilePath;if(file==loadedFile)return;loadedFile=file;enabled=true;CreatorVoicePreview.Request(null,false);
    try{if(File.Exists(file)){var data=Json.Deserialize(File.ReadAllText(file)) as Dictionary<string,object>;object value;if(data!=null&&data.TryGetValue("enabled",out value)&&value is bool)enabled=(bool)value;}}
    catch(Exception error){MiDiagnostics.Report("MI-VOICE-CONTROL","CreatorVoiceControl.Load",error,file);}
   }
-  public static void Toggle(){
+  public static void Toggle(RainWorldGame game){
    bool next=!Enabled;string file=FilePath;
    // Preserve future preference fields and do not replace malformed files.
    var data=File.Exists(file)?Json.Deserialize(File.ReadAllText(file)) as Dictionary<string,object>:new Dictionary<string,object>();
@@ -24,7 +24,7 @@ namespace MoreIterators {
    string temporary=file+"."+Guid.NewGuid().ToString("N")+".tmp";
    try{File.WriteAllText(temporary,Json.Serialize(data));if(File.Exists(file))File.Replace(temporary,file,null);else File.Move(temporary,file);}
    finally{if(File.Exists(temporary))File.Delete(temporary);}
-   enabled=next;
+   enabled=next;CreatorVoicePreview.Request(game,next);
   }
  }
 }

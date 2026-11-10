@@ -2,6 +2,9 @@
 const PearlActions=typeof module!=='undefined'?require('./line-actions.js'):window.MIActionEditor;
 const PearlPresentation=PearlActions.presentation;
 const MIPearlBranches=(()=>{
+  const nativeIds=['DM','CL','SL','SS'];
+  const isNative=reader=>nativeIds.includes(reader?.nativeOracleId);
+  const readerKey=reader=>isNative(reader)?'native:'+reader.nativeOracleId:reader?.projectId||'';
   function branch(reader,tier){return tier==='general'?reader:reader?.affinity?.[tier]||reader;}
   function clone(reader,newId){
     const result=structuredClone({read:reader.read,readAction:reader.readAction||{type:'none',delay:0},repeatEnabled:!!reader.repeatEnabled,repeatPrependCommon:!!reader.repeatPrependCommon,repeat:reader.repeat||[],presentation:reader.presentation||{movement:'inherit',eyes:'inherit'}});
@@ -24,7 +27,7 @@ const MIPearlBranches=(()=>{
     const y=1-((clientY-rect.top)/rect.height*map.canvasHeight-map.oy)/(map.h*map.s);
     return {x:Math.max(marginX,Math.min(1-marginX,x)),y:Math.max(marginY,Math.min(1-marginY,y))};
   }
-  return {branch,clone,previewLines,repeatSources,positionAt};
+  return {branch,clone,previewLines,repeatSources,positionAt,nativeIds,isNative,readerKey};
 })();
 if(typeof module!=='undefined')module.exports=MIPearlBranches;
 if(typeof document!=='undefined'){
@@ -60,17 +63,31 @@ const positionText=(key,values={})=>MI18n.t(`pearl.placement.${key}`,values);
 const groupOpen = new Map();
 const stageNames = {read: '首次读取', repeat: '重复交付', leaving: '中途离开', returning: '返回', many: '多颗珍珠'};
 const reader = () => {const value=project?.readers[readerIndex];return value&&!deletedProject(value.projectId)?value:undefined;};
-const common = () => sharedProfiles[reader()?.projectId]?.dialogue.pearlReading;
+const nativeReader=()=>MIPearlBranches.isNative(reader());
+const nativeLabel=id=>MI18n.t('pearl.native.'+id);
+const common = () => nativeReader()?reader():sharedProfiles[reader()?.projectId]?.dialogue.pearlReading;
 const branch = () => MIPearlBranches.branch(reader(),affinityTier);
 const missingVariant = () => affinityTier!=='general'&&!Object.hasOwn(reader()?.affinity||{},affinityTier);
-const commonStage = () => ['many', 'leaving', 'returning'].includes(stage) || stage === 'repeat' && !branch()?.repeatEnabled;
+const commonStage = () => !nativeReader()&&(['many', 'leaving', 'returning'].includes(stage) || stage === 'repeat' && !branch()?.repeatEnabled);
 const stageData = () => commonStage() ? common() : branch();
 const isPool = () => stage !== 'read';
 const lineList = () => isPool() ? stageData()?.[stage]?.[poolIndex]?.lines : branch()?.read;
 const readerLabel = id => projects.find(p=>p.projectId===id)?.name||sharedProfiles[id]?.name||id||MI18n.text('未选择');
-const readerName = () => readerLabel(reader()?.projectId);
+const bindingName=binding=>MIPearlBranches.isNative(binding)?nativeLabel(binding.nativeOracleId):readerLabel(binding?.projectId);
+const readerName = () => bindingName(reader());
 const archivedShared = () => !!sharedProfiles[reader()?.projectId]?.deleted;
 const option = (value, name) => {const node = el('option', name); node.value = value; return node;};
+function refreshReaderNames() {
+    if (!project) return;
+    for (const item of $('readers').options) {
+        const binding=item.value===''?null:project.readers[Number(item.value)];
+        item.textContent=binding?bindingName(binding):MI18n.text('尚未添加读取者');
+    }
+    for (const item of $('candidate').options) {
+        if (item.value.startsWith('native:')) item.textContent=nativeLabel(item.value.slice(7));
+    }
+    updateHeadings();
+}
 
 function notice(message = '', bad = false) {
     $('notice').textContent = message;
@@ -96,7 +113,7 @@ function updateHeadings() {
 }
 function changed(shared = false) {
     dirty = true;
-    if (shared && reader()) sharedProfiles[reader().projectId].dirty = true;
+    if (shared && reader()&&!nativeReader()) sharedProfiles[reader().projectId].dirty = true;
     state('未保存更改', 'dirty');
     notice();
     updateHeadings();
@@ -109,6 +126,7 @@ const run = fn => async (...args) => {
 };
 async function ensureShared(candidate = project, profiles = sharedProfiles) {
     for (const binding of candidate.readers) {
+        if(MIPearlBranches.isNative(binding))continue;
         if (!profiles[binding.projectId]) profiles[binding.projectId] = await api('dialogue?id=' + encodeURIComponent(binding.projectId));
     }
 }
@@ -202,7 +220,7 @@ function appearance() {
     halcyonToggle.type='checkbox';halcyonToggle.id='halcyonPreview';halcyonToggle.checked=simulateHalcyon;
     halcyonToggle.onchange=()=>{simulateHalcyon=halcyonToggle.checked;};
     halcyonLabel.append(halcyonToggle,el('span',MI18n.t('pearl.ui.simulateHalcyon')));
-    halcyonPreview.append(el('p',MI18n.t('pearl.ui.halcyonBeat')),halcyonLabel);host.append(halcyonPreview);
+    halcyonPreview.append(halcyonLabel);$('appearancePreviewControls').replaceChildren(halcyonPreview);
     const effectColor = colorControl('effectColor', '特效颜色'); effectFields.push(effectColor.row); host.append(effectColor.row);
     for (const [key, title, min, max, step] of [
         ['size', '大小', .5, 3, .05], ['effectOpacity', '特效透明度', 0, 1, .01],
@@ -263,6 +281,17 @@ function roomOption(destination,checked){
     };label.append(checkbox,words);return label;
 }
 function renderRooms(){
+    if(!$('chooseRoomMap')){
+        const button=el('button',MI18n.t('pearl.native.map'));button.type='button';button.id='chooseRoomMap';
+        button.onclick=()=>{if(!project||busy||!window.MIRoomPicker)return;const destination=destinations.find(d=>roomKey(d)===positionProject);window.MIRoomPicker.open({room:destination?.entry||'',region:destination?.region||'',projectId:destination?.ownerProjectId||destination?.projectId||'',pickPoint:true,point:positionValue(),onSelect:async({room,point})=>{
+            if(point){const geometry=await api('pearl-room?room='+encodeURIComponent(room)),radius=5*project.appearance.size;point={x:Math.max(radius/(geometry.width*20),Math.min(1-radius/(geometry.width*20),point.x)),y:Math.max(radius/(geometry.height*20),Math.min(1-radius/(geometry.height*20),point.y))};if(geometry.solids.some(([x,y])=>x===Math.floor(point.x*geometry.width)&&y===Math.floor(point.y*geometry.height)))throw Error(positionText('solid'));}
+            const existing=destinations.find(d=>d.entry===room&&project.spawnProjects.includes(d.projectId));
+            if(existing){positionProject=existing.projectId;if(point){project.spawnPositions??={};project.spawnPositions[positionProject]=point;}}
+            else{project.spawnRooms??=[];if(!project.spawnRooms.includes(room))project.spawnRooms.push(room);positionProject='room:'+room;if(point){project.spawnRoomPositions??={};project.spawnRoomPositions[room]=point;}}
+            changed();renderRooms();loadPositionGeometry();
+        }});};
+        $('roomSearch').closest('label').after(button);
+    }
     const visible=destinations.filter(d=>!deletedProject(d.ownerProjectId||d.projectId)&&!deletedRooms.has(d.entry));
     const byId=new Map(visible.map(d=>[roomKey(d),d]));for(const destination of visible)if(!byId.has('room:'+destination.entry))byId.set('room:'+destination.entry,{...destination,key:'room:'+destination.entry,projectId:''});
     const chosen=selectedRoomKeys().filter(id=>id.startsWith('room:')?!deletedRooms.has(id.slice(5)):!deletedProject(id)).map(id=>byId.get(id)||{key:id,projectId:id.startsWith('room:')?'':id,name:id,entry:id.startsWith('room:')?id.slice(5):'房间暂不可用'}),selected=new Set(chosen.map(d=>d.entry));
@@ -333,12 +362,13 @@ function render() {
     appearance();
     const visibleReaders=project.readers.map((binding,index)=>({binding,index})).filter(({binding})=>!deletedProject(binding.projectId));
     if(!visibleReaders.some(({index})=>index===readerIndex))readerIndex=visibleReaders[0]?.index??-1;
-    $('readers').replaceChildren(...visibleReaders.map(({binding,index})=>option(index,readerLabel(binding.projectId))));
+    $('readers').replaceChildren(...visibleReaders.map(({binding,index})=>option(index,bindingName(binding))));
     if(!visibleReaders.length)$('readers').append(option('', '尚未添加读取者'));
     $('readers').disabled=!visibleReaders.length;$('readers').value=visibleReaders.length?readerIndex:'';
-    $('readerAffinity').value=affinityTier;$('readerAffinity').disabled=!reader();
+    $('readerAffinity').value=affinityTier;$('readerAffinity').disabled=!reader()||nativeReader();
     $('empty').hidden = !!reader(); $('readerEditor').hidden = !reader(); $('unbind').disabled = !reader();
     $('candidate').replaceChildren(...projects.filter(p => !deletedProject(p.projectId)&&!project.readers.some(r => r.projectId === p.projectId)).map(p => option(p.projectId, p.name)));
+    for(const id of MIPearlBranches.nativeIds)if(!project.readers.some(r=>r.nativeOracleId===id))$('candidate').append(option('native:'+id,nativeLabel(id)));
     $('bind').disabled = !$('candidate').options.length;
     renderRooms(); renderReader(); updateHeadings();
 }
@@ -440,11 +470,12 @@ function lineCard(line, index, lines) {
     const before=el('details',undefined,'mi-before-action');before.open=PearlActions.normalize(line.beforeAction).type!=='none';before.append(el('summary','句前动作'),PearlActions.create(line.beforeAction,value=>{line.beforeAction=value;changedLines();},{label:'句前动作'}));
     const actionFields=PearlActions.create(line.action,value=>{line.action=value;changedLines();},{label:standalone?'独立动作':'句末动作'});
     const after=el('details',undefined,'mi-after-action');after.open=PearlActions.normalize(line.action).type!=='none';after.append(el('summary','句末动作'),actionFields);
-    if(standalone){snippet.textContent='独立动作';timing.textContent='';body.append(actions,confirmation,actionFields);}else body.append(actions,confirmation,text,timingFields,before,after,PearlPresentation.create(line.presentation,value=>{line.presentation=value;changedLines();}));
+    if(nativeReader())body.append(actions,confirmation,text,timingFields);else if(standalone){snippet.textContent='独立动作';timing.textContent='';body.append(actions,confirmation,actionFields);}else body.append(actions,confirmation,text,timingFields,before,after,PearlPresentation.create(line.presentation,value=>{line.presentation=value;changedLines();}));
     card.append(summary, body); return card;
 }
 function renderReader() {
     endLineDrag();
+    if(nativeReader()){affinityTier='general';$('readerAffinity').value=affinityTier;if(!['read','repeat'].includes(stage))stage='read';}
     updateHeadings();
     renderVariantTools();
     if (!reader() || !common()) return;
@@ -454,18 +485,20 @@ function renderReader() {
     $('sharedHelp').inert=archivedShared();
     $('lines').inert=readonly;$('poolTools').inert=readonly;$('privateRepeat').disabled=missingVariant();
     $('privateRepeat').checked = !!binding.repeatEnabled;
-    $('prependCommonRepeat').checked=!!binding.repeatPrependCommon;$('prependCommonRepeat').disabled=missingVariant()||!binding.repeatEnabled;$('prependCommonRepeatField').hidden=!binding.repeatEnabled;
+    $('prependCommonRepeat').checked=!!binding.repeatPrependCommon;$('prependCommonRepeat').disabled=missingVariant()||!binding.repeatEnabled;$('prependCommonRepeatField').hidden=nativeReader()||!binding.repeatEnabled;
     $('threshold').value = shared.manyThreshold;
     $('preventRepeat').checked = shared.preventSameCycleRepeat;
     $('manyEnabled').checked = shared.manyEnabled;
     $('threshold').disabled = archivedShared() || !shared.manyEnabled;
     $('sharedHelp').hidden = !commonStage();
     $('repeatOptions').hidden = stage !== 'repeat';
+    $('sharedRepeatOptions').hidden = nativeReader() || stage !== 'repeat';
     $('manyOptions').hidden = stage !== 'many';
     $('leaveOptions').hidden = !['leaving', 'returning'].includes(stage);
     $('dialogueLink').href = '/dialogue?id=' + encodeURIComponent(reader().projectId) + '&stage=' + ({repeat: 'pearlRepeat', many: 'pearlMany', leaving: 'pearlLeaving', returning: 'pearlReturning'}[stage] || 'first');
     $('leavePolicy').value = shared.leavePolicy;
     for (const button of $('stages').children) {
+        button.hidden=nativeReader()&&!['read','repeat'].includes(button.dataset.stage);
         const selected = button.dataset.stage === stage;
         button.classList.toggle('selected', selected);
         button.setAttribute('aria-pressed', selected);
@@ -485,18 +518,25 @@ function renderReader() {
     $('lines').replaceChildren(...lines.map((line, i) => lineCard(line, i, lines)));
     if (!lines.length) $('lines').append(el('p', isPool() && !stageData()[stage].length ? '先添加一个随机组' : '还没有台词', 'line-empty'));
     $('addLine').disabled = readonly || isPool() && !stageData()[stage].length;
-    $('addAction').disabled=$('addLine').disabled;
+    $('addAction').disabled=$('addLine').disabled;$('addAction').hidden=nativeReader();
+    $('preventRepeat').closest('label').hidden=nativeReader();
+    $('readerAffinity').closest('label').hidden=nativeReader()||!localAffinityStage();
+    $('sharedHelp').hidden=nativeReader()||!commonStage();
+    $('pearlActionDetails').hidden=nativeReader();
+    for(const id of ['playNextCycle','playMany','leave','return','pearlPresentationState'])$(id).hidden=nativeReader();
+    $('previewStomachPearl').closest('label').hidden=nativeReader();
     renderPearlAction();renderReaderPresentation();
 }
 function renderReaderPresentation(){
-    const host=$('readerPresentation');host.hidden=commonStage();
+    const host=$('readerPresentation');host.hidden=nativeReader()||commonStage();
     host.replaceChildren(PearlPresentation.create(branch()?.presentation,value=>{if(!reader()||missingVariant())return;branch().presentation=value;changed();},{label:'本珍珠读取表现',mode:true}));
     host.inert=missingVariant();
 }
 function readingPresentationLayers(){return [common()?.presentation,reader()?.presentation,branch()!==reader()?branch()?.presentation:null];}
 function showPearlPresentation(value){$('pearlPresentationState').textContent=PearlPresentation.describe(value);MI18n.content($('pearlPresentationState'));}
+function localAffinityStage(){return ['read','repeat'].includes(stage);}
 function renderVariantTools(){
-    const visible=!!reader()&&affinityTier!=='general';
+    const visible=!!reader()&&!nativeReader()&&localAffinityStage()&&affinityTier!=='general';
     $('affinityVariantTools').hidden=!visible;$('removeAffinityConfirm').hidden=true;
     $('createAffinityVariant').hidden=!missingVariant();$('removeAffinityVariant').hidden=missingVariant();
     $('affinityVariantState').textContent=affinityText(missingVariant()?'fallback':'enabled');
@@ -510,13 +550,13 @@ function renderPearlAction(){
 }
 $('readerAffinity').onchange=()=>{stop();affinityTier=$('readerAffinity').value;poolIndex=0;lastPool={};renderReader();};
 $('createAffinityVariant').onclick=()=>{
-    if(!reader()||!missingVariant())return;
+    if(!reader()||nativeReader()||!localAffinityStage()||!missingVariant())return;
     reader().affinity??={};reader().affinity[affinityTier]=MIPearlBranches.clone(reader(),()=>crypto.randomUUID().replaceAll('-',''));
     stop();poolIndex=0;changed();renderReader();
 };
-$('removeAffinityVariant').onclick=()=>{$('removeAffinityConfirm').hidden=false;$('cancelRemoveAffinity').focus();};
+$('removeAffinityVariant').onclick=()=>{if(!localAffinityStage()||nativeReader())return;$('removeAffinityConfirm').hidden=false;$('cancelRemoveAffinity').focus();};
 $('cancelRemoveAffinity').onclick=()=>$('removeAffinityConfirm').hidden=true;
-$('confirmRemoveAffinity').onclick=()=>{if(!reader()?.affinity)return;delete reader().affinity[affinityTier];if(!Object.keys(reader().affinity).length)delete reader().affinity;stop();poolIndex=0;changed();renderReader();};
+$('confirmRemoveAffinity').onclick=()=>{if(!reader()?.affinity||nativeReader()||!localAffinityStage())return;delete reader().affinity[affinityTier];if(!Object.keys(reader().affinity).length)delete reader().affinity;stop();poolIndex=0;changed();renderReader();};
 function renderSaved() {
     $('saved').replaceChildren(option('', '切换珍珠'), ...saved.map(p => MI18n.content(option(p.id, p.id + '／' + p.name))));
     $('saved').value = project?.id || '';
@@ -636,7 +676,7 @@ async function save(apply = false, alreadyLocked = false) {
         // pearl was opened. Refresh status without replacing unsaved wording.
         await refreshProjectAvailability();
         for (const [id, profile] of Object.entries(sharedProfiles)) {
-            if (!profile.deleted && (profile.dirty || apply && project.readers.some(r => r.projectId === id))) await writeShared(id, profile, apply);
+            if (!profile.deleted && (profile.dirty || apply && project.readers.some(r => MIPearlBranches.readerKey(r) === id))) await writeShared(id, profile, apply);
         }
         project = await writePearl(apply);
         const pending=Object.entries(sharedProfiles).filter(([,profile])=>profile.deleted&&profile.dirty);
@@ -675,11 +715,11 @@ $('name').oninput = () => {project.name = $('name').value; changed();};
 $('notes').oninput = () => {project.notes = $('notes').value; changed();};
 $('bind').onclick = run(async () => {
     const id = $('candidate').value;
-    if (busy || !id || project.readers.some(r => r.projectId === id)) return;
+    if (busy || !id || project.readers.some(r => MIPearlBranches.readerKey(r) === id)) return;
     setBusy(true);
     try {
         const binding = await api('pearl-reader?id=' + encodeURIComponent(id));
-        if (!sharedProfiles[id]) sharedProfiles[id] = await api('dialogue?id=' + encodeURIComponent(id));
+        if (!MIPearlBranches.isNative(binding)&&!sharedProfiles[id]) sharedProfiles[id] = await api('dialogue?id=' + encodeURIComponent(id));
         project.readers.push(binding); readerIndex = project.readers.length - 1; affinityTier='general'; poolIndex = 0;
         stop(); changed(); render();
         $('candidate').closest('details').open = false;
@@ -800,6 +840,7 @@ function interrupt(lines) {
 function play(kind) {
     if(!reader()||!common())return;
     stop();previewButtons(kind);const content=bodyLines(),prelude=content.length?pickPool(common()[$('previewStomachPearl').checked&&common().extractStomachPearl?'extractedPreRead':'preRead'],'prelude'):[],body=[...prelude,...content];
+    if(nativeReader()){queue=kind==='repeat'&&branch().repeatEnabled?pickPool(branch().repeat,'native-repeat'):content;next();return;}
     queue=kind==='repeat'?[...pick('repeat'),...(common().preventSameCycleRepeat?[]:body)]
         :kind==='nextCycle'?[...pick('repeat'),...body]
         :kind==='many'?[...(common().manyEnabled?pick('many'):[]),...body]:body;
@@ -850,6 +891,6 @@ run(async () => {
 
 window.addEventListener('mi-language-change',()=>{renderCollections();for(const input of document.querySelectorAll('#appearance input'))if(input.validity.customError)input.setCustomValidity(MI18n.text('请输入六位 Hex 颜色，如 #88bbff'));});
 
-window.addEventListener('mi-language-change',()=>{if(project){appearance();renderRooms();}drawPosition();});
+window.addEventListener('mi-language-change',()=>{if(project){appearance();renderRooms();refreshReaderNames();}drawPosition();});
 
 }

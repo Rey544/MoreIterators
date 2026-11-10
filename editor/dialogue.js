@@ -143,7 +143,8 @@ function renderLines(){
 function renderPreviewOptions(){
   const key=$('playEvent').value==='current'?stage:$('playEvent').value;
   $('previewCarryingField').hidden=!['pearlGreeting','pearlQuickReturn','pearlRevisit'].includes(key);$('previewExtractedField').hidden=key!=='pearlRead';$('previewFirstReadField').hidden=key!=='pearlRead';
-  $('previewAffinityField').hidden=!(isAttack(key)||key==='refusal'||key==='pearlRead');
+  $('previewAffinityField').hidden=!(isAttack(key)&&$('playEvent').value!=='current'||key==='pearlRead');
+  $('affinityResult').hidden=!isAttack(key)||$('playEvent').value==='current';
 }
 function renderAction(){
   const {owner,key}=actionTarget();
@@ -178,6 +179,7 @@ function render(){
   $('greetingEnabled').checked=profile.pearlReading.greetingEnabled;for(const key of ['greetingDelay','quickReturnWindow','returnCooldown'])$(key).value=profile.pearlReading[key];$('extractStomachPearl').checked=profile.pearlReading.extractStomachPearl;$('readingOptions').hidden=category!=='reading';$('readingPresentation').replaceChildren(ActionEditor.presentation.create(profile.pearlReading.presentation,value=>{profile.pearlReading.presentation=value;changed();},{label:'读珠默认表现'}));
   $('preventRepeat').checked=profile.pearlReading.preventSameCycleRepeat;$('manyEnabled').checked=profile.pearlReading.manyEnabled;$('manyThreshold').value=profile.pearlReading.manyThreshold;
   $('interruptOptions').hidden=!['story','interrupt'].includes(category);$('eventToggle').hidden=category!=='interrupt';$('eventEnabled').checked=stage==='pickup'?profile.pickupEnabled:profile.leaveEnabled;$('cooldown').value=profile.cooldown;
+  $('eventToggleLabel').textContent=MI18n.t(stage==='pickup'?'hierarchy.pickupInterrupt':'hierarchy.leaveReturnInterrupt');
   $('greetingOptions').hidden=category!=='greeting';$('pearlRepeatOptions').hidden=stage!=='pearlRepeat';$('pearlManyOptions').hidden=stage!=='pearlMany';$('pearlLeaveOptions').hidden=!['pearlLeaving','pearlReturning'].includes(stage);$('pearlLeavePolicy').value=profile.pearlReading.leavePolicy;
   $('poolToolbar').hidden=!isPool();$('poolDeleteConfirm').hidden=true;
   if(isPool()){const groups=pools();poolIndex=Math.max(0,Math.min(poolIndex,groups.length-1));$('pool').replaceChildren(...groups.map((group,index)=>{const option=MI18n.content(el('option',(index+1)+'. '+group.name));option.value=index;return option;}));$('pool').value=poolIndex;$('poolName').value=groups[poolIndex]?.name||'';$('removePool').disabled=$('poolName').disabled=$('pool').disabled=!groups.length;$('addPool').disabled=groups.length>=40;}

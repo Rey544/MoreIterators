@@ -2,10 +2,40 @@
 
 // These pure functions are shared by preview, timeline, and the regression check.
 const MIProjectionTimeline = (() => {
+  function ease(kind, t) {
+    t=Math.max(0,Math.min(1,t));
+    if(kind==='step')return 0;
+    if(t===0||t===1)return t;
+    switch(kind){
+      case 'smooth':return t*t*(3-2*t);
+      case 'quadIn':return t*t;
+      case 'quadOut':return 1-(1-t)*(1-t);
+      case 'quadInOut':return t<.5?2*t*t:-1+(4-2*t)*t;
+      case 'sineInOut':return -.5*(Math.cos(t*Math.PI)-1);
+      case 'expIn':return Math.pow(2,10*(t-1));
+      case 'expOut':return 1-Math.pow(2,-10*t);
+      case 'expInOut':return t<.5?.5*Math.pow(2,10*(2*t-1)):1-.5*Math.pow(2,-10*(2*t-1));
+      case 'circIn':return 1-Math.sqrt(1-t*t);
+      case 'circOut':return Math.sqrt(1-(1-t)*(1-t));
+      case 'circInOut':return t<.5?-.5*(Math.sqrt(1-4*t*t)-1):.5*(Math.sqrt(1-(2*t-2)*(2*t-2))+1);
+      case 'backIn':return t*t*(2.70158*t-1.70158);
+      case 'backOut':return 1-(1-t)*(1-t)*(2.70158*(1-t)-1.70158);
+      case 'backInOut':return t<.5?2*t*t*(7.189819*t-2.5949094):.5*((2*t-2)*(2*t-2)*(3.5949094*(2*t-2)+2.5949094)+2);
+      case 'elasticIn':return -Math.pow(2,10*(t-1))*Math.sin((t-1.1)*2*Math.PI/.4);
+      case 'elasticOut':return Math.pow(2,-10*t)*Math.sin((t-.1)*2*Math.PI/.4)+1;
+      case 'elasticInOut':return t<.5?-.5*Math.pow(2,10*(2*t-1))*Math.sin((2*t-1-.1)*2*Math.PI/.4):.5*Math.pow(2,-10*(2*t-1))*Math.sin((2*t-1-.1)*2*Math.PI/.4)+1;
+      default:return t;
+    }
+  }
   const values = ['x', 'y', 'scale', 'rotation', 'opacity', 'brightness', 'flicker'];
   const end = track => Number(track.delay || 0) + (track.frames || []).reduce((sum, frame) => sum + Number(frame.duration || 0), 0);
   const duration = group => Math.max(0, ...(group?.tracks || []).map(end));
   const frameTime = (track, index) => Number(track.delay || 0) + (index > 0 ? track.frames.slice(0, index + 1).reduce((sum, frame) => sum + Number(frame.duration || 0), 0) : 0);
+  const transition = (track, index) => {
+    if (!track?.frames[index] || index < 1) return null;
+    const end = frameTime(track, index);
+    return {start:end - Number(track.frames[index].duration || 0),end,changed:values.some(key => Number(track.frames[index - 1][key]) !== Number(track.frames[index][key]))};
+  };
   function sample(track, time) {
     if (!track.frames?.length || time < Number(track.delay || 0)) return null;
     let local = time - Number(track.delay || 0), previous = track.frames[0];
@@ -17,8 +47,7 @@ const MIProjectionTimeline = (() => {
         // Destination-key step holds the previous pose throughout the interval.
         // At its exact end this loop advances to the destination, including any
         // consecutive zero-duration keys, just like the game sampler.
-        let factor = next.ease === 'step' ? 0 : Math.max(0, Math.min(1, local / span));
-        if (next.ease === 'smooth') factor = factor * factor * (3 - 2 * factor);
+        const factor = ease(next.ease, local / span);
         const result = {...next};
         for (const key of values) result[key] = Number(previous[key]) + (Number(next[key]) - Number(previous[key])) * factor;
         return result;
@@ -41,7 +70,7 @@ const MIProjectionTimeline = (() => {
     if(!areas)return [custom];
     return areas.map(([x,y,w,h])=>{const left=Math.max(x,custom[0]),top=Math.max(y,custom[1]),right=Math.min(x+w,custom[0]+custom[2]),bottom=Math.min(y+h,custom[1]+custom[3]);return [left,top,right-left,bottom-top];}).filter(r=>r[2]>0&&r[3]>0);
   }
-  return {end, duration, frameTime, sample, appearance, maskAreas};
+  return {end, duration, frameTime, transition, sample, appearance, maskAreas, ease};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = MIProjectionTimeline;
 
@@ -59,7 +88,7 @@ if (typeof document !== 'undefined') (() => {
   let groups = [], projects = [], sources = [], applied = {}, group = null, selectedTrack = '', selectedFrame = 0;
   let reference = {}, referenceTab = 'assets', background = null, backgroundStatus = '', clipAreas = [], dirty = false, busy = false;
   let depthBackground = null, lightAngle = [0,0];
-  let currentTime = 0, playing = false, lastTick = 0, fitMode = true, zoom = 1, sceneWidth = 1000, sceneHeight = 600, contextVersion = 0, referenceTick = 0;
+  let currentTime = 0, playing = false, lastTick = null, previewEnd = null, fitMode = true, zoom = 1, sceneWidth = 1000, sceneHeight = 600, contextVersion = 0, referenceTick = 0;
   let pointerDrag = null, savedStatus = 'loading', projectSettings=null, maskDirty=false;
   let replacement = null;
   const defaultMask=()=>({enabled:false,x:0,y:0,width:1,height:1});
@@ -82,8 +111,8 @@ if (typeof document !== 'undefined') (() => {
   function run(fn) {return async (...args) => {try {return await fn(...args);} catch (error) {notice(error.message, true); if (busy) setBusy(false); console.error(error);}};}
   function setBusy(value) {busy = value; $('studio').inert = value || !group; for (const id of ['save','apply','projects']) $(id).disabled = value || !group;}
   function permitSwitch() {return !(dirty||maskDirty) || confirm(t('discard'));}
-  function setPlaying(value) {playing = value; lastTick = 0; $('play').disabled = value || !group?.tracks.length; $('pause').disabled = !value;}
-  function pause() {setPlaying(false);}
+  function setPlaying(value, end = null) {playing = value; lastTick = null; previewEnd = end; $('play').disabled = value || !group?.tracks.length; $('pause').disabled = !value;}
+  function pause(preservePreview = false) {setPlaying(false,preservePreview?previewEnd:null);}
   function stop() {pause(); currentTime = 0; updateTimelinePosition(); draw();}
   function loadImage(src) {
     if (!src) return null;
@@ -239,8 +268,17 @@ if (typeof document !== 'undefined') (() => {
     }));
     updateTimelinePosition();
   }
+  function renderEaseDescription(){
+    const help=$('easeDescription'),kind=frame()?.ease;
+    const native=kind&&!['linear','smooth','step'].includes(kind);
+    const interval=MIProjectionTimeline.transition(track(),selectedFrame);
+    const description=[native?t('ease.'+kind+'.description'):'',interval&&!interval.changed?t('ease.unchanged'):''].filter(Boolean).join(' ');
+    help.hidden=!description||selectedFrame===0;
+    help.textContent=description;
+    $('ease').title=$('ease').selectedOptions[0]?.textContent||'';
+  }
   function renderInspector() {
-    const item = track(); $('trackEditor').hidden = !item; $('trackEmpty').hidden = !!item; $('removeTrack').disabled = !item;
+    const item = track(); $('trackEditor').hidden = !item; $('removeTrack').disabled = !item;
     if (!item) return;
     renderMaskSettings();
     selectedFrame = clamp(selectedFrame, 0, item.frames.length - 1);
@@ -252,6 +290,7 @@ if (typeof document !== 'undefined') (() => {
     const point = frame();
     for (const key of ['duration','x','y','scale','rotation','opacity','brightness','flicker','ease']) $(key).value = ['x','y','opacity','flicker'].includes(key) ? +(point[key] * 100).toFixed(3) : point[key];
     $('durationLabel').textContent = selectedFrame === 0 ? t('initialHold') : t('transitionDuration'); $('ease').disabled = selectedFrame === 0; $('removeFrame').disabled = item.frames.length <= 1;
+    renderEaseDescription();
     const index = group.tracks.indexOf(item); $('trackUp').disabled = index === group.tracks.length - 1; $('trackDown').disabled = index === 0;
   }
   function updateTimelinePosition() {
@@ -315,9 +354,9 @@ if (typeof document !== 'undefined') (() => {
   }
   function tick(now) {
     if (playing) {
-      if (lastTick) currentTime += Math.min((now - lastTick) / 1000,.1);
-      lastTick = now; const duration = MIProjectionTimeline.duration(group);
-      if (currentTime > duration) {if (group.loop && duration > 0) currentTime %= duration; else {currentTime = duration; pause();}}
+      if (lastTick !== null) currentTime += Math.min((now - lastTick) / 1000,.1);
+      lastTick = now; const duration = previewEnd ?? MIProjectionTimeline.duration(group);
+      if (currentTime + 1e-9 >= duration) {if (previewEnd === null && group.loop && duration > 0) currentTime = Math.max(0,currentTime-duration) % duration; else {currentTime = duration; pause();}}
       updateTimelinePosition(); draw();
     }
     if (now-referenceTick>70 && referenceTab==='elements' && document.querySelector('.reference-section').open) {drawReferenceEffects(now/1000);referenceTick=now;}
@@ -343,7 +382,7 @@ if (typeof document !== 'undefined') (() => {
   $('preview').onpointermove = event => {
     if (!pointerDrag || pointerDrag.id !== event.pointerId) return;
     const point=canvasPoint(event), pose=frame();pose.x=clamp(point.x-pointerDrag.offsetX,0,1);pose.y=clamp(point.y-pointerDrag.offsetY,0,1);
-    $('x').value=+(pose.x*100).toFixed(2);$('y').value=+(pose.y*100).toFixed(2);changed();
+    $('x').value=+(pose.x*100).toFixed(2);$('y').value=+(pose.y*100).toFixed(2);renderEaseDescription();changed();
   };
   const endDrag = () => {pointerDrag=null;}; $('preview').onpointerup=endDrag;$('preview').onpointercancel=endDrag;$('preview').onlostpointercapture=endDrag;
   $('preview').onkeydown=event=>{const move={ArrowLeft:[-.001,0],ArrowRight:[.001,0],ArrowUp:[0,-.001],ArrowDown:[0,.001]}[event.key];if(!move||!frame())return;event.preventDefault();pause();frame().x=clamp(frame().x+move[0]*(event.shiftKey?10:1),0,1);frame().y=clamp(frame().y+move[1]*(event.shiftKey?10:1),0,1);currentTime=MIProjectionTimeline.frameTime(track(),selectedFrame);changed();renderInspector();};
@@ -487,12 +526,19 @@ if (typeof document !== 'undefined') (() => {
   $('addTrack').onclick=run(()=>addTrack());$('removeTrack').onclick=()=>{if(!track())return;group.tracks=group.tracks.filter(item=>item.id!==selectedTrack);selectedTrack=group.tracks[0]?.id||'';selectedFrame=0;pause();changed();renderImages();renderTimeline();renderInspector();};
   $('trackName').oninput=()=>{track().name=$('trackName').value;changed();renderTimeline();};
   for(const [id,key] of [['trackDelay','delay'],['trackColor','color'],['trackImage','imageId'],['trackStyle','style'],['glyphIndex','glyphIndex']])$(id).oninput=()=>{if(!$(id).checkValidity())return;track()[key]=['delay','glyphIndex'].includes(key)?+$(id).value:$(id).value;pause();if(key==='delay')currentTime=MIProjectionTimeline.frameTime(track(),selectedFrame);changed();if(key==='delay')renderTimeline();if(key==='style')renderInspector();if(key==='imageId')renderImages();};
-  for(const key of ['duration','x','y','scale','rotation','opacity','brightness','flicker','ease'])$(key).oninput=()=>{if(!$(key).checkValidity()||!frame())return;frame()[key]=key==='ease'?$(key).value:+$(key).value/(['x','y','opacity','flicker'].includes(key)?100:1);pause();currentTime=MIProjectionTimeline.frameTime(track(),selectedFrame);changed();if(key==='duration')renderTimeline();};
+  for(const key of ['duration','x','y','scale','rotation','opacity','brightness','flicker'])$(key).oninput=()=>{if(!$(key).checkValidity()||!frame())return;frame()[key]=+$(key).value/(['x','y','opacity','flicker'].includes(key)?100:1);renderEaseDescription();pause();currentTime=MIProjectionTimeline.frameTime(track(),selectedFrame);changed();if(key==='duration')renderTimeline();};
+  $('ease').oninput=()=>{
+    const interval=MIProjectionTimeline.transition(track(),selectedFrame);if(!interval)return;
+    frame().ease=$('ease').value;renderEaseDescription();
+                                                                          
+                                                                            
+    currentTime=interval.start;setPlaying(interval.end>interval.start,interval.end);changed();
+  };
   $('addFrame').onclick=run(()=>{const item=track();if(item.frames.length>=120||group.tracks.reduce((sum,item)=>sum+item.frames.length,0)>=512)throw Error(t('frameLimit'));item.frames.splice(selectedFrame+1,0,{...frame(),duration:1});selectedFrame++;changed();selectFrame(item.id,selectedFrame);});
   $('removeFrame').onclick=()=>{if(track().frames.length<=1)return;track().frames.splice(selectedFrame,1);selectedFrame=Math.max(0,selectedFrame-1);changed();selectFrame(selectedTrack,selectedFrame);};
   function moveTrack(delta){const index=group.tracks.indexOf(track()),next=index+delta;if(next<0||next>=group.tracks.length)return;[group.tracks[index],group.tracks[next]]=[group.tracks[next],group.tracks[index]];changed();renderTimeline();renderInspector();}
   $('trackUp').onclick=()=>moveTrack(1);$('trackDown').onclick=()=>moveTrack(-1);
-  $('play').onclick=()=>{if(currentTime>=MIProjectionTimeline.duration(group))currentTime=0;setPlaying(true);};$('pause').onclick=pause;$('stop').onclick=stop;
+  $('play').onclick=()=>{if(currentTime>=MIProjectionTimeline.duration(group))currentTime=0;setPlaying(true,previewEnd);};$('pause').onclick=()=>pause(true);$('stop').onclick=stop;
   $('playhead').oninput=()=>{pause();currentTime=+$('playhead').value;updateTimelinePosition();draw();};
   $('zoom').oninput=()=>{fitMode=false;zoom=+$('zoom').value/100;updateZoom();draw();};$('fit').onclick=()=>{fitMode=true;updateZoom();draw();};$('actualSize').onclick=()=>{fitMode=false;zoom=1;updateZoom();draw();};
   $('refAssets').onclick=()=>{referenceTab='assets';renderReferences();};$('refEffects').onclick=()=>{referenceTab='elements';renderReferences();};
@@ -552,8 +598,8 @@ if (typeof document !== 'undefined') (() => {
     const requestedProject=params.get('projectId')||params.get('project');
     const projectId=requested?.projectId||projects.find(item=>item.projectId===requestedProject)?.projectId||projects[0].projectId;
     const initial=requested||groups.find(item=>item.projectId===projectId);if(initial)await openGroup(initial);else await newGroup(projectId);
-    try{reference=await api('projection-reference');renderReferences();}catch(error){$('referenceState').textContent=error.message;}
     requestAnimationFrame(tick);
+    try{reference=await api('projection-reference');renderReferences();}catch(error){$('referenceState').textContent=error.message;}
   }
   run(initialize)();
 })();

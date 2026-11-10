@@ -32,7 +32,7 @@ public sealed class CreatorSpeech {
  }
  void Show(CreatorDialogueLine line,bool hide){
   currentLine=line.lineId;wasShowing=true;CreatorProjections.Line(oracle,this,currentLine);CreatorReadingPresentation.SetLine(oracle,this,line.presentation);
-  bool withoutMark=hide||PlaybackMode.Enabled&&!CreatorRuntime.Mark;
+  bool withoutMark=hide||!IteratorBehavior.HasCommunicationMark(oracle);
   if(withoutMark){hiddenTicks=UnityEngine.Mathf.Max(1,UnityEngine.Mathf.RoundToInt((line.hold+line.text.Length*.07f)*40));voice.Begin(line,true);return;}
   var h=oracle.room.game.cameras[0].hud;if(h==null)return;if(h.dialogBox==null)h.InitDialogBox();h.dialogBox.Interrupt(line.text,UnityEngine.Mathf.RoundToInt(line.hold*40));voice.Begin(line,false);
  }

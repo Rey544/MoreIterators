@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id),api=async(path,data)=>{await MI18n.ready
 const headTexture=key=>key.startsWith('antenna')||key.startsWith('ear');
 const dimensions={earL:[24,32],earR:[24,32],forehead:[32,32],face:[32,32],antennaL:[24,48],antennaR:[24,48],gown:[64,96],sleeve:[32,64],collar:[32,16],scarf:[64,96]};
 let loading=false,creatingProject=false,savingProject=false,project,projectAssociation,projects=[],preset,canvases={},target='forehead',activeLayer=1,undo=[],redo=[],dirty=false,guide=true,control={mode:'silent',behavior:'work',paused:false,hasMark:true,rearGlow:true,lightning:true,pearls:true,glyphs:true,palettePreview:-1},images=new Map();
-let loadVersion=0,listVersion=0,editVersion=0,savePending=0,applyingProject=false,restoringHistory=false,changingProject=false,saveQueue=Promise.resolve(),committedDimensions=structuredClone(dimensions);
+let loadVersion=0,listVersion=0,editVersion=0,savePending=0,applyingProject=false,restoringHistory=false,changingProject=false,saveQueue=Promise.resolve(),committedDimensions=structuredClone(dimensions),chamberPresets=[];
 const pc=$('paint').getContext('2d');let vc=$('puppet').getContext('2d');
 const workspace=IteratorWorkspace.mount({render:()=>render(),fitPreview:()=>fitPreviewToModel()});
 function notice(s,bad=false){$('notice').textContent=s;$('notice').dataset.kind=bad?'error':'success';$('notice').hidden=!s;$('notice').style.color=bad?'#ffb4a7':'#c8d9cf';}
@@ -20,7 +20,7 @@ function acceptSavedFields(saved){
  project.updatedAt=saved.updatedAt;
 }
 function syncProjectSelection(){if(!project)return;const select=$('projects');let option=[...select.options].find(item=>item.value===project.projectId);if(!option){option=document.createElement('option');option.value=project.projectId;select.append(option);}MI18n.content(option);option.textContent=project.name;select.value=project.projectId;}
-function syncProjectControls(){const busy=loading||creatingProject||savingProject||applyingProject||restoringHistory||changingProject||historyBusy||!!window.MIUndo?.busy||!!window.MIProjectActions?.busy;for(const id of ['projects','new','import','save','apply','history','export','editEntry','editAI','syncEntry','syncAI'])$(id).disabled=busy;window.MIProjectActions?.refresh();}
+function syncProjectControls(){const busy=loading||creatingProject||savingProject||applyingProject||restoringHistory||changingProject||historyBusy||!!window.MIUndo?.busy||!!window.MIProjectActions?.busy;for(const id of ['projects','new','import','save','apply','history','export','editEntry','editAI','syncEntry','syncAI','externalRoomTools'])$(id).disabled=busy;$('chamberPreset').disabled=busy||!chamberPresets.length;$('chamberSize').disabled=busy;$('replaceChamberPreset').disabled=busy||!$('chamberPreset').value;window.MIProjectActions?.refresh();}
 function snapshot(){return canvases[target][activeLayer].toDataURL();}
 function paintHistorySnapshot(key=target,layer=activeLayer){
  return PaintLayers.snapshot(key,layer);
@@ -51,6 +51,7 @@ async function load(p,view=null){
   }
   const association=await api('association?id='+encodeURIComponent(next.projectId)),nextLegacy=next.legacyOracle?await api('legacy-'+next.legacyOracle+'.json'):null;
   if(version!==loadVersion)return false;
+  if(project?.projectId!==next.projectId){$('chamberPreset').value='';refreshChamberPresetPreview();}
   $('projectionStudio').href='/projections?project='+encodeURIComponent(next.projectId)+'&lang='+MI18n.locale;
   project=next;projectAssociation=association;legacyModel=nextLegacy;canvases=nextCanvases;committedDimensions=structuredClone(dimensions);PuppetArms.finishLoad();images.clear();$('projectName').value=project.name;refreshProjectIdentity();syncProjectSelection();target=PuppetArms.select(view?.target||project.editor.target||'forehead');activeLayer=view?.layer??project.editor.layer??1;if(view){const index=project.textures[target]?.layers.findIndex(layer=>layer.id===view.layerId);if(index>=0)activeLayer=index;}$('target').value=target;undo=[];redo=[];dirty=false;editVersion++;buildSettings();updateTarget();loadPreviewBackground();loadPreviewGuides();render();notice('');if(!view)focusVoiceSettings();window.MIUndo?.reset();return true;
  }catch(error){if(version!==loadVersion)return false;for(const key of Object.keys(dimensions))delete dimensions[key];Object.assign(dimensions,committedDimensions);syncProjectSelection();throw error;
@@ -69,11 +70,21 @@ const sections=[
  ['workPearls',[['pearlCount','数量',0,80,1],['pearlColor1','配色 1','color'],['pearlColor2','配色 2','color'],['pearlColor3','配色 3','color'],['pearlColor4','配色 4','color'],['pearlGlyphColor','统一文字颜色','color'],['pearlGlyphOpacity','文字透明度',0,1,.01],['pearlGlyph1','符号 1',0,13,1],['pearlGlyph2','符号 2',0,13,1],['pearlGlyph3','符号 3',0,13,1],['pearlGlyph4','符号 4',0,13,1],['pearlClusterX','堆积点 1 室内左右',0,1,.01],['pearlClusterY','堆积点 1 室内高度',0,1,.01],['pearlCluster2X','堆积点 2 室内左右',0,1,.01],['pearlCluster2Y','堆积点 2 室内高度',0,1,.01],['pearlScatter','离散程度',0,3,.05],['pearlFixedCount','工作时固定数量',0,40,1]]],
  ['dialogue',[['firstDialogue','有印记 初次进入','text'],['repeatDialogue','有印记 再次进入','text'],['unmarkedDialogue','无印记 符号占位','text']]]
 ];
+function syncExternalRoomTools(){const input=$('externalRoomTools');input.checked=project?.editor?.externalRoomTools===true;input.indeterminate=false;}
+function setExternalRoomTools(enabled){
+ if(!project||$('externalRoomTools').disabled)return;
+ if((project.editor?.externalRoomTools===true)===enabled){syncExternalRoomTools();return;}
+ window.MIUndo?.flush();window.MIUndo?.group(null);
+ project.editor??={};project.editor.externalRoomTools=enabled;
+ markDirty();syncExternalRoomTools();syncSettingDependencies();window.MIUndo?.flush();window.MIUndo?.group(null);
+}
 function buildSettings(){
- const host=$('groups'),opened=captureSettingsOpen(host),d=project.design;host.replaceChildren();settingsConditions=[];
- const buckets={};for(const [id,name] of [['head','头部'],['body','身体'],['clothes','服装'],['extras','配饰与自定义'],['room','演算室'],['layers','图层与显示']]){
+ const host=$('groups'),roomHost=$('roomSettings'),opened=captureSettingsOpen(host),roomOpened=captureSettingsOpen(roomHost),d=project.design;host.replaceChildren(roomHost);$('chamberSettings').replaceChildren();$('waitingSettings').replaceChildren();settingsConditions=[];
+ syncExternalRoomTools();
+ const buckets={room:$('chamberSettings')};for(const [id,name] of [['head','头部'],['body','身体'],['clothes','服装'],['extras','配饰与自定义'],['layers','图层与显示']]){
   buckets[id]=garmentSection(host,name);buckets[id].classList.add('settings-category');buckets[id].open=id==='clothes';
  }
+ buckets.layers.before(roomHost);
  const fields=name=>sections.find(s=>s[0]===name)[1];
  function group(parent,title,defs,layer){
   const section=garmentSection(parent,title);let content=section;
@@ -110,9 +121,13 @@ function buildSettings(){
  buildPearlAccessorySettings(buckets.extras,d,changed);
  const necklace=$('necklaceSettings');if(necklace){necklace.querySelector('summary').textContent='珍珠项链';necklace.dataset.sectionId='necklaces';buckets.extras.prepend(necklace);buckets.extras.prepend(buckets.extras.querySelector(':scope > summary'));}
  if(project.legacyOracle==='ir'){const ir=garmentSection(buckets.extras,'IR cloak');garmentField(ir,d,'capeLength','cloak 长度','range',20,55,.1);}
- AudioSettings.settings(buckets.room,d);
- VoiceSettings.settings(buckets.room,d,{getProject:()=>project,changed:changed,rebuild:buildSettings});
- const room=group(buckets.room,'房间配色',fields('room').filter(f=>!f[0].startsWith('halo')));
+ VoiceSettings.settings(host,d,{getProject:()=>project,changed:changed,rebuild:buildSettings});
+ const voice=host.querySelector('[data-section-id="iteratorVoice"]');if(voice){voice.classList.add('settings-category');buckets.layers.before(voice);}
+ const palette=garmentSection(buckets.room,MI18n.t('hierarchy.roomPalette'));palette.dataset.sectionId='roomPalette';
+ for(const [key,label,min,max,step] of fields('room').filter(f=>!f[0].startsWith('halo')))garmentField(palette,d,key,label,min==='color'?'color':'range',min,max,step,()=>{d.roomPaletteMode='mi';});
+ const gravity={chamber:(d.roomGravityMode??'mi')==='mi',waiting:(d.entryGravityMode??'zero')==='zero'};
+ garmentField(buckets.room,gravity,'chamber',MI18n.t('roomControls.workReceptionGravity'),'checkbox',null,null,null,()=>{d.roomGravityMode=gravity.chamber?'mi':'room';}).dataset.wardrobeKey='roomGravityMode';
+ garmentField($('waitingSettings'),gravity,'waiting',MI18n.t('roomControls.zeroGravity'),'checkbox',null,null,null,()=>{d.entryGravityMode=gravity.waiting?'zero':'room';}).dataset.wardrobeKey='entryGravityMode';
  group(buckets.room,'演算环',fields('room').filter(f=>f[0].startsWith('halo')),'halo');
  const glow=garmentSection(buckets.room,'背后柔光');garmentField(glow,d,'rearGlowEnabled','启用背后柔光','checkbox');
  const glowBody=settingDependency(glow,()=>d.rearGlowEnabled);for(const [key,label,min,max,step] of fields('rearGlow').slice(1))garmentField(glowBody,d,key,label,min==='color'?'color':'range',min,max,step);
@@ -122,11 +137,14 @@ function buildSettings(){
  settingsFieldDependencies(pearls,fields('workPearls').slice(1).map(f=>f[0]),()=>d.pearlCount>0);
  settingsNote(settingDependency(pearls,()=>d.pearlCount>0),'位置以演算室内部可活动区域为范围，0 和 1 分别对应两侧边缘。');
  const display=garmentSection(buckets.layers,'身体显隐');for(const [key,label] of [['head','圆形头部'],['body','躯干'],['neck','脖子'],['feet','腿与脚']])settingsLayerSwitch(display,d,key,label);
- buildGradientSettings(buckets,d);
- restoreSettingsOpen(host,opened);syncSettingDependencies();
- host.oninput=host.onchange=syncSettingDependencies;
+ buildGradientSettings(buckets,d,palette);AudioSettings.settings(buckets.room,d);
+ restoreSettingsOpen(host,opened);restoreSettingsOpen($('roomSettings'),roomOpened);syncSettingDependencies();
+ host.oninput=host.onchange=$('roomSettings').oninput=$('roomSettings').onchange=syncSettingDependencies;
 }
-function composite(key,baseOnly=false){let [w,h]=dimensions[key],c=canvas(w,h),ctx=c.getContext('2d');project.textures[key].layers.forEach((l,i)=>{if(l.visible&&(!baseOnly||i===0)){ctx.globalAlpha=l.opacity;ctx.drawImage(canvases[key][i],0,0);}});return c;}
+function composite(key,baseOnly=false){
+ const tex=project.textures[key];if(!headTexture(key)||baseOnly)return PaintComposite.compose(tex.layers,canvases[key],canvas,dimensions[key],baseOnly?[0]:null);
+ const result=canvas(...dimensions[key]),ctx=result.getContext('2d');for(const surface of ['inner','outer']){const order=tex.layers.map((_,i)=>i).filter(i=>PaintLayers.surface(tex.layers[i],i,tex.layers)===surface);ctx.drawImage(PaintComposite.compose(tex.layers,canvases[key],canvas,dimensions[key],order),0,0);}return result;
+}
 function updateTarget(){if(typeof PaintTargets!=='undefined'&&!PaintTargets.sync(false)){render();return;}$('target').value=PuppetArms.selectedTarget(target);activeLayer=Math.min(activeLayer,canvases[target].length-1);$('antennaShape').hidden=!headTexture(target);$('mirrorAntenna').hidden=!headTexture(target)&&!['sleeve','sleeveR'].includes(target);$('mirrorAntenna').textContent=MI18n.t(['sleeve','sleeveR'].includes(target)?'head28.copySleeve':'head28.mirrorOther');$('baseGradient').hidden=headTexture(target);let [w,h]=dimensions[target];workspace.setPaintTarget(PuppetArms.selectedTarget(target),w,h);$('symmetry').checked=project.textures[target].symmetry;PaintLayers.render($('layerList'));render();}
 function drawPaint(){if(typeof PaintTargets!=='undefined'&&!PaintTargets.hasActive()){pc.clearRect(0,0,$('paint').width,$('paint').height);return;}const viewTarget=PuppetArms.selectedTarget(target);let [w,h]=dimensions[target],sx=$('paint').width/w,sy=$('paint').height/h;pc.imageSmoothingEnabled=false;pc.clearRect(0,0,$('paint').width,$('paint').height);for(let y=0;y<h;y+=4)for(let x=0;x<w;x+=4){pc.fillStyle=(x/4+y/4)%2?'#3c3f43':'#484b4f';pc.fillRect(x*sx,y*sy,4*sx,4*sy);}if($('meshGuide').checked&&(target==='face'||target==='forehead')){pc.save();pc.scale(sx,sy);pc.fillStyle=project.design.headColor;pc.globalAlpha=.65;pc.beginPath();pc.ellipse(16,16,8,8,0,0,7);pc.fill();pc.fillStyle=project.design.eyeColor;pc.fillRect(11,16,2,2);pc.fillRect(19,16,2,2);let other=composite(target==='face'?'forehead':'face');pc.drawImage(other,0,0);pc.restore();}pc.drawImage(materialPreview(viewTarget),0,0,$('paint').width,$('paint').height);
  if($('meshGuide').checked){pc.strokeStyle=referenceColor('55');pc.lineWidth=1;let div=['gown','scarf'].includes(target)?10:target==='collar'?12:8;pc.beginPath();for(let i=1;i<div;i++){pc.moveTo(i/div*$('paint').width,0);pc.lineTo(i/div*$('paint').width,$('paint').height);pc.moveTo(0,i/div*$('paint').height);pc.lineTo($('paint').width,i/div*$('paint').height);}pc.stroke();pc.strokeStyle=referenceColor('cc');pc.beginPath();pc.moveTo($('paint').width/2,0);pc.lineTo($('paint').width/2,$('paint').height);pc.stroke();if(['sleeve','sleeveR','puppetSleeve2','puppetSleeve3'].includes(viewTarget)&&project.design.sleeveMapping==='front')drawSleeveGuide(pc,$('paint').width,$('paint').height,viewTarget==='sleeveR'||viewTarget==='puppetSleeve3');}}
@@ -143,11 +161,12 @@ function proceduralCloth(key){
 }
 const fabricKey=key=>['gown','sleeve','sleeveR','collar','scarf'].includes(key)||/^(front|shawl|custom|leg|puppetSleeve)/.test(key);
 function clothBase(key){let tex=project.textures[key];if(tex.layers[0]?.visible===false)return canvas(...dimensions[key]);if(tex.editableBase||garmentFind(project.design,key)?.type==='rigid')return composite(key,true);let c;if(key==='collar'){c=canvas(...dimensions[key]);let ctx=c.getContext('2d');ctx.fillStyle=project.design.collarColor;ctx.fillRect(0,0,c.width,c.height);}else c=proceduralCloth(key);let ctx=c.getContext('2d');ctx.drawImage(canvases[key][0],0,0);const opacity=tex.layers[0]?.opacity??1;if(opacity<1){ctx.globalCompositeOperation='destination-in';ctx.fillStyle='rgba(0,0,0,'+opacity+')';ctx.fillRect(0,0,c.width,c.height);ctx.globalCompositeOperation='source-over';}return c;}
-function patternComposite(key){let c=canvas(...dimensions[key]),ctx=c.getContext('2d');project.textures[key].layers.forEach((l,i)=>{if(i>0&&l.visible){ctx.globalAlpha=l.opacity;ctx.drawImage(canvases[key][i],0,0);}});return c;}
-function clothPreview(key){let c=clothBase(key);c.getContext('2d').drawImage(patternComposite(key),0,0);return c;}
+function clothParts(key){return PaintComposite.parts(project.textures[key].layers,canvases[key],canvas,dimensions[key],clothBase(key));}
+function patternComposite(key){return clothParts(key).overlay;}
+function clothPreview(key){let parts=clothParts(key);parts.base.getContext('2d').drawImage(parts.overlay,0,0);return parts.base;}
 function editableBase(){if(activeLayer!==0||!fabricKey(target)||project.textures[target].editableBase)return;PaintLayers.requireEditable(target,0);let base=clothBase(target),c=canvases[target][0];c.getContext('2d').clearRect(0,0,c.width,c.height);c.getContext('2d').drawImage(base,0,0);project.textures[target].editableBase=true;project.textures[target].layers[0].opacity=1;}
 
-function antennaComposite(key){let c=canvas(...dimensions[key]),ctx=c.getContext('2d'),tex=project.textures[key];for(const surface of ['inner','outer']){let part=canvas(...dimensions[key]),p=part.getContext('2d');tex.layers.forEach((l,i)=>{if(l.visible&&PaintLayers.surface(l,i,tex.layers)===surface){p.globalAlpha=l.opacity;p.drawImage(canvases[key][i],0,0);}});HeadSegments.recolor(p,part.width,part.height,project.design,key,surface==='outer'?1:0);ctx.drawImage(part,0,0);}return c;}
+function antennaComposite(key){let c=canvas(...dimensions[key]),ctx=c.getContext('2d'),tex=project.textures[key];for(const surface of ['inner','outer']){let order=tex.layers.map((l,i)=>i).filter(i=>PaintLayers.surface(tex.layers[i],i,tex.layers)===surface),part=PaintComposite.compose(tex.layers,canvases[key],canvas,dimensions[key],order),p=part.getContext('2d');HeadSegments.recolor(p,part.width,part.height,project.design,key,surface==='outer'?1:0);ctx.drawImage(part,0,0);}return c;}
 function materialPreview(key){if(/^puppetHand[0-3]$/.test(key))return PuppetArms.handMaterial(key);if(['sleeve','sleeveR','puppetSleeve2','puppetSleeve3'].includes(key))return PuppetArms.sleeveAppearance(project.design,key==='sleeve'?0:key==='sleeveR'?1:+key.slice(-1));if(headTexture(key))return antennaComposite(key);if(fabricKey(key))return clothPreview(key);return composite(key);}
 function collarShape(left,right,d){let n=13,xy=[],uv=[],triangles=[],mid=left.map((v,i)=>(v+right[i])/2);
  for(let x=0;x<n;x++)for(let y=0;y<n;y++){let u=x/(n-1),v=y/(n-1),shape=(1-Math.abs(2*u-1))*(1-d.collarRoundness)+Math.sin(Math.PI*u)**2*d.collarRoundness;
@@ -265,6 +284,36 @@ function choose(accept,fn){let i=$('fileInput');i.accept=accept;i.value='';i.onc
 $('textureImport').onclick=run(()=>{const key=target,selection=PuppetArms.selectedTarget(key),layerId=project.textures[key].layers[activeLayer].id,owner=project;PaintLayers.requireEditable();PaintLayers.requireBaseInitialization(key);choose('image/png',async f=>{let im=new Image(),url=URL.createObjectURL(f);try{im.src=url;await im.decode();if(project!==owner)throw Error(MI18n.text('项目已切换，请重新导入。'));if(PuppetArms.canonical(selection)!==key)throw Error(MI18n.text('贴图同步设置已改变，请重新导入。'));let index=project.textures[key].layers.findIndex(layer=>layer.id===layerId);PaintLayers.requireEditable(key,index);PaintLayers.requireBaseInitialization(key);if(!await HandTextureBase.prepare(key))throw Error(MI18n.t('hand.textureLoading'));if(project!==owner)throw Error(MI18n.text('项目已切换，请重新导入。'));if(PuppetArms.canonical(selection)!==key)throw Error(MI18n.text('贴图同步设置已改变，请重新导入。'));index=project.textures[key].layers.findIndex(layer=>layer.id===layerId);PaintLayers.requireEditable(key,index);PaintLayers.requireBaseInitialization(key);if(/^puppetHand[0-3]$/.test(key)&&index===0&&project.textures[key].layers.length>1)PaintLayers.requireEditable(key,1);target=PuppetArms.select(selection);activeLayer=index;checkpoint();if(/^puppetHand[0-3]$/.test(key)&&index===0){index=project.textures[key].layers.length>1?1:PaintLayers.append(key,false);activeLayer=index;}editableBase();if(!HandTextureBase.ensure(key))throw Error(MI18n.t('hand.textureLoading'));PuppetArms.textureChanged(key,true);if(activeLayer===0&&fabricKey(key))project.textures[key].editableBase=true;let c=canvases[key][index],ctx=c.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,c.width,c.height);PuppetArms.drawImported(ctx,im,key,c.width,c.height);project.textures[key].layers[index].visible=true;project.textures[key].layers[index].opacity=1;if(headTexture(key))HeadSegments.markCustom(key);PuppetArms.textureChanged(key);updateTarget();changed();}finally{URL.revokeObjectURL(url);}});});
 $('textureExport').onclick=()=>materialPreview(PuppetArms.selectedTarget(target)).toBlob(b=>download(b,'image/png',project.projectId+'-'+target+'.png'));
 async function newProject(){creatingProject=true;syncProjectControls();try{await MI18n.ready;const value=await api('default');value.name=MI18n.t('default.project_name');return value;}finally{creatingProject=false;syncProjectControls();}}
+function presetName(item){return item?.name?.[MI18n.locale]||item?.name?.['zh-CN']||item?.id||'';}
+function fillChamberSizes(id,presetId){const select=$(id),previous=select.value,item=chamberPresets.find(p=>p.id===presetId);select.replaceChildren();for(const size of item?.sizes||[]){const label=size.id==='original'?MI18n.t('roomPresets.originalSize'):MI18n.t('roomPresets.screenSize',{columns:size.columns,rows:size.rows});select.append(new Option(label,size.id));}if([...select.options].some(o=>o.value===previous))select.value=previous;}
+function refreshChamberPresetPreview(){
+ const selected=chamberPresets.find(item=>item.id===$('chamberPreset').value),image=$('chamberPresetPreview');
+ image.hidden=!selected?.preview;$('chamberSizeField').hidden=!selected;
+ if(selected?.preview){image.src=selected.preview;image.alt=presetName(selected);}else image.removeAttribute('src');
+ fillChamberSizes('chamberSize',selected?.id);syncProjectControls();
+}
+function refreshChamberPresets(){
+ const select=$('chamberPreset'),previous=select.value;select.replaceChildren(new Option(MI18n.t('roomPresets.current'),''));
+ for(const item of chamberPresets)select.append(new Option(presetName(item),item.id));
+ if(chamberPresets.some(item=>item.id===previous))select.value=previous;
+ refreshChamberPresetPreview();
+}
+async function loadChamberPresets(){const result=await api('chamber-presets');chamberPresets=Array.isArray(result.presets)?result.presets:[];refreshChamberPresets();}
+function refreshNewProjectPreset(){const item=chamberPresets.find(p=>p.id===$('newProjectPreset').value);fillChamberSizes('newProjectSize',item?.id);const image=$('newProjectPreview');image.hidden=!item?.preview;if(item?.preview){image.src=item.preview;image.alt=presetName(item);}}
+async function openNewProjectDialog(){await loadChamberPresets();$('newProjectName').value=MI18n.t('default.project_name');$('newProjectPreset').replaceChildren(...chamberPresets.map(item=>new Option(presetName(item),item.id)));$('newProjectPreset').value='mi-chamber-pebbles';$('newProjectSize').value='original';refreshNewProjectPreset();$('newProjectDialog').showModal();$('newProjectName').focus();}
+async function confirmNewProject(){const name=$('newProjectName').value.trim();if(!name)return $('newProjectName').focus();const request={presetId:$('newProjectPreset').value,sizeId:$('newProjectSize').value,name};const dialog=$('newProjectDialog');dialog.inert=true;try{notice(MI18n.t('roomPresets.preparing'));await changeProject(async()=>{const result=await api('chamber-preset-project',request);await listProjects();return result.project;});dialog.close();notice(MI18n.t('roomPresets.restart'));}finally{dialog.inert=false;}}
+async function replaceChamberPreset(){
+ if(changingProject||loading||savingProject||applyingProject||!$('chamberPreset').value)return;const id=project.projectId;
+ if(!projects.some(p=>p.projectId===id))throw Error(MI18n.t('roomPresets.saveFirst'));
+ changingProject=true;document.querySelector('main').inert=true;syncProjectControls();
+ try{
+  const state=await api('chamber-preset-state?id='+encodeURIComponent(id));if(!state.replaceable)throw Error(MI18n.t('chamberPresets.error.fixed'));
+  if(!confirm(MI18n.t('roomPresets.confirmReplace')))return;
+  const request={project:structuredClone(serialize()),presetId:$('chamberPreset').value,sizeId:$('chamberSize').value,token:state.token};
+  notice(MI18n.t('roomPresets.preparing'));const result=await api('chamber-preset-replace',request);await load(result.project);await listProjects();$('chamberPreset').value='';refreshChamberPresetPreview();notice(MI18n.t('roomPresets.restart'));
+ }
+ finally{changingProject=false;document.querySelector('main').inert=loading;syncProjectControls();}
+}
 async function listProjects(){const version=++listVersion,items=await api('projects');if(version!==listVersion)return;projects=items;let s=$('projects');s.replaceChildren();let first=document.createElement('option');first.value='';first.textContent='打开已保存项目';s.append(first);for(let fixed of [true,false]){let group=document.createElement('optgroup');group.label=fixed?'固定项目':'自建项目';for(let p of projects.filter(p=>!!p.fixedProject===fixed)){let o=document.createElement('option');o.value=p.projectId;o.textContent=p.name;MI18n.content(o);group.append(o);}if(group.children.length)s.append(group);}syncProjectSelection();}
 function save(){
  if(loading)throw Error(MI18n.t('appearance.projectLoading'));
@@ -284,15 +333,17 @@ async function apply(loud=true){
 }
 async function changeProject(next,{fresh=false}={}){
  if(changingProject)return;changingProject=true;document.querySelector('main').inert=true;syncProjectControls();
- try{if(dirty)await save();await load(await next());if(fresh)changed();}
+ try{if(dirty)await save();const incoming=await next();if(!incoming)return;await load(incoming);if(fresh)changed();}
  finally{changingProject=false;document.querySelector('main').inert=loading||restoringHistory||!!window.MIProjectActions?.busy;syncProjectSelection();syncProjectControls();}
 }
+$('externalRoomTools').onchange=()=>setExternalRoomTools($('externalRoomTools').checked);
+$('chamberPreset').onchange=()=>{$('chamberSize').value='original';refreshChamberPresetPreview();};
+$('newProjectDialog').addEventListener('cancel',event=>{if($('newProjectDialog').inert)event.preventDefault();});
 $('projectName').oninput=()=>{project.name=$('projectName').value;changed();};$('projects').onchange=run(async()=>{const id=$('projects').value;if(id)await changeProject(()=>projects.find(x=>x.projectId===id));});
-$('new').onclick=run(()=>changeProject(newProject,{fresh:true}));$('save').onclick=run(save);$('apply').onclick=run(()=>apply());$('import').onclick=()=>choose('.json',async f=>{let p=JSON.parse(await f.text());if(!['eoe.creator.v2','moreiterators.project.v1'].includes(p.schema))throw Error('请选择完整的编辑器项目 JSON。');await changeProject(async()=>{const result=await api('import-project',p);await listProjects();return result.project;});});
+$('new').onclick=run(openNewProjectDialog);$('confirmNewProject').onclick=run(confirmNewProject);$('cancelNewProject').onclick=()=>$('newProjectDialog').close();$('newProjectPreset').onchange=()=>{$('newProjectSize').value='original';refreshNewProjectPreset();};$('replaceChamberPreset').onclick=run(replaceChamberPreset);$('save').onclick=run(save);$('apply').onclick=run(()=>apply());$('import').onclick=()=>choose('.json,.zip',async f=>{await changeProject(async()=>{if(/\.zip$/i.test(f.name)){const imported=await MIProjectPackageImport(f);if(imported)await listProjects();return imported;}const p=JSON.parse(await f.text());if(!['eoe.creator.v2','moreiterators.project.v1'].includes(p.schema))throw Error('请选择完整的编辑器项目 JSON。');const result=await api('import-project',p);await listProjects();return result.project;});});
 $('dialogueEditor').onclick=()=>window.MIStudioNavigation?.go('/dialogue',{newTab:true});
 document.addEventListener('click',e=>{if(!e.target.closest('#otherStudios'))$('otherStudios').open=false;});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')$('otherStudios').open=false;});
-$('export').onclick=()=>$('exportDialog').showModal();$('projectExport').onclick=run(async()=>{await save();download(JSON.stringify(serialize(),null,2),'application/json',project.projectId+'.json');});$('bundleExport').onclick=run(async()=>{let parts=[...document.querySelectorAll('[name=part]:checked')].map(i=>i.value);await save();let r=await api('export',{project:serialize(),parts});let a=document.createElement('a');a.href=r.url;a.download='';a.click();notice('已导出所选素材包。');});
 $('history').onclick=run(async()=>{
  const owner=project.projectId,version=loadVersion,entries=await api('history?id='+encodeURIComponent(owner));if(project.projectId!==owner||version!==loadVersion)return;
  const host=$('historyList');host.replaceChildren();if(!entries.length){const empty=document.createElement('p');empty.textContent=MI18n.t('appearance.historyEmpty');host.append(empty);}
@@ -300,7 +351,7 @@ $('history').onclick=run(async()=>{
  if(!$('historyDialog').open)$('historyDialog').showModal();
 });
 
-window.addEventListener('mi-language-change',()=>{if(project&&!loading){refreshProjectIdentity();buildSettings();updateTarget();}});
+window.addEventListener('mi-language-change',()=>{if(project&&!loading){refreshProjectIdentity();buildSettings();updateTarget();refreshChamberPresets();}});
 window.MIStudioPage={projectId:()=>window.MIProjectActions?.unavailable?null:project?.projectId,isBusy:()=>!project||loading||creatingProject||savingProject||applyingProject||restoringHistory||changingProject||historyBusy||!!window.MIUndo?.busy||!!window.MIProjectActions?.busy,
  saveBeforeNavigate:async()=>{if(project&&(dirty||!projects.some(item=>item.projectId===project.projectId)))await save();return !dirty;},error:message=>notice(message,true)};
 function focusVoiceSettings(){
@@ -364,6 +415,11 @@ async function restorePaintPixels(value,current){
  PuppetArms.refreshFields();syncSettingDependencies();if(layersChanged)PaintLayers.render($('layerList'));render();return true;
 }
 async function restoreAppearanceHistory(value){
+ value=structuredClone(value);
+ for(const [key,current] of Object.entries(project.textures)){
+  const next=value.textures[key];if(next)PaintLayers.preserveLocks(key,next);
+  if(JSON.stringify(PaintLayers.snapshot(key,0).texture)!==JSON.stringify(next))PaintLayers.requireHistory({target:key,texture:next,stack:true});
+ }
  const view=appearanceView(),main=document.querySelector('main'),wasInert=main.inert;
  historyBusy=true;main.inert=true;
  try{
@@ -382,6 +438,7 @@ window.MIUndo?.register({key:()=>project?.projectId,
 document.addEventListener('mi-undo-state',syncProjectControls);
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 document.addEventListener('DOMContentLoaded',run(async()=>{preset=await api('preset.json');control=await api('control');await listProjects();let params=new URLSearchParams(location.search),id=params.get('project')||params.get('projectId');let p=projects.find(p=>p.projectId===id)||projects[0]||await newProject();await load(p);if(!projects.length){await save();}render();}));
+document.addEventListener('DOMContentLoaded',run(loadChamberPresets));
 
 
 

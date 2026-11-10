@@ -209,3 +209,14 @@ Original state backup retained; repeated launch ignored.|Original state backup r
 Backup retained.|Backup retained.
 Native color retained.|Native color retained.
 Stopping owned speech.|Stopping owned speech.
+Shader|Shader
+Color opacity|Color opacity
+Parent opacity|Parent opacity
+Vertex opacity|Vertex opacity
+Looks to the Moon|Looks to the Moon
+Five Pebbles|Five Pebbles
+Camera|Camera
+Room image material|Room image material
+Screen effect material|Screen effect material
+Diagnostic level|Diagnostic level
+Settings|Settings

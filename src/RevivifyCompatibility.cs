@@ -50,7 +50,7 @@ namespace MoreIterators
                     if (target == null || target.ReturnType != typeof(void))
                         throw new InvalidOperationException(UiText.Get("The expected dead-player update method was not found."));
                     hook = new ILHook(target, Patch);
-                    MiDiagnostics.Info("RevivifyCompatibility", "已安装复活模组房间扫描保护；module=" + target.Module.ModuleVersionId);
+                    MiDiagnostics.Debug("RevivifyCompatibility", "已安装复活模组房间扫描保护；module=" + target.Module.ModuleVersionId);
                     return true;
                 }
                 catch (Exception error)

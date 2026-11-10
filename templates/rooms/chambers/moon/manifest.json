@@ -1,0 +1,33 @@
+{
+  "schema": "moreiterators.chamber-template.v1",
+  "id": "mi-chamber-moon",
+  "name": {
+    "zh-CN": "仰望皓月",
+    "en": "Looks to the Moon"
+  },
+  "source": "source/chamber.txt",
+  "sourceBase": "source/chamber",
+  "renderedBase": "chamber",
+  "aiNode": 0,
+  "width": 98,
+  "height": 35,
+  "cameraCount": 2,
+  "preview": "thumbnail.png",
+  "origin": "Rain World SL_AI",
+  "roomDefaults": {
+    "roomPaletteMode": "room",
+    "roomGravityMode": "room"
+  },
+  "files": {
+    "chamber.txt": "48b03ff9b1fccef10f211d1b05d5ed2b0528c7d177c3858f9bb658e4429515b7",
+    "chamber_1.png": "4af9d1260167af474b7633908fbcf22a1baf4a9ee68343929800b918f20044cd",
+    "chamber_2.png": "1f44e5a15ccee479d7cf854ad58647ae9663f8563ef9a3df259186ab4b9b415d",
+    "chamber_settings-red.txt": "899e10ada8b61f2027ea1dae2c1da20d2033d9110f18d130f9a592df19c6ea52",
+    "chamber_settings-white.txt": "899e10ada8b61f2027ea1dae2c1da20d2033d9110f18d130f9a592df19c6ea52",
+    "chamber_settings-yellow.txt": "899e10ada8b61f2027ea1dae2c1da20d2033d9110f18d130f9a592df19c6ea52",
+    "chamber_settings.txt": "b7b7c5adb4f8948d504644f2c76e3f8c8db0afd28a66c121aaf33942055af3b4",
+    "source/chamber.png": "2c718973d2abeb2a1b108cbc35b59c06b4b9d2db24302846bcefbfd22c32a7ef",
+    "source/chamber.txt": "a252fc077e7a49c8842af24b64c7fe1843176b903228957545338fd072afa432",
+    "thumbnail.png": "ab4f3f4b68abe64260bcc11b33fa14e9d65d9ee942deaeeb9648a329a284bd9a"
+  }
+}

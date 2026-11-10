@@ -60,7 +60,7 @@ public sealed class CreatorDialogueActions {
   if(batch.remaining==0)Signal(batch,true);
  }
  public Action Completed(IEnumerable<CreatorDialogueLine> lines,Player player){var group=lines as CreatorDialogueGroup;return group==null?null:Completed(group.action,player);}
- bool Valid(Request request){return !CreatorVoicePreview.WithoutMark&&request!=null&&oracle.room!=null&&oracle.oracleBehavior is IteratorBehavior&&IteratorCatalog.IsAI(oracle.room.abstractRoom.name)&&CreatorRuntime.UsesDialogue(oracle.room.abstractRoom.name)&&request.player!=null&&!request.player.dead&&!request.player.slatedForDeletetion&&!request.player.inShortcut&&!request.player.enteringShortCut.HasValue&&request.player.room==oracle.room&&!oracle.slatedForDeletetion&&request.restart==CreatorEncounter.Restart&&request.config==IteratorDesign.ForRoom(oracle.room).dialogueJson&&request.mode==CreatorRuntime.Mode&&CreatorRuntime.Mode!="silent"&&!StudioRuntime.Recording;}
+ bool Valid(Request request){return !CreatorVoicePreview.WithoutMark(oracle)&&request!=null&&oracle.room!=null&&oracle.oracleBehavior is IteratorBehavior&&IteratorCatalog.IsAI(oracle.room.abstractRoom.name)&&CreatorRuntime.UsesDialogue(oracle.room.abstractRoom.name)&&request.player!=null&&!request.player.dead&&!request.player.slatedForDeletetion&&!request.player.inShortcut&&!request.player.enteringShortCut.HasValue&&request.player.room==oracle.room&&!oracle.slatedForDeletetion&&request.restart==CreatorEncounter.Restart&&request.config==IteratorDesign.ForRoom(oracle.room).dialogueJson&&request.mode==CreatorRuntime.Mode&&CreatorRuntime.Mode!="silent"&&!StudioRuntime.Recording;}
  void StartNext(){
   if(current!=null||pending.Count==0)return;current=pending.Dequeue();markLiftStarted=motionStarted=false;lastTargets=null;
   if(holdBatch!=current.batch||controlledPlayer!=current.player)ReleaseControl();
@@ -74,7 +74,7 @@ public sealed class CreatorDialogueActions {
     if(action.type=="liftAndGiveMark")destination=MarkLiftDestination(current.player);
    }
    clock.Start(action.delay,action.type=="killPlayer"?1:action.type=="giveMark"?0:action.duration);
-   MiDiagnostics.Info("dialogue.action","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" action="+action.type+(action.type=="movePlayerToExit"?" exit="+action.exitNode:""));
+   MiDiagnostics.Debug("dialogue.action","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" action="+action.type+(action.type=="movePlayerToExit"?" exit="+action.exitNode:""));
   }catch(Exception error){MiDiagnostics.Report("MI-DIALOGUE-ACTION","CreatorDialogueActions.Start",error,MiDiagnostics.Context(oracle.room));Cancel();}
  }
  ShortcutData ExitShortcut(int node){

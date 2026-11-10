@@ -4,6 +4,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path $PSScriptRoot -Parent
+& (Join-Path $PSScriptRoot 'build_broadcast_editor.ps1')
 $GameRoot = (Resolve-Path -LiteralPath $GameRoot).Path
 $managed = Join-Path $GameRoot 'RainWorld_Data\Managed'
 $names = @('Assembly-CSharp.dll','Assembly-CSharp-firstpass.dll','UnityEngine.dll','Unity.Mathematics.dll','UnityEngine.CoreModule.dll','UnityEngine.InputLegacyModule.dll','UnityEngine.JSONSerializeModule.dll','UnityEngine.ImageConversionModule.dll','UnityEngine.AudioModule.dll','UnityEngine.UnityWebRequestModule.dll','UnityEngine.UnityWebRequestAudioModule.dll','UnityEngine.IMGUIModule.dll','UnityEngine.TextRenderingModule.dll')
@@ -28,4 +29,5 @@ foreach ($language in @('eng','chi','tra')) {
 }
 & $compiler /nologo /target:library "/out:$output" $references $sources
 if ($LASTEXITCODE -ne 0) { throw 'MoreIterators compilation failed.' }
+& (Join-Path $PSScriptRoot 'build_studio_shell.ps1')
 Write-Output "Built $output"

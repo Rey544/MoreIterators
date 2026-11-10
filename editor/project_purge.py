@@ -248,6 +248,9 @@ def _room_refs(plan, pid, rooms, records):
         if saved_plan.exists():
             for change in json.loads(plan.reference(saved_plan)).get('connectionChanges', []):
                 referenced.update((change.get('room'), change.get('to')))
+        package_file=file.parent/'room-package.json'
+        if package_file.exists():plan.reference(package_file)
+        referenced.update(project_worlds.package_references(file.parent.name))
     shared = rooms & referenced
     if shared:
         plan.block('shared-rooms', '其他项目仍在使用这些房间，请先修改其房间连接：'+', '.join(sorted(shared)))
@@ -366,6 +369,7 @@ def _collect(data):
     if owned and p.installed is None:
         p.block('game-path', 'Rain World was not found. Select RainWorld.exe in the editor settings.')
     rooms = set(pearl_suspension.owned_rooms(project))
+    rooms.update(project_worlds.package_rooms(pid))
     oracles = {room_bindings.binding(project)['oracleId']}
     for archive in archived:
         rooms.update(pearl_suspension.owned_rooms(archive['project']))

@@ -1,11 +1,13 @@
 """Start the independent local editor before opening a requested studio page."""
 from pathlib import Path
 from contextlib import contextmanager
-import argparse,json,os,subprocess,sys,time,traceback,urllib.error,urllib.parse,urllib.request,webbrowser
+import argparse,json,os,subprocess,sys,time,traceback,urllib.error,urllib.parse,urllib.request
 ROOT=Path(__file__).resolve().parent
 # A configured embedded Python may still list another MI copy in its _pth file.
 sys.path.insert(0,str(ROOT))
 import localization
+import server_lifecycle
+import desktop_launch
 from localization import text
 storage_error=None
 try:
@@ -17,6 +19,8 @@ PORT=storage.STUDIO_PORT if storage is not None else 18747
 BASE='http://127.0.0.1:'+str(PORT)
 PAGES={'appearance':'/','dialogue':'/dialogue','pearls':'/pearls','broadcasts':'/broadcasts'}
 HTTP=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+class ServerClosing(RuntimeError):pass
 
 def page_url(page,project=''):
     path=PAGES[page]
@@ -33,10 +37,11 @@ def online():
     if data.get('service')!='more-iterators-studio' or data.get('protocol')!=1:raise RuntimeError(text('startup.port_busy',port=PORT))
     if Path(data.get('dataDirectory','')).resolve()!=storage.DATA.resolve() or Path(data.get('editorDirectory','')).resolve()!=ROOT:
         raise RuntimeError(text('startup.other_directory',port=PORT))
+    if data.get('closing'):raise ServerClosing(text('startup.game_closed'))
     return True
 
 @contextmanager
-def startup_lock():
+def startup_lock(owner=None):
     logs=storage.archive_root()/'logs';logs.mkdir(parents=True,exist_ok=True)
     with (logs/'studio-start.lock').open('a+b') as lock:
         lock.seek(0,2)
@@ -45,6 +50,7 @@ def startup_lock():
         if os.name=='nt':
             import msvcrt
             while True:
+                if owner:owner.require_alive()
                 try:lock.seek(0);msvcrt.locking(lock.fileno(),msvcrt.LK_NBLCK,1);break
                 except OSError:
                     if time.monotonic()>deadline:raise RuntimeError(text('startup.lock_timeout'))
@@ -57,28 +63,39 @@ def startup_lock():
             try:yield
             finally:fcntl.flock(lock.fileno(),fcntl.LOCK_UN)
 
-def ensure_server():
-    if online():return
-    with startup_lock():
-        if online():return
+def wait_existing(owner):
+    deadline=time.monotonic()+35
+    while True:
+        if owner:owner.require_alive()
+        try:return online()
+        except ServerClosing:
+            if time.monotonic()>deadline:raise RuntimeError(text('startup.game_closed'))
+            time.sleep(.15)
+
+def ensure_server(owner=None):
+    if wait_existing(owner):return
+    with startup_lock(owner):
+        if wait_existing(owner):return
+        if owner:owner.require_alive()
         log_path=storage.archive_root()/'logs/server-startup.log'
         flags=subprocess.CREATE_NO_WINDOW|subprocess.CREATE_NEW_PROCESS_GROUP if os.name=='nt' else 0
         with log_path.open('ab') as log:
-            child=subprocess.Popen([sys.executable,'-B',str(ROOT/'server.py')],cwd=ROOT,
+            child=subprocess.Popen([sys.executable,'-B',str(ROOT/'server.py')]+(owner.arguments() if owner else []),cwd=ROOT,
                 stdin=subprocess.DEVNULL,stdout=log,stderr=log,creationflags=flags,start_new_session=os.name!='nt')
         deadline=time.monotonic()+30
         while time.monotonic()<deadline:
+            if owner:owner.require_alive()
             if online():return
             if child.poll() is not None:raise RuntimeError(text('startup.failed',path=log_path))
             time.sleep(.15)
         raise RuntimeError(text('startup.timeout',path=log_path))
 
-def register_game_launcher():
+def register_game_launcher(owner=None):
     try:game=storage.require_game_root()
     except ValueError:return
     config=game/'BepInEx/config/moreiterators.paths.json'
     if not config.parent.is_dir():return
-    with startup_lock():
+    with startup_lock(owner):
         # The earlier startup check may already be stale. Never replace a game's
         # registration with paths from a different editor occupying this port.
         if not online():raise RuntimeError(text('startup.failed',path=storage.archive_root()/'logs/server-startup.log'))
@@ -95,19 +112,24 @@ def main(argv=None):
     parser.add_argument('--project',default='')
     parser.add_argument('--no-browser',action='store_true')
     parser.add_argument('--lang',choices=['zh-CN','en'])
+    server_lifecycle.add_arguments(parser)
     args=parser.parse_args(argv)
     if args.lang:localization.set_language(args.lang)
     if storage_error is not None:raise RuntimeError(text('startup.config')) from storage_error
     url=page_url(args.page,args.project)
     if args.lang:url+=('&' if '?' in url else '?')+urllib.parse.urlencode({'lang':args.lang})
-    ensure_server();register_game_launcher()
-    if not args.no_browser and not webbrowser.open(url):raise RuntimeError(text('startup.browser',url=url))
+    with server_lifecycle.owner_from(args) as owner:
+        ensure_server(owner);register_game_launcher(owner)
+        if owner:owner.require_alive()
+        if not args.no_browser and not desktop_launch.open_url(url):raise RuntimeError(text('startup.browser',url=url))
     return url
 
 def run():
     try:
         url=main()
         if sys.stdout:print(url)
+        return 0
+    except server_lifecycle.GameClosed:
         return 0
     except Exception as error:
         logs=(storage.archive_root() if storage is not None else Path(os.environ.get('MORE_ITERATORS_DATA',str(Path.home()/'.moreiterators'))))/'logs'
@@ -121,7 +143,16 @@ def run():
             message=str(error)+'\n\n'+text('startup.log_failed',detail=log_error)
         if '--no-browser' not in sys.argv and os.name=='nt':
             import ctypes
-            ctypes.windll.user32.MessageBoxW(None,message,text('startup.title'),0x10)
+            parser=argparse.ArgumentParser(add_help=False)
+            server_lifecycle.add_arguments(parser)
+            try:
+                args,_=parser.parse_known_args()
+                with server_lifecycle.owner_from(args) as owner:
+                    server_lifecycle.dialog_until_exit(owner,
+                        lambda:ctypes.windll.user32.MessageBoxW(None,message,text('startup.title'),0x10))
+            except server_lifecycle.GameClosed:pass
+            except Exception as dialog_error:
+                if sys.stderr:print(str(dialog_error),file=sys.stderr)
         elif sys.stderr:print(message,file=sys.stderr)
         return 1
 

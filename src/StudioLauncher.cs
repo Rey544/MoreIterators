@@ -28,6 +28,9 @@ public static class StudioLauncher {
   if(!File.Exists(script))throw Visible(new FileNotFoundException(UiText.Get("The web editor launcher could not be found. Check editorDirectory in your local moreiterators.paths.json.")));
   python=ResolvePython(editor,python);
   var start=new ProcessStartInfo(python,"-B \""+script+"\" --page "+page+(String.IsNullOrEmpty(project)?"":" --project "+project)){WorkingDirectory=editor,UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};
+  if(Environment.OSVersion.Platform==PlatformID.Win32NT){
+   using(var game=Process.GetCurrentProcess())start.Arguments+=" --game-pid "+game.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)+" --game-start "+game.StartTime.ToUniversalTime().ToFileTimeUtc().ToString(System.Globalization.CultureInfo.InvariantCulture);
+  }
   // The game and browser must read one library even when the configured editor
   // points at a development checkout or has moved since its last registration.
   // This core-only launcher is deliberately excluded from standalone exports.
@@ -49,7 +52,10 @@ public static class StudioLauncher {
     if(data!=null&&data.Parent!=null&&File.Exists(Path.Combine(data.Parent.FullName,"editor",LauncherFileName)))editor=Path.Combine(data.Parent.FullName,"editor");
     else foreach(var mod in ModManager.ActiveMods)if(mod.id=="moreiterators.core")editor=Path.Combine(mod.path,"editor");
    }
-   Process.Start(StartInfo(editor,python,page,project));
+   using(var child=Process.Start(StartInfo(editor,python,page,project))){
+    if(child==null)throw new InvalidOperationException("The editor launcher did not start.");
+    using(var game=Process.GetCurrentProcess())MiDiagnostics.Info("editor.launch","launcherPid="+child.Id+"; gamePid="+game.Id);
+   }
   }catch(Exception error){
     MiDiagnostics.Report("MI_STUDIO_LAUNCH","StudioLauncher.Open",error,"page="+page+"; project="+project);
     UnityEngine.Debug.LogWarning("[More Iterators] Studio launch: "+error.Message);

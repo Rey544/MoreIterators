@@ -9,7 +9,7 @@ using BepInEx.Logging;
 
 namespace MoreIterators
 {
-    // No game objects or user dialogue are retained by the log listener.
+     
     public static class MiDiagnostics
     {
         const int MaximumIssues = 100;
@@ -17,14 +17,30 @@ namespace MoreIterators
         static readonly Queue<Issue> pending = new Queue<Issue>();
         static readonly Dictionary<string, Issue> issues = new Dictionary<string, Issue>();
         static readonly Dictionary<string, int> hits = new Dictionary<string, int>();
+        static readonly HashSet<string> seenHits = new HashSet<string>();
         static readonly string session = Guid.NewGuid().ToString("N").Substring(0, 12);
         static ManualLogSource log;
-        static Listener listener;
         static DateTime nextSummary = DateTime.UtcNow.AddSeconds(30);
         static DateTime nextNotification = DateTime.MinValue;
-        static bool dialogOpen, unitySubscribed, errorStackChanged;
+        static bool dialogOpen;
         static int nextIssueId, nextBatchId;
-        static UnityEngine.StackTraceLogType previousErrorStack;
+        static volatile int verbosity;
+
+        public static string Level { get { return verbosity == 2 ? "trace" : verbosity == 1 ? "debug" : "info"; } }
+        public static bool TraceEnabled { get { return verbosity == 2; } }
+
+        public static void SetLevel(string value)
+        {
+            int selected = value == "trace" ? 2 : value == "debug" ? 1 : 0;
+            lock (gate)
+            {
+                if (selected == verbosity) return;
+                verbosity = selected;
+                hits.Clear();
+                nextSummary = DateTime.UtcNow.AddSeconds(30);
+            }
+            Info("diagnostics.level", "level=" + Level);
+        }
 
         sealed class Issue
         {
@@ -40,23 +56,6 @@ namespace MoreIterators
         {
             if (source == null) return;
             log = source;
-            // Independent content packages can contain another copy of this class.
-            // Only one listener shows third-party/BepInEx errors in this process.
-            const string ownerKey = "MoreIterators.Diagnostics.Host.v1";
-            lock (AppDomain.CurrentDomain)
-            {
-                if (AppDomain.CurrentDomain.GetData(ownerKey) == null)
-                {
-                    AppDomain.CurrentDomain.SetData(ownerKey, source.SourceName);
-                    listener = new Listener();
-                    BepInEx.Logging.Logger.Listeners.Add(listener);
-                    previousErrorStack = UnityEngine.Application.GetStackTraceLogType(UnityEngine.LogType.Error);
-                    errorStackChanged = previousErrorStack != UnityEngine.StackTraceLogType.Full;
-                    if (errorStackChanged) UnityEngine.Application.SetStackTraceLogType(UnityEngine.LogType.Error, UnityEngine.StackTraceLogType.Full);
-                    UnityEngine.Application.logMessageReceivedThreaded += UnityError;
-                    unitySubscribed = true;
-                }
-            }
             Info("startup", "version=" + BuildVersion.Display + "; log=" + LogPath);
         }
 
@@ -72,20 +71,40 @@ namespace MoreIterators
 
         public static void Info(string node, string context)
         {
-            if (log != null) log.LogInfo("[MI-TRACE] session=" + session + " node=" + node + " " + context);
+            Write("MI-INFO", node, context);
+        }
+
+        public static void Debug(string node, string context)
+        {
+            if (verbosity >= 1) Write("MI-DEBUG", node, context);
+        }
+
+        public static void Trace(string node, string context)
+        {
+            if (TraceEnabled) Write("MI-TRACE", node, context);
+        }
+
+        static void Write(string tag, string node, string context)
+        {
+             
+             
+            var target = log;
+            if (target != null) target.LogInfo("[" + tag + "] session=" + session + " node=" + node + " " + context);
         }
 
         public static void Hit(string node, string context)
         {
+            if (!TraceEnabled || log == null) return;
             bool first;
             lock (gate)
             {
+                if (!TraceEnabled) return;
                 int count;
                 hits.TryGetValue(node, out count);
                 hits[node] = count + 1;
-                first = count == 0;
+                first = seenHits.Add(node);
             }
-            if (first) Info(node, "first-call " + context);
+            if (first) Trace(node, "first-call " + context);
         }
 
         // Hook failures are logged, then rethrown with the original stack. We never
@@ -97,6 +116,31 @@ namespace MoreIterators
             catch (Exception error)
             {
                 Report("MI-HOOK-001", node, error, context);
+                throw;
+            }
+        }
+
+        public static void Cleanup(string code, string node, Action action, string context)
+        {
+            try { action(); }
+            catch (Exception error)
+            {
+                 
+                 
+                try { Report(code, node, error, context); }
+                catch (Exception) { }
+            }
+        }
+
+        public static void CloseProcess(string node, string context, Action cleanup, Action original)
+        {
+            Cleanup("MI-SHUTDOWN-TRACE", node, delegate { Hit(node, context); }, context);
+            Cleanup("MI-SHUTDOWN-CLEANUP", node, cleanup, context);
+            try { original(); }
+            catch (Exception error)
+            {
+                try { Report("MI-HOOK-001", node, error, context); }
+                catch (Exception) { }
                 throw;
             }
         }
@@ -132,8 +176,8 @@ namespace MoreIterators
             IdentifyException(detail, out exceptionType, out origin, out message);
             bool isException = exceptionType.Length != 0;
             kind = isException ? "Exception" : kind ?? "Log";
-            // A rethrow adds callers and logger prefixes, not another cause. Use
-            // the actual throwing signature across hooks, BepInEx and Unity.
+             
+             
             // If no throwing frame is available we retain the reporting source:
             // matching generic messages alone is insufficient to identify it.
             string key = isException ? "Exception|" + exceptionType + "|" + message + "|" +
@@ -184,10 +228,7 @@ namespace MoreIterators
                     write = true;
                 }
             }
-            // Unity/BepInEx sources can reach listeners while WriteUnityLog is
-            // disabled. Mirror captured issues through our own source so the
-            // disk listener receives the complete original message and stack.
-            // Listener ignores this prefix before recording, including reentry.
+             
             if (write && log != null)
             {
                 string text = "[MI-DIAG] session=" + session + " code=" + code + " node=" + node +
@@ -203,7 +244,7 @@ namespace MoreIterators
         {
             if (manager == null || manager.rainWorld == null) return;
             UiText.Use(manager.rainWorld);
-            if (DateTime.UtcNow >= nextSummary)
+            if (TraceEnabled && DateTime.UtcNow >= nextSummary)
             {
                 nextSummary = DateTime.UtcNow.AddSeconds(30);
                 var values = new List<string>();
@@ -212,7 +253,7 @@ namespace MoreIterators
                     foreach (var item in hits) values.Add(item.Key + "=" + item.Value);
                     hits.Clear();
                 }
-                if (values.Count > 0) Info("heartbeat", String.Join(",", values.ToArray()));
+                if (values.Count > 0) Trace("heartbeat", String.Join(",", values.ToArray()));
             }
             // InitializationScreen reloads font atlases in LOAD_FONTS and
             // again in WRAP_UP, which sets InitializationScreenFinished before
@@ -393,68 +434,9 @@ namespace MoreIterators
             }
         }
 
-        static void UnityError(string message, string stack, UnityEngine.LogType type)
-        {
-            if (type != UnityEngine.LogType.Error && type != UnityEngine.LogType.Exception && type != UnityEngine.LogType.Assert) return;
-            if ((message ?? "").StartsWith("[MI-DIAG]", StringComparison.Ordinal)) return;
-            try
-            {
-                string detail = message ?? "";
-                if (!String.IsNullOrEmpty(stack)) detail += "\n" + stack;
-                Record("EXTERNAL-UNITY", "UnityEngine", detail, "Original Unity message and supplied stack.", "Unity Log", true, type.ToString());
-            }
-            catch
-            {
-                // This observer may run on a Unity worker thread. Never throw
-                // into the engine or recursively log a logger failure.
-            }
-        }
-
         public static void Shutdown()
         {
-            if (listener != null)
-            {
-                if (unitySubscribed)
-                {
-                    UnityEngine.Application.logMessageReceivedThreaded -= UnityError;
-                    unitySubscribed = false;
-                    if (errorStackChanged && UnityEngine.Application.GetStackTraceLogType(UnityEngine.LogType.Error) == UnityEngine.StackTraceLogType.Full)
-                        UnityEngine.Application.SetStackTraceLogType(UnityEngine.LogType.Error, previousErrorStack);
-                    errorStackChanged = false;
-                }
-                BepInEx.Logging.Logger.Listeners.Remove(listener);
-                listener.Dispose();
-                listener = null;
-                AppDomain.CurrentDomain.SetData("MoreIterators.Diagnostics.Host.v1", null);
-            }
-        }
-
-        sealed class Listener : ILogListener
-        {
-            public void LogEvent(object sender, LogEventArgs args)
-            {
-                // A listener is an observer. Malformed third-party log objects
-                // must never turn error reporting into a second game exception.
-                try
-                {
-                    if (args == null || (args.Level & (LogLevel.Error | LogLevel.Fatal)) == 0) return;
-                    string text = Convert.ToString(args.Data) ?? "";
-                    if (text.StartsWith("[MI-DIAG]", StringComparison.Ordinal)) return;
-                    string source = args.Source == null ? "Unknown" : args.Source.SourceName;
-                    if (String.IsNullOrEmpty(source)) source = "Unknown";
-                    // The native callback carries the stack which BepInEx can
-                    // omit for non-exception Unity errors. Capture it once.
-                    if (unitySubscribed && source == "Unity Log") return;
-                    Record("EXTERNAL-LOG", "BepInEx", text, "See original source and stack in log.",
-                        source, true, (args.Level & LogLevel.Fatal) != 0 ? "Fatal" : "Error");
-                }
-                catch
-                {
-                    // BepInEx owns the original log event. Logging here could
-                    // recursively invoke this same failing listener.
-                }
-            }
-            public void Dispose() { }
+            log = null;
         }
     }
 }

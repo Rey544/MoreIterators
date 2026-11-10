@@ -1,6 +1,6 @@
 """Broadcast authoring and active-world room placement; no campaign conditions."""
 from pathlib import Path
-import copy, json, math, os, re, time, uuid, xml.etree.ElementTree as ET
+import copy, json, math, re, time, uuid
 import storage
 from pearls import atomic
 
@@ -66,12 +66,16 @@ def compile_project(project):
     """
     out=copy.deepcopy(project)
     if 'style' in out:
-        validate_style(out['style']);validate_speakers(out.get('speakers',[]))
-        if type(out.get('useCharacterColors')) is not bool:raise ValueError('彩色广播开关无效')
+        validate_style(out['style'])
         for page in out['pages']:
             for item in page['lines']:
-                item.update(out['style']);item['color']=line_color(out,item['text'])
-        for key in ('style','speakers','useCharacterColors'):out.pop(key,None)
+                item.update(out['style'])
+    if 'style' in out or 'useCharacterColors' in out:
+        validate_speakers(out.get('speakers',[]))
+        if type(out.get('useCharacterColors')) is not bool:raise ValueError('彩色广播开关无效')
+        for page in out['pages']:
+            for item in page['lines']:item['color']=line_color(out,item['text'])
+    for key in ('style','speakers','useCharacterColors'):out.pop(key,None)
     return out
 
 def import_bundle(value):
@@ -121,38 +125,20 @@ def import_bundle(value):
 
 def room_index(force=False):
     """Only enabled worlds; merged files take precedence exactly as the game does."""
+    import room_bindings
     global _rooms,_until,_game_key
     try:game=storage.require_game_root()
     except ValueError:
         _rooms=None;_until=0;_game_key=None
         return {}
-    if _rooms is not None and _game_key==game and time.monotonic()<_until and not force:return _rooms
-    assets=game/'RainWorld_Data/StreamingAssets'
-    options=Path.home()/'AppData/LocalLow/Videocult/Rain World/options'
-    enabled=set();order={}
-    if options.exists():
-        doc=ET.fromstring(options.read_bytes().rstrip(b'\0'));parts=list(doc)
-        keys=next(x for x in parts if x.tag.rsplit('}',1)[-1]=='Keys')
-        values=next(x for x in parts if x.tag.rsplit('}',1)[-1]=='Values')
-        raw=dict(zip((x.text for x in keys),(x.text for x in values)))['options']
-        opts=dict(x.split('<optB>',1) for x in raw.split('<optA>') if '<optB>' in x)
-        enabled=set(opts.get('EnabledMods','').split('<optC>'))
-        order={p.split('<optD>')[0]:int(p.split('<optD>')[1]) for p in opts.get('ModLoadOrder','').split('<optC>') if '<optD>' in p}
-    bases=[assets]
-    mods=list((assets/'mods').glob('*/modinfo.json'))
-    workshop=game.parent.parent/'workshop/content/312520'
-    mods+=list(workshop.glob('*/modinfo.json'))
-    active=[]
-    for f in mods:
-        try:
-            mid=json.loads(f.read_text('utf-8-sig')).get('id')
-            if mid in enabled:active.append((order.get(mid,0),f.parent))
-        except (ValueError,OSError):pass
-    bases.extend(p for _,p in sorted(active))
-    bases.append(assets/'mergedmods')
+    key=(game,room_bindings.asset_selection_key())
+    if _rooms is not None and _game_key==key and time.monotonic()<_until and not force:return _rooms
+    bases=room_bindings.enabled_asset_roots()
+    geometry_files=room_bindings.room_geometry_index(bases,refresh=force)
     worlds={}
     for base in bases:
-        for f in (base/'world').glob('*/world_*.txt'):worlds[f.parent.name.upper()]=f
+        for f in (base/'world').glob('*/world_*.txt'):
+            if room_bindings.is_enabled_asset(f,bases):worlds.setdefault(f.parent.name.upper(),f)
     result={}
     for region,file in worlds.items():
         inside=False
@@ -165,12 +151,9 @@ def room_index(force=False):
             # Character filters belong to the world list, not to the room ID.
             name=re.sub(r'^\([^)]*\)','',name).strip()
             if not re.fullmatch(r'[A-Za-z0-9_]+',name):continue
-            geometry=None
-            for base in reversed(bases):
-                candidate=base/'world'/(region.lower()+'-rooms')/(name+'.txt')
-                if candidate.exists():geometry=candidate;break
+            geometry=geometry_files.get((region,name.upper()))
             if geometry:result[name.upper()]=dict(region=region,room=name.upper(),path=str(geometry))
-    _rooms=result;_until=time.monotonic()+15;_game_key=game
+    _rooms=result;_until=time.monotonic()+15;_game_key=key
     return result
 
 def rooms():return [dict(region=v['region'],room=v['room']) for k,v in sorted(room_index().items())]
@@ -220,6 +203,7 @@ def validate(p,require_room=False):
                 if type(v) not in (int,float) or not math.isfinite(v) or not lo<=v<=hi:raise ValueError(key+' 超出范围')
     if 'style' in p:
         validate_style(p['style'])
+    if 'style' in p or 'useCharacterColors' in p:
         if type(p.get('useCharacterColors')) is not bool:raise ValueError('彩色广播开关无效')
         validate_speakers(p.get('speakers'))
     if require_room and not nonempty:raise ValueError('应用前至少填写一句广播')

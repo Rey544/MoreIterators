@@ -3,7 +3,7 @@ using UnityEngine;
 public static class CreatorRoomTone {
  public static void Apply(Texture2D t,RoomCamera cam){
   var room=MoreIteratorsPlugin.PaletteRoom(cam);if(room==null||!MoreIteratorsPlugin.IsChamber(room.abstractRoom.name))return;
-  var d=IteratorDesign.ForRoom(room);
+   var d=IteratorDesign.ForRoom(room);if(CreatorRoomSettings.RoomPalette(d))return;
   // Only terrain colour banks; never touch encoded depth/effect/control pixels.
   for(int y=0;y<t.height;y++)for(int x=0;x<Mathf.Min(30,t.width);x++){
    if(y%8>5)continue;Color c=t.GetPixel(x,y);float grey=c.r*.2126f+c.g*.7152f+c.b*.0722f;

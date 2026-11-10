@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawn} from 'node:child_process';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+const out=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../evidence/export-ui'),profile=fs.mkdtempSync(path.join(out,'profile-'));
+const browser=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless','--disable-gpu','--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-background-timer-throttling','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:['ignore','ignore','pipe']});
+let stderr='';browser.stderr.on('data',chunk=>stderr+=chunk);const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));let socket;
+try{
+ const file=path.join(profile,'DevToolsActivePort');for(let i=0;i<200&&!fs.existsSync(file);i++)await sleep(50);if(!fs.existsSync(file))throw Error(stderr);
+ const port=fs.readFileSync(file,'utf8').split(/\r?\n/)[0],pages=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();socket=new WebSocket(pages.find(page=>page.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{socket.onopen=resolve;socket.onerror=reject;});
+ let serial=0;const pending=new Map(),events=new Map();socket.onmessage=event=>{const data=JSON.parse(event.data);if(data.id){const item=pending.get(data.id);pending.delete(data.id);if(data.error)item.reject(Error(JSON.stringify(data.error)));else item.resolve(data.result);}else if(events.has(data.method)){events.get(data.method)(data.params);events.delete(data.method);}};
+ const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++serial;pending.set(id,{resolve,reject});socket.send(JSON.stringify({id,method,params}));});
+ const evaluate=async expression=>{const result=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||JSON.stringify(result.exceptionDetails));return result.result.value;};
+ const sceneOnly=process.argv.includes('--scene'),layerOnly=process.argv.includes('--layer');await call('Page.enable');await call('Emulation.setDeviceMetricsOverride',{width:layerOnly?800:1000,height:layerOnly?450:sceneOnly?1000:850,deviceScaleFactor:1,mobile:false});
+ const playable=process.argv.includes('--playable');const targets=sceneOnly?[['zh-CN','封面与场景中文预览.html','封面与场景中文.png']]:layerOnly?[['zh-CN','图层右键菜单预览.html','图层右键菜单.png']]:playable?[['zh-CN','导出完整地图模组中文预览.html','导出完整地图模组中文.png']]:[['zh-CN','导出面板中文预览.html','导出面板中文.png'],['en','Export preview English.html','Export preview English.png']];
+ const results=[];for(const [locale,name,png] of targets){
+  const loaded=new Promise(resolve=>events.set('Page.loadEventFired',resolve));await call('Page.navigate',{url:pathToFileURL(path.join(out,name)).href+'?lang='+locale});await loaded;await evaluate('window.previewReady');const result=await evaluate(layerOnly?'({layers:document.querySelectorAll(".layer").length,clipped:document.querySelectorAll(".layer.clipped").length,menu:document.querySelectorAll(".paint-layer-menu button").length})':'runExportTests()');results.push(result);if(!layerOnly)await evaluate('resetPreview().then(()=>document.fonts.ready)');if(playable)await evaluate("pick(document.querySelector('[name=exportFormat][value=playable]'))");if(sceneOnly)await evaluate('prepareScenePreview()');const screenshot=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});fs.writeFileSync(path.join(out,png),Buffer.from(screenshot.data,'base64'));
+ }
+ if(!layerOnly)fs.writeFileSync(path.join(out,sceneOnly?'scene-integration-results.json':playable?'playable-test-results.json':'test-results.json'),JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
+}finally{socket?.close();browser.kill();await sleep(400);if(path.dirname(fs.realpathSync(profile))===fs.realpathSync(out))try{fs.rmSync(profile,{recursive:true,force:true});}catch{}}

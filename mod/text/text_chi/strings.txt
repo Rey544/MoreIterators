@@ -209,3 +209,14 @@ Original state backup retained; repeated launch ignored.|已保留原状态备�
 Backup retained.|备份已保留。
 Native color retained.|保留原版颜色。
 Stopping owned speech.|正在停止本模组的语音。
+Shader|着色器
+Color opacity|颜色透明度
+Parent opacity|父容器透明度
+Vertex opacity|顶点透明度
+Looks to the Moon|仰望皓月
+Five Pebbles|五块卵石
+Camera|相机
+Room image material|房间图像材质
+Screen effect material|屏幕效果材质
+Diagnostic level|诊断等级
+Settings|设置

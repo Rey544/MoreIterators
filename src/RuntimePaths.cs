@@ -7,15 +7,24 @@ namespace MoreIterators {
  public static class RuntimePaths {
   public const string ModId="moreiterators.core";
   static string directory;
+  sealed class ManifestState {public string path;public long stamp,length;public bool independent;}
+  static readonly Dictionary<string,ManifestState> manifests=new Dictionary<string,ManifestState>(StringComparer.OrdinalIgnoreCase);
+  static int manifestGeneration=-1;
   public static string DataDirectory {get{if(directory==null)Initialize();return directory;}}
   public static bool HasIndependentRuntime(string modPath){
-   string manifest=Path.Combine(modPath,"content-manifest.json");
+   int generation=ContentAssets.Generation;
+   if(manifestGeneration!=generation){manifests.Clear();manifestGeneration=generation;}
+   string manifest=null;
    if(ModManager.ActiveMods!=null)foreach(var mod in ModManager.ActiveMods)if(mod.path==modPath){manifest=ContentAssets.ResolveOwnedFile(mod.id,"content-manifest.json");break;}
-   if(!File.Exists(manifest))return false;
+   if(!File.Exists(manifest)){manifests.Remove(modPath);return false;}
    try{
+    var info=new FileInfo(manifest);ManifestState cached;
+    if(manifests.TryGetValue(modPath,out cached)&&cached.path==manifest&&cached.stamp==info.LastWriteTimeUtc.Ticks&&cached.length==info.Length)return cached.independent;
     var data=Json.Deserialize(File.ReadAllText(manifest)) as Dictionary<string,object>;object value;
     // Ordinary register packs remain shared content unless ownership is explicit.
-    return data!=null&&data.TryGetValue("independentMod",out value)&&value is bool&&(bool)value;
+    bool independent=data!=null&&data.TryGetValue("independentMod",out value)&&value is bool&&(bool)value;
+    manifests[modPath]=new ManifestState{path=manifest,stamp=info.LastWriteTimeUtc.Ticks,length=info.Length,independent=independent};
+    return independent;
    }catch{return false;}
   }
   public static void Initialize(){

@@ -25,7 +25,7 @@ namespace MoreIterators {
      MiDiagnostics.Warn("MI-PEARL-EXTRACT","CreatorStomachPearl.Extract",UiText.Get("Native regurgitation did not release the requested pearl; this request will not retry."),MiDiagnostics.Context(oracle.room));return null;
     }
     for(int i=pearl.grabbedBy.Count-1;i>=0;i--)pearl.grabbedBy[i].Release();
-    MiDiagnostics.Info("pearl.extract","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" pearl="+expected.ID);
+    MiDiagnostics.Debug("pearl.extract","oracle="+IteratorDesign.ForRoom(oracle.room).oracleId+" pearl="+expected.ID);
     return pearl;
    } catch(Exception error) {
     MiDiagnostics.Report("MI-PEARL-EXTRACT","CreatorStomachPearl.Extract",error,MiDiagnostics.Context(oracle.room));

@@ -13,3 +13,39 @@
 #importPicker{width:min(450px,calc(100vw - 32px));max-width:100%;padding:18px;background:var(--mi-page,#151515);color:inherit}#importChoice{width:100%}
 @media(max-width:1100px){.broadcast-studio main{grid-template-columns:170px minmax(0,1fr);gap:16px}.broadcast-editor-grid{grid-template-columns:minmax(0,1fr)}.broadcast-preview-column{grid-column:auto}.broadcast-settings{gap:8px 12px}#preview{min-height:120px}}
 @media(max-width:700px){.broadcast-studio main{grid-template-columns:minmax(0,1fr);padding:0 12px 10px;gap:12px}.broadcast-library{position:static;max-height:none}#broadcastList{display:flex;overflow:auto;max-width:100%;padding-bottom:4px}#broadcastList .broadcast-card{min-width:145px;max-width:200px;flex:none}.broadcast-identity{grid-template-columns:minmax(0,1fr)}.broadcast-settings{gap:8px 12px}#speakers{grid-template-columns:minmax(0,1fr)}.speaker-row{grid-template-columns:minmax(75px,1fr) minmax(75px,1fr) 34px 30px}.broadcast-preview-column{min-width:0}}
+
+body.mi-studio.broadcast-studio main{grid-template-columns:170px minmax(320px,560px) minmax(320px,460px);max-width:1320px;margin:0 auto;gap:24px;padding:12px 22px 24px;box-sizing:border-box}
+.broadcast-detail,.broadcast-preview-column{min-width:0}
+.broadcast-identity{grid-template-columns:minmax(0,300px) 120px;gap:12px}
+.broadcast-identity label{flex-direction:column;align-items:stretch;gap:5px}
+.broadcast-identity input{box-sizing:border-box;width:100%;flex:none}
+.broadcast-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;max-width:420px;margin:18px 0}
+.broadcast-settings label{flex-direction:column;align-items:flex-start;gap:5px}
+.broadcast-settings input[type=number]{width:90px!important;box-sizing:border-box}
+.broadcast-settings select{width:auto;max-width:100%}
+.broadcast-settings .color-switch{flex-direction:row;grid-column:1/-1;align-items:center}
+.broadcast-text{margin-top:22px}
+.broadcast-preview-column{position:sticky;top:16px;max-height:calc(100dvh - 32px);overflow:auto;padding:0 5px 6px!important}
+.broadcast-preview-column>h2{margin-top:0}
+.broadcast-preview-column #preview{min-height:130px;max-height:260px;overflow:auto;margin:8px 0 20px;padding:8px 0}
+.broadcast-preview-column .broadcast-placement{margin-top:22px!important}
+.broadcast-preview-column .placement-fields{grid-template-columns:80px minmax(0,1fr);max-width:360px}
+.broadcast-preview-column .placement-fields label{flex-direction:column;align-items:stretch;gap:5px}
+.broadcast-preview-column #map{display:block;width:100%;height:auto;aspect-ratio:2/1;max-height:260px}
+.broadcast-preview-column .bar input[type=number]{width:80px!important;box-sizing:border-box}
+.broadcast-preview-column #position{font-size:12px}
+.broadcast-detail #speakers{grid-template-columns:minmax(0,1fr)}
+.broadcast-detail #lines textarea{box-sizing:border-box;min-height:112px}
+@media(max-width:1100px) and (min-width:761px){body.mi-studio.broadcast-studio main{grid-template-columns:140px minmax(0,1fr);gap:18px}.broadcast-preview-column{grid-column:2;position:static;max-height:none}.broadcast-preview-column #map{max-width:460px}}
+@media(max-width:760px){body.mi-studio.broadcast-studio main{grid-template-columns:minmax(0,1fr);padding:12px;gap:16px}.broadcast-preview-column{grid-column:auto;position:static;max-height:none}.broadcast-identity{grid-template-columns:minmax(0,1fr) 110px}.broadcast-library{position:static;max-height:none}}
+.broadcast-studio #broadcastList .broadcast-card{flex-direction:row;align-items:center;gap:10px}
+.broadcast-card canvas{flex:none;width:39px;height:39px;image-rendering:pixelated}
+.broadcast-card-text{display:flex;flex-direction:column;min-width:0;gap:2px}
+.broadcast-icon-editor{display:flex;align-items:center;gap:12px;margin-top:12px}
+.broadcast-icon-editor #editIconColor{padding:5px;line-height:0;min-height:0;background:transparent}
+.broadcast-icon-editor canvas{display:block;width:39px;height:39px;image-rendering:pixelated}
+.broadcast-icon-editor label{display:flex;align-items:center;gap:8px}
+.broadcast-icon-editor input[type=color]{width:38px;height:30px;padding:3px}
+#exportPicker{width:min(420px,calc(100vw - 32px));box-sizing:border-box;padding:18px;background:var(--mi-page,#151515);color:inherit}
+#exportPicker label{display:flex;align-items:center;gap:12px}
+#exportPicker .hint{font-size:12px;line-height:1.6;margin:12px 0}

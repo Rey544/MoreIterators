@@ -155,6 +155,7 @@ namespace MoreIterators
             var room=MoreIteratorsPlugin.PaletteRoom(cam);
             if(room==null||!IsAI(room.abstractRoom.name))return;
             var d=IteratorDesign.ForRoom(room);
+            if(CreatorRoomSettings.RoomPalette(d))return;
             Color theme=IteratorDesign.C(palette==25?d.roomReceptionColor:d.roomWorkColor);
             for(int y=0;y<t.height;y++)for(int x=0;x<Mathf.Min(30,t.width);x++)
             {

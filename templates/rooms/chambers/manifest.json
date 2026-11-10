@@ -1,0 +1,10 @@
+{
+  "schema": "moreiterators.chamber-presets.v1",
+  "presets": [
+    "pebbles",
+    "moon",
+    "broken",
+    "irregular",
+    "multi-screen"
+  ]
+}

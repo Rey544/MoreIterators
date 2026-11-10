@@ -24,18 +24,18 @@ const PuppetArms=(()=>{
    // Freeze the inherited source when unlinking. Otherwise the new right sleeve
    // unexpectedly switches to an unrelated independently painted original right sleeve.
    const sourceSide=mirrored(d,from)?0:from%2,source=sleeveMaterial(sourceSide?'sleeveR':'sleeve'),key=sleeveKey(to),tex=project.textures[key];
-   if(canvases[key]&&tex){canvases[key].forEach((c,index)=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);if(index===0){ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(source,0,0,c.width,c.height);ctx.restore();}tex.layers[index].visible=true;tex.layers[index].opacity=1;});tex.editableBase=true;d.puppetArms[to].sleeveOwnTexture=true;}
+   if(canvases[key]&&tex){canvases[key].forEach((c,index)=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);if(index===0){ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(source,0,0,c.width,c.height);ctx.restore();}tex.layers[index].visible=true;tex.layers[index].opacity=1;delete tex.layers[index].clipToBelow;});tex.editableBase=true;d.puppetArms[to].sleeveOwnTexture=true;}
   }}
  }
  function sleeveLayers(d,index){
   const a=resolved(d,index),sm=sleeveMirrored(d,index),own=index>=2&&a.sleeveOwnTexture;
   const side=index>=2&&sm?0:index%2,key=own?sleeveKey(sm?index-1:index):side&&d.sleeveSymmetry?'sleeve':side?'sleeveR':'sleeve';
-  let base=clothBase(key),ink=patternComposite(key);const flipped=own?sm:(side===1&&d.sleeveSymmetry)!==(index>=2&&sm);
+  const parts=clothParts(key);let base=parts.base,ink=parts.overlay;const flipped=own?sm:(side===1&&d.sleeveSymmetry)!==(index>=2&&sm);
   if(flipped){base=flip(base);ink=flip(ink);}return {base,ink};
  }
  function writeSleeve(index,layers,mirroredCopy=false){
   const key=sleeveKey(index),tex=project.textures[key];if(!canvases[key]||!tex)return;if(typeof PaintLayers!=='undefined'){PaintLayers.requireWritableTexture(key);if(tex.layers.length===1)PaintLayers.append(key,false);}
-  canvases[key].forEach((c,i)=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);if(i<2){ctx.save();ctx.imageSmoothingEnabled=false;if(mirroredCopy){ctx.translate(c.width,0);ctx.scale(-1,1);}ctx.drawImage(i?layers.ink:layers.base,0,0,c.width,c.height);ctx.restore();}tex.layers[i].visible=true;tex.layers[i].opacity=1;});tex.editableBase=true;
+  canvases[key].forEach((c,i)=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);if(i<2){ctx.save();ctx.imageSmoothingEnabled=false;if(mirroredCopy){ctx.translate(c.width,0);ctx.scale(-1,1);}ctx.drawImage(i?layers.ink:layers.base,0,0,c.width,c.height);ctx.restore();}tex.layers[i].visible=true;tex.layers[i].opacity=1;delete tex.layers[i].clipToBelow;});tex.editableBase=true;
   if(index>=2)project.design.puppetArms[index].sleeveOwnTexture=true;
  }
  function finishLoad(){
@@ -91,16 +91,18 @@ const PuppetArms=(()=>{
   redraw();fieldRefresh.push(redraw);controls.prepend(thumb);
  }
  function settings(buckets,d){
-  fieldRefresh=[];const host=garmentSection(buckets.body,text('手臂与袖子','Arms and sleeves'));host.dataset.sectionId='puppetArms';
-  settingsLayerSwitch(host,d,'hands',text('显示手掌','Show hands'));settingsLayerSwitch(host,d,'sleeves',text('显示袖子','Show sleeves'));
-  field(host,d,'armLength',text('总体手臂长度','Overall arm length'),'range',.7,1.4,.01);field(host,d,'sleeveWidth',text('总体袖子宽度','Overall sleeve width'),'range',2,8,.1);
-  if(d.sleeveMapping!=='front')garmentButton(host,text('转换为正面贴图','Convert sleeve textures to front view'),convertSleevesToFront);
+  fieldRefresh=[];const host=garmentSection(buckets.body,MI18n.t('hierarchy.arms'));host.dataset.sectionId='puppetArms';
+  const sleeves=garmentSection(buckets.clothes,'袖子');sleeves.dataset.sectionId='sleeves';settingsLayerSwitch(sleeves,d,'sleeves',text('显示袖子','Show sleeves'));const sleeveBody=settingDependency(sleeves,()=>d.layers.sleeves!==false);
+  settingsLayerSwitch(host,d,'hands',text('显示手掌','Show hands'));
+  field(host,d,'armLength',text('总体手臂长度','Overall arm length'),'range',.7,1.4,.01);field(sleeveBody,d,'sleeveWidth',text('总体袖子宽度','Overall sleeve width'),'range',2,8,.1);
+  if(d.sleeveMapping!=='front')garmentButton(sleeveBody,text('转换为正面贴图','Convert sleeve textures to front view'),convertSleevesToFront);
   for(let pair=0;pair<2;pair++){
    const section=garmentSection(host,pair?text('新增手臂','Added arms'):text('原版手臂','Original arms'));section.dataset.sectionId='armPair'+pair;
+   const sleevePair=garmentSection(sleeveBody,MI18n.t(pair?'hierarchy.addedSleeves':'hierarchy.originalSleeves'));sleevePair.dataset.sectionId='sleevePair'+pair;
    const sync={};Object.defineProperty(sync,'enabled',{get:()=>d[pairKey(pair*2)],set:value=>setSync(d,pair,value)});
    garmentField(section,sync,'enabled',text('手臂与手掌左右镜像同步','Mirror arms and hands'),'checkbox',null,null,null,buildSettings);
    const sleeveSync={};Object.defineProperty(sleeveSync,'enabled',{get:()=>d[sleevePairKey(pair*2)],set:value=>setSleeveSync(d,pair,value)});
-   garmentField(section,sleeveSync,'enabled',text('袖子左右镜像同步','Mirror sleeves'),'checkbox',null,null,null,buildSettings);
+   garmentField(sleevePair,sleeveSync,'enabled',text('袖子左右镜像同步','Mirror sleeves'),'checkbox',null,null,null,buildSettings);
    for(let i=pair*2;i<pair*2+2;i++){
     const a=editModel(d,i),row=garmentSection(section,i%2?text('右手','Right hand'):text('左手','Left hand'));row.dataset.sectionId='puppetArm'+i;
     field(row,a,'enabled',text('启用这只手臂','Enable this arm'),'checkbox');const body=settingDependency(row,()=>d.puppetArms[i].enabled);
@@ -108,7 +110,7 @@ const PuppetArms=(()=>{
     for(const [key,zh,en,lo,hi,step] of [['shoulderX','肩部左右偏移','Shoulder horizontal offset',-40,40,.25],['shoulderY','肩部上下偏移','Shoulder vertical offset',-40,40,.25],['lengthScale','手臂长度比例','Arm length scale',.25,2.5,.01]])field(shape,a,key,text(zh,en),'range',lo,hi,step);
     const hand=garmentSection(body,text('手掌','Hand'));field(hand,a,'handSize',text('手掌大小','Hand size'),'range',.25,3,.01);
     field(hand,a,'handOwnColor',text('独立手掌颜色','Custom hand color'),'checkbox');const hc=settingDependency(hand,()=>a.handOwnColor);field(hc,a,'handColor',text('颜色','Color'),'color');field(hand,a,'handTextureEnabled',text('使用贴图','Use texture'),'checkbox');const ht=settingDependency(hand,()=>a.handTextureEnabled);field(ht,a,'handTextureTint',text('用手掌颜色染色贴图','Tint texture with hand color'),'checkbox');textureControls(hand,'puppetHand'+i);
-    const sleeve=garmentSection(body,text('袖子','Sleeve'));field(sleeve,a,'sleeveEnabled',text('启用这侧袖子','Enable this sleeve'),'checkbox');const sb=settingDependency(sleeve,()=>d.puppetArms[i].sleeveEnabled);
+    const sleeve=garmentSection(sleevePair,i%2?text('右袖','Right sleeve'):text('左袖','Left sleeve'));sleeve.dataset.sectionId='puppetSleeve'+i;field(sleeve,a,'sleeveEnabled',text('启用这侧袖子','Enable this sleeve'),'checkbox');const sb=settingDependency(sleeve,()=>d.puppetArms[i].sleeveEnabled);
     for(const [key,zh,en,lo,hi,step] of [['sleeveRootX','肩部缝线左右偏移','Shoulder seam horizontal offset',-40,40,.25],['sleeveRootY','肩部缝线上下偏移','Shoulder seam vertical offset',-40,40,.25],['widthScale','袖子宽度比例','Sleeve width scale',.25,3,.01]])field(sb,a,key,text(zh,en),'range',lo,hi,step);
     field(sb,a,'sleeveOwnColor',text('整体染色','Tint sleeve'),'checkbox');const tint=settingDependency(sb,()=>a.sleeveOwnColor);field(tint,a,'sleeveColor',text('染色颜色','Tint color'),'color');
     if(i<2){const palette=garmentSection(sb,text('底色','Base colors'));const index=sleeveMirrored(d,i)?0:i,prefix=index?'sleeveRight':'sleeve';if(!index)field(palette,d,'sleeveOwn',text('独立底色','Custom base colors'),'checkbox');const colors=settingDependency(palette,()=>index===1||d.sleeveOwn);for(const [suffix,zh,en] of [['TopColor','上部','Top'],['MiddleColor','中部','Middle'],['BottomColor','末端','End']])field(colors,d,prefix+suffix,text(zh,en),'color');field(colors,d,prefix+'Grain',text('颗粒','Grain'),'range',0,.4,.01);}

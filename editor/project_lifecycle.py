@@ -99,7 +99,7 @@ def _destination(pid,item):
     relative=item.get('path')
     if item.get('kind')=='runtime' and (not isinstance(relative,str) or not re.fullmatch(r'(?:projections/[a-f0-9]{32}|[A-Za-z0-9_-]+)\.json',relative)):raise ValueError('运行项目文件路径无效')
     if item.get('kind')=='projection-settings' and relative!=pid+'.json':raise ValueError('投影设置归属无效')
-    if item.get('kind') in ('local-room','installed-room') and (not isinstance(relative,str) or not project_worlds.ROOM_PATH.fullmatch(relative)):raise ValueError('房间运行文件路径无效')
+    if item.get('kind') in ('local-room','installed-room') and (not isinstance(relative,str) or not project_worlds.ASSET_PATH.fullmatch(relative)):raise ValueError('房间运行文件路径无效')
     return _safe_path(_base(pid,item),relative)
 
 def _tree(base,kind,owner=None):

@@ -347,6 +347,7 @@ namespace MoreIterators
             var room=MoreIteratorsPlugin.PaletteRoom(cam);
             if(room==null||!IsAI(room.abstractRoom.name))return;
             var d=IteratorDesign.ForRoom(room);
+            if(CreatorRoomSettings.RoomPalette(d))return;
             Color theme=IteratorDesign.C(palette==25?d.roomReceptionColor:d.roomWorkColor);
             for(int y=0;y<t.height;y++)for(int x=0;x<Mathf.Min(30,t.width);x++)
             {
@@ -377,7 +378,7 @@ namespace MoreIterators
         static bool HasEncounter(Oracle o){foreach(var item in o.room.updateList){var encounter=item as CreatorEncounter;if(encounter!=null&&encounter.oracle==o&&!encounter.slatedForDeletetion)return true;}return false;}
         public static bool HandlesHit(Oracle o,Weapon weapon){return o!=null&&o.room!=null&&o.oracleBehavior is IteratorBehavior&&IteratorCatalog.IsAI(o.room.abstractRoom.name)&&CreatorRuntime.UsesDialogue(o.room.abstractRoom.name)&&weapon!=null&&weapon.thrownBy is Player&&(weapon is Rock||weapon is Spear)&&CreatorDialogueProfile.For(IteratorDesign.ForRoom(o.room)).affinity.enabled&&(CreatorRuntime.Mode=="story"||CreatorRuntime.Mode=="read")&&!StudioRuntime.Recording&&HasEncounter(o);}
         public static void Hit(Oracle o,Weapon weapon){foreach(var item in o.room.updateList){var encounter=item as CreatorEncounter;if(encounter!=null&&encounter.oracle==o){encounter.ReactToHit(weapon);return;}}MiDiagnostics.Warn("MI-AFFINITY-NO-ENCOUNTER","CreatorEncounter.Hit",UiText.Get("Owned hit arrived before encounter creation."),IteratorDesign.ForRoom(o.room).oracleId);}
-        void ReactToHit(Weapon weapon){if(lastHitWeapon==weapon&&lastHitFrame==Time.frameCount)return;lastHitWeapon=weapon;lastHitFrame=Time.frameCount;var d=D;bool spear=weapon is Spear;CreatorAffinity.Update(oracle,d);string tier=CreatorAffinity.Hit(oracle,d,spear);var rules=CreatorDialogueProfile.For(d).affinity;bool responding=reader.TryRespond((spear?rules.attackSpear:rules.attackRock).For(tier),(spear?"attackSpear:":"attackRock:")+tier,weapon.thrownBy as Player);if(responding)dialogue.Suspend();MiDiagnostics.Info("affinity.hit","oracle="+d.oracleId+" weapon="+(spear?"spear":"rock")+" preTier="+tier+" value="+CreatorAffinity.Get(oracle,d).value+" response="+responding);}
+        void ReactToHit(Weapon weapon){if(lastHitWeapon==weapon&&lastHitFrame==Time.frameCount)return;lastHitWeapon=weapon;lastHitFrame=Time.frameCount;var d=D;bool spear=weapon is Spear;CreatorAffinity.Update(oracle,d);string tier=CreatorAffinity.Hit(oracle,d,spear);var rules=CreatorDialogueProfile.For(d).affinity;bool responding=reader.TryRespond((spear?rules.attackSpear:rules.attackRock).For(tier),(spear?"attackSpear:":"attackRock:")+tier,weapon.thrownBy as Player);if(responding)dialogue.Suspend();MiDiagnostics.Debug("affinity.hit","oracle="+d.oracleId+" weapon="+(spear?"spear":"rock")+" preTier="+tier+" value="+CreatorAffinity.Get(oracle,d).value+" response="+responding);}
         float blend=1f;
         public bool Working=true;
         IteratorDesign D
@@ -447,6 +448,8 @@ namespace MoreIterators
             if(CreatorRuntime.Paused){music.Update(room,CreatorMusicSettings.Select(D,Working,reader.Active||reader.Receiving),true);return;}
             tick++;
             var d=D;
+            bool roomGravity=CreatorRoomSettings.RoomGravity(d);
+            CreatorRoomSettings.PrepareGravity(room,roomGravity);
             if(tick%20==0)Resize();
             Player player=null;
             foreach(var a in room.game.Players)
@@ -476,7 +479,7 @@ namespace MoreIterators
             int nextPhase=Working?0:reception.EncounterTicks<(communicationMark?40:120)?1:!communicationMark&&reception.EncounterTicks<480?2:3;
             if(nextPhase!=receptionPhase){
                 receptionPhase=nextPhase;
-                MiDiagnostics.Info("encounter.phase","oracle="+d.oracleId+" phase="+(nextPhase==0?"work":nextPhase==1?"approach":nextPhase==2?"investigate":"reception")+" ticks="+reception.EncounterTicks+" mark="+communicationMark);
+                MiDiagnostics.Debug("encounter.phase","oracle="+d.oracleId+" phase="+(nextPhase==0?"work":nextPhase==1?"approach":nextPhase==2?"investigate":"reception")+" ticks="+reception.EncounterTicks+" mark="+communicationMark);
             }
             CreatorProjections.SetWorking(oracle,Working);
             var b=oracle.oracleBehavior as IteratorBehavior;
@@ -484,23 +487,17 @@ namespace MoreIterators
             {
                 b.encounterActive=!Working;
                 b.encounterTicks=reception.EncounterTicks;
-                b.requestedGravity=Mathf.MoveTowards(b.requestedGravity,Working?0:.18f,.002f);
+                if(!roomGravity)b.requestedGravity=Mathf.MoveTowards(b.requestedGravity,Working?0:.18f,.002f);
                 if(!CreatorDialogueActions.For(oracle).Active){b.killFac=0;b.lastKillFac=0;}
             }
             if(Working)workTick++;
-            room.gravity=b==null?Mathf.MoveTowards(room.gravity,Working?0:.18f,.002f):b.requestedGravity;
+            if(!roomGravity)room.gravity=b==null?Mathf.MoveTowards(room.gravity,Working?0:.18f,.002f):b.requestedGravity;
             float target=CreatorRuntime.PalettePreview>=0?CreatorRuntime.PalettePreview:Working?1:0;
             blend=Mathf.MoveTowards(blend,target,1f/Mathf.Max(1,d.roomTransition*40));
-            var cam=room.game.cameras[0];
-            if(cam.room==room&&(tick%5==0||revision!=IteratorDesign.Revision))
+            if(tick%5==0||revision!=IteratorDesign.Revision)
             {
-                if(revision!=IteratorDesign.Revision)
-                {
-                    cam.paletteA=-1;
-                    cam.paletteB=-1;
-                }
                 revision=IteratorDesign.Revision;
-                cam.ChangeBothPalettes(25,26,blend);
+                foreach(var camera in room.game.cameras)if(camera.room==room)CreatorRoomSettings.Palette(camera,d,blend);
             }
             for(int i=0;i<pearls.Count;i++)
             {

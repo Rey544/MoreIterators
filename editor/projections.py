@@ -2,7 +2,7 @@
 import base64,copy,datetime,io,json,math,re,uuid,warnings
 from pathlib import Path
 from PIL import Image,ImageEnhance,ImageChops
-import storage,dialogue,pearls
+import storage,dialogue,pearls,room_bindings,room_controls
 
 SCHEMA='moreiterators.projection.v1'
 MAX_IMAGE_BYTES=4*1024*1024
@@ -118,7 +118,7 @@ def persist_pearl_lines(p,roomnames=None):
         compiled=json.loads(runtime.read_text('utf-8'));before=copy.deepcopy(compiled)
         if compiled.get('uid')!=out['uid']:return out
         for reader in compiled.get('readers',[]):
-            authored=next((r for r in out.get('readers',[]) if r.get('projectId')==reader.get('projectId')),None)
+            authored=next((r for r in out.get('readers',[]) if pearls.reader_key(r)==pearls.reader_key(reader)),None)
             if not authored:continue
             def sync(old,new):
                 if len(old)!=len(new):return
@@ -279,7 +279,7 @@ def validate(value,resolve_sources=True,roomnames=None):
         for frame in frames:
             if not isinstance(frame,dict):raise ValueError('关键帧格式无效')
             for key,lo,hi in [('duration',.02,120),('x',0,1),('y',0,1),('scale',.01,10),('rotation',-3600,3600),('opacity',0,1),('brightness',0,2),('flicker',0,1)]:number(frame.get(key),lo,hi,'关键帧 '+key)
-            if frame.get('ease') not in ('linear','smooth','step'):raise ValueError('关键帧缓动无效')
+            if frame.get('ease') not in ('linear', 'smooth', 'step', 'quadIn', 'quadOut', 'quadInOut', 'sineInOut', 'expIn', 'expOut', 'expInOut', 'circIn', 'circOut', 'circInOut', 'backIn', 'backOut', 'backInOut', 'elasticIn', 'elasticOut', 'elasticInOut'):raise ValueError('关键帧缓动无效')
             total+=frame['duration']
         if total>600:raise ValueError('单条轨道总时长不得超过 600 秒')
     return p
@@ -347,6 +347,7 @@ def background(pid,server):
         file=Path(str(source)+'_'+str(index)+'.png')
         if not file.is_file():raise ValueError('演算室相机图缺失：'+file.name)
         with Image.open(file) as image:
+            if room_controls.room_palette(project):palette=room_palette(project,source,index-1)
             image.load();art=decode_room_image(image,palette,project.get('design',{}))
             # Room files store camera offsets from the room's top-left.
             canvas.alpha_composite(art,(round(x),round(y)))
@@ -405,30 +406,45 @@ def chamber_mask(rows):
     return result
 
 
-def room_palette(project,source):
+def room_palette(project,source,camera=0):
     settings=Path(str(source)+'_settings.txt')
     text=settings.read_text('utf-8-sig') if settings.is_file() else ''
     match=re.search(r'(?m)^Palette:\s*(\d+)',text)
     index=int(match[1]) if match else int(project.get('design',{}).get('roomPalette',26))
-    assets=storage.GAME/'RainWorld_Data/StreamingAssets'
-    candidates=[storage.target_mod(project['projectId'])/'palettes'/('palette'+str(index)+'.png'),
-        assets/'mods/moreslugcats/palettes'/('palette'+str(index)+'.png'),assets/'palettes'/('palette'+str(index)+'.png')]
-    for file in candidates:
-        if file.is_file():
-            with Image.open(file) as image:
-                image.load()
-                if image.width<32 or image.height<8:raise ValueError('房间调色板尺寸无效')
-                palette=image.convert('RGB').crop((0,0,32,8))
-                # Mirror CreatorRuntime.Palette: keep sky/fog/effect columns,
-                # tint the room material colors for this iterator's work theme.
-                theme=project.get('design',{}).get('roomWorkColor','#476d67')
-                tint=tuple(int(theme[i:i+2],16)/255 for i in (1,3,5))
-                for y in range(2,8):
-                    for x in range(30):
-                        r,g,b=palette.getpixel((x,y));v=.299*r+.587*g+.114*b
-                        palette.putpixel((x,y),tuple(round(min(255,max(0,v*(.45+.55*c*1.6)))) for c in tint))
-                return palette
-    raise ValueError('房间调色板不存在：palette'+str(index)+'.png')
+    native=room_controls.effective_palette_settings(project,source) if room_controls.room_palette(project) else None
+    if native is not None:index=native['palette'];text=native['text']
+    
+    own=storage.target_mod(project['projectId']) if project.get('projectId') else None
+    def load(number):
+        relative=Path('palettes')/('palette'+str(number)+'.png')
+        imported=None
+        if project.get('projectId'):
+            import project_packages
+            imported=project_packages.palette_source(project['projectId'],number)
+        candidates=([own/relative] if own is not None else [])+([imported] if imported is not None else [])+[root/relative for root in room_bindings.enabled_asset_roots()]
+        for file in candidates:
+            if (file==imported or own is not None and file==own/relative or room_bindings.is_enabled_asset(file)) and file.is_file():
+                with Image.open(file) as image:
+                    image.load()
+                    if image.width<32 or image.height<8:raise ValueError('房间调色板尺寸无效')
+                    return image.convert('RGB').crop((0,0,32,8))
+        raise ValueError('房间调色板不存在：palette'+str(number)+'.png')
+    palette=load(index)
+    if room_controls.room_palette(project):
+        fade=re.search(r'(?m)^FadePalette:\s*([^\r\n]+)',text)
+        if fade:
+            values=[part.strip() for part in fade[1].split(',')]
+            if len(values)>camera+1:palette=Image.blend(palette,load(int(values[0])),max(0,min(1,float(values[camera+1]))))
+        return palette
+    else:
+        
+        theme=project.get('design',{}).get('roomWorkColor','#476d67')
+        tint=tuple(int(theme[i:i+2],16)/255 for i in (1,3,5))
+        for y in range(2,8):
+            for x in range(30):
+                r,g,b=palette.getpixel((x,y));v=.299*r+.587*g+.114*b
+                palette.putpixel((x,y),tuple(round(min(255,max(0,v*(.45+.55*c*1.6)))) for c in tint))
+        return palette
 
 def decode_room_image(image,palette,design):
     """Static LevelColor shader palette lookup; lighting/noise stays in-game."""
@@ -461,7 +477,7 @@ def decode_room_image(image,palette,design):
             out=mix(out,colors[1,0],fog)
         result=tuple(max(0,min(255,round(c))) for c in out)+(alpha,);cache[value]=result;return result
     decoded=Image.new('RGBA',image.size);decoded.putdata([pixel(value) for value in image.getdata()])
-    for field,enhancer in [('roomSaturation',ImageEnhance.Color),('roomContrast',ImageEnhance.Contrast),('roomBrightness',ImageEnhance.Brightness)]:
+    for field,enhancer in ([] if design.get('roomPaletteMode')=='room' else [('roomSaturation',ImageEnhance.Color),('roomContrast',ImageEnhance.Contrast),('roomBrightness',ImageEnhance.Brightness)]):
         amount=design.get(field,1)
         if amount!=1:decoded=enhancer(decoded).enhance(amount)
     return decoded
@@ -471,12 +487,24 @@ REFERENCE_PATHS={'aiimg1': 'illustrations/aiimg1.png', 'aiimg2': 'illustrations/
 
 def reference():
     value=json.loads((Path(__file__).parent/'projection-reference.json').read_text('utf-8'))
-    assets=storage.GAME/'RainWorld_Data/StreamingAssets'
-    for item in value['assets']:item['available']=(assets/REFERENCE_PATHS[item['id']]).is_file()
+    roots=room_bindings.enabled_asset_roots()
+    for item in value['assets']:item['available']=_reference_file(item['id'],roots) is not None
     return value
 
-def reference_image(key):
+def _reference_file(key,roots=None):
     if key not in REFERENCE_PATHS:raise ValueError('未知原版投影参考')
-    file=storage.GAME/'RainWorld_Data/StreamingAssets'/REFERENCE_PATHS[key]
-    if not file.is_file():raise ValueError('当前游戏未安装此原版投影素材')
+    relative=Path(REFERENCE_PATHS[key])
+    roots=room_bindings.enabled_asset_roots() if roots is None else roots
+    if relative.parts[0]=='mods':
+        
+        owner=(storage.GAME/'RainWorld_Data/StreamingAssets'/Path(*relative.parts[:2])).resolve()
+        resource=Path(*relative.parts[2:])
+        candidates=[root/resource for root in roots if root.resolve()==owner or root.resolve().parent==owner]
+    else:
+        candidates=[root/relative for root in roots]
+    return next((file for file in candidates if room_bindings.is_enabled_asset(file) and file.is_file()),None)
+
+def reference_image(key):
+    file=_reference_file(key)
+    if file is None:raise ValueError('当前游戏未安装此原版投影素材')
     return file.read_bytes()

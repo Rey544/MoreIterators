@@ -32,7 +32,7 @@ namespace MoreIterators {
       if(info.Length>32000000)throw new InvalidDataException("Projection document exceeds 32 MB.");
       group=PearlProjectCodec.ReadObject<ProjectionGroup>(Json.Deserialize(File.ReadAllText(file)));
       Validate(group);files[file]=new Cached{stamp=info.LastWriteTimeUtc.Ticks,length=info.Length,group=group};
-      MiDiagnostics.Info("projection.load",group.uid+" revision="+group.revision);
+      MiDiagnostics.Debug("projection.load",group.uid+" revision="+group.revision);
      }
      if(!String.IsNullOrEmpty(owner))group.ownerMod=owner;
      var record=IteratorCatalog.Projects().Find(p=>IteratorCatalog.Text(p,"projectId")==group.projectId);
@@ -57,7 +57,7 @@ namespace MoreIterators {
     if(track.maskMode!="inherit"&&track.maskMode!="none"&&track.maskMode!="custom")throw new InvalidDataException("Invalid projection mask mode.");
     ValidateMask(track.mask);
     if(track.kind=="image"&&Array.Find(g.images,i=>i.id==track.imageId)==null)throw new InvalidDataException("Projection image reference is missing.");
-    foreach(var f in track.frames)if(f==null||!Finite(f.duration)||f.duration<0||f.duration>600||!Unit(f.x)||!Unit(f.y)||!Finite(f.scale)||f.scale<=0||f.scale>20||!Finite(f.rotation)||!Unit(f.opacity)||!Finite(f.brightness)||f.brightness<0||f.brightness>4||!Unit(f.flicker)||(f.ease!="linear"&&f.ease!="smooth"&&f.ease!="step"))throw new InvalidDataException("Invalid projection keyframe.");
+    foreach(var f in track.frames)if(f==null||!Finite(f.duration)||f.duration<0||f.duration>600||!Unit(f.x)||!Unit(f.y)||!Finite(f.scale)||f.scale<=0||f.scale>20||!Finite(f.rotation)||!Unit(f.opacity)||!Finite(f.brightness)||f.brightness<0||f.brightness>4||!Unit(f.flicker)||!ProjectionTimeline.IsEase(f.ease))throw new InvalidDataException("Invalid projection keyframe.");
    }
   }
   static void ValidateMask(ProjectionMask mask){
@@ -136,10 +136,10 @@ namespace MoreIterators {
   }
   void Start(Run run){
    Dispose(run);run.elapsed=0;run.leadRemaining=0;run.tailRemaining=0;run.trailing=false;run.finished=false;
-   try{foreach(var track in run.group.tracks){var sprite=new ProjectionSprite(this,run.group,track);run.sprites.Add(sprite);room.AddObject(sprite);}run.active=true;MiDiagnostics.Info("projection.start",run.group.uid+" "+MiDiagnostics.Context(room));}
+   try{foreach(var track in run.group.tracks){var sprite=new ProjectionSprite(this,run.group,track);run.sprites.Add(sprite);room.AddObject(sprite);}run.active=true;MiDiagnostics.Debug("projection.start",run.group.uid+" "+MiDiagnostics.Context(room));}
    catch(Exception error){Dispose(run);run.finished=true;MiDiagnostics.Report("MI-PROJECTION-START","CreatorProjections.Start",error,run.group.uid);}
   }
-  void Stop(Run run){if(!run.active)return;Dispose(run);run.finished=true;MiDiagnostics.Info("projection.stop",run.group.uid);}
+  void Stop(Run run){if(!run.active)return;Dispose(run);run.finished=true;MiDiagnostics.Debug("projection.stop",run.group.uid);}
   static void Dispose(Run run){foreach(var sprite in run.sprites)sprite.Destroy();run.sprites.Clear();run.active=false;}
   void CheckRestart(){
    if(restart==CreatorEncounter.Restart)return;restart=CreatorEncounter.Restart;

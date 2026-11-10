@@ -1,0 +1,47 @@
+{
+  "schema": "moreiterators.chamber-template.v1",
+  "id": "mi-chamber-multi-screen",
+  "name": {
+    "zh-CN": "多屏",
+    "en": "Multi-screen"
+  },
+  "source": "source/chamber.txt",
+  "sourceBase": "source/chamber",
+  "renderedBase": "chamber",
+  "aiNode": 0,
+  "width": 106,
+  "height": 36,
+  "cameraCount": 3,
+  "preview": "thumbnail.png",
+  "origin": "Rained EditorSamples/SS_AI",
+  "files": {
+    "chamber.txt": "f13bcce2c839be5d60f5803758ad272258e560e27e4bd9c53ba1636de5547de3",
+    "chamber_1.png": "f3eae3b085e129144918bcdce5cf6b3be2b760bdcfc366e4fc8a8c12f9365824",
+    "chamber_2.png": "dbb91f6569185ea4b198ba8609c1e96946795b387f67f9f4a55e91ed74c2acfe",
+    "chamber_3.png": "378003227d47ab5bce8a47ba456681e5b18fd36c692cb53066c8c50fe26552fb",
+    "chamber_settings.txt": "78c804dcdbb601d46db2f0f923febd319315ff3682a0f93fe665190c5a3d2e3a",
+    "source/chamber.png": "fb1b14c51a152d905bc548ed45e046641c3c72b5bb308abdd755dcae0d9fadc9",
+    "source/chamber.txt": "02d102df5d41229527925e04c0c164547873e8b4fa47e9b834aa92e144226acf",
+    "thumbnail.png": "0eb5df279b7d46f58ad23b0563ff074c1dacc1e5c9745815d6d7e313ee535b4c"
+  },
+  "displayAreas": [
+    {
+      "x": 200,
+      "y": 100,
+      "width": 580,
+      "height": 580
+    },
+    {
+      "x": 780,
+      "y": 100,
+      "width": 580,
+      "height": 580
+    },
+    {
+      "x": 1360,
+      "y": 100,
+      "width": 580,
+      "height": 580
+    }
+  ]
+}

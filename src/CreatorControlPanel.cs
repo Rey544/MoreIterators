@@ -63,15 +63,16 @@ namespace MoreIterators
         public static void Close()
         {
             CreatorRuntime.Panel=false;
-            if(overlay!=null)overlay.ShutDownProcess();
+            var closing=overlay;
             overlay=null;
             game=null;
             room=null;
+            if(closing!=null)closing.ShutDownProcess();
         }
         static void Apply(string command)
         {
             if(command=="draw-state"){OracleSpriteDiagnostics.OpenReport(CreatorRuntime.Id(CreatorRuntime.CurrentRoom));return;}
-            if(command=="voice"){CreatorVoiceControl.Toggle();return;}
+            if(command=="voice"){CreatorVoiceControl.Toggle(game);return;}
             if(command=="affinity-"||command=="affinity+"){CreatorAffinity.Adjust(game,room,command=="affinity-"?-.1f:.1f);return;}
             if(command=="pause")CreatorRuntime.Paused=!CreatorRuntime.Paused;
             else if(command=="work"||command=="reception")

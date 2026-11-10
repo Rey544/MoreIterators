@@ -120,7 +120,7 @@ public sealed class CreatorPearlReader {
   if(restart!=CreatorEncounter.Restart||mode!=CreatorRuntime.Mode||config!=d.dialogueJson){bool replay=restart!=CreatorEncounter.Restart;restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=d.dialogueJson;if(replay)ResetForReplay(oracle,d.oracleId);CreatorPearlOffers.Clear(oracle,"configuration/replay changed");observed.Clear();if(Active)ClearHUD();Release();if(replay){visits=new CreatorPearlVisits();ObservePresence(player);extractionRequests.Clear();}pendingGreeting=false;}
   if(!initialStoryComplete&&CreatorRuntime.Mode=="story")awaitingInitialStory=true;
   bool allowed=CreatorRuntime.Mode=="story"||CreatorRuntime.Mode=="read";
-  if(!allowed||!PlaybackMode.Enabled&&!Mark()){CreatorPearlOffers.Clear(oracle,"speech unavailable");if(Active){ClearHUD();Release();}visits.DiscardEntry();pendingGreeting=false;return false;}
+  if(!allowed||!Mark()){CreatorPearlOffers.Clear(oracle,"speech unavailable");if(Active){ClearHUD();Release();}visits.DiscardEntry();pendingGreeting=false;return false;}
   if(CreatorRuntime.Paused){CreatorPearlOffers.Clear(oracle,"paused");return Active;}
   var dialogue=CreatorDialogueProfile.For(d);var rules=dialogue.pearlReading;var memory=Progress(oracle,d.oracleId);
   if(initialStoryComplete&&!memory.storyComplete)CompleteStory(oracle,d.oracleId);

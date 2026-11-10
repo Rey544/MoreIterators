@@ -28,7 +28,7 @@ namespace MoreIterators {
     oracle.oracleBehavior=replacement;
     if(previous!=null){previous.killFac=0;previous.lastKillFac=0;if(previous.conversation!=null){previous.conversation.Destroy();previous.conversation=null;}}
     if(reportRecovery)ReportNative(state,"CreatorOracleLifecycle.EnsureBehavior",UiText.Get("A copied iterator retained base-game behavior. MI took control before its next update."),context);
-    else MiDiagnostics.Info("oracle.behavior.attach",context);
+    else MiDiagnostics.Debug("oracle.behavior.attach",context);
     return true;
    } catch(Exception error){MiDiagnostics.Report("MI-ORACLE-ATTACH","CreatorOracleLifecycle.EnsureBehavior",error,context);return false;}
    finally {state.attaching=false;}
@@ -71,12 +71,13 @@ namespace MoreIterators {
   static void Construct(On.Oracle.orig_ctor orig,Oracle oracle,AbstractPhysicalObject abstractObject,Room room){
    if(!OwnsRoom(room)){orig(oracle,abstractObject,room);return;}
    string original=room.abstractRoom.name;
+   CreatorRoomSettings.CaptureGravity(room);
    bool moon=ModManager.MSC&&IteratorDesign.ForId(IteratorCatalog.Id(original)).nativeOracle=="DM";
    var ownership=new Ownership();owned.Add(oracle,ownership);
    try {
     room.abstractRoom.name=moon?"DM_AI":"SS_AI";
     orig(oracle,abstractObject,room);
-   } finally {room.abstractRoom.name=original;ownership.constructing=false;}
+   } finally {room.abstractRoom.name=original;ownership.constructing=false;CreatorRoomSettings.PrepareGravity(room,CreatorRoomSettings.RoomGravity(IteratorDesign.ForRoom(room)));}
    var expected=moon?MoreSlugcats.MoreSlugcatsEnums.OracleID.DM:Oracle.OracleID.SS;
    if(oracle.ID!=expected){
     // Constructor hooks in another mod can replace the native identity. Repair

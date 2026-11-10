@@ -21,7 +21,7 @@ using UnityEngine;
  public PearlReaderBody For(string tier){return tier=="notSpeaking"?notSpeaking:tier=="dislikes"?dislikes:tier=="neutral"?neutral:tier=="likes"?likes:null;}
 }
 [Serializable] public sealed class PearlReaderProfile:PearlReaderBody {
- public string projectId="",oracleId="",name="",leavePolicy="resume";public bool requireMark=true;public int manyThreshold=3;
+ public string projectId="",nativeOracleId="",oracleId="",name="",leavePolicy="resume";public bool requireMark=true;public int manyThreshold=3;
  public PearlReaderAffinity affinity;
  public PearlVariant[] leaving=new PearlVariant[0],returning=new PearlVariant[0],many=new PearlVariant[0];
  public PearlReaderBody Select(string tier){return affinity==null?this:affinity.For(tier)??this;}
@@ -31,7 +31,7 @@ using UnityEngine;
 [Serializable] public sealed class PearlProject {
  public string schema="",id="",uid="",runtimeId="",name="",ownerMod="",collectionId="legacy";public int revision;
  public PearlAppearance appearance=new PearlAppearance();public PearlReaderProfile[] readers=new PearlReaderProfile[0];public PearlSpawn[] spawns=new PearlSpawn[0];
- public PearlReaderProfile Reader(string project){return Array.Find(readers,r=>r.projectId==project);}
+ public PearlReaderProfile Reader(string project){return String.IsNullOrEmpty(project)?null:Array.Find(readers,r=>r.projectId==project&&String.IsNullOrEmpty(r.nativeOracleId));}
 }
 // Read nested arrays explicitly: the game's Unity serializer can omit mod-defined
 // nested types. This follows the same dictionary format as the design loader.
@@ -91,9 +91,9 @@ public static class CreatorPearlRuntime {
   catch(DirectoryNotFoundException){/* Optional local preview directory was removed. */}
   catch(Exception error){MiDiagnostics.Report("MI-PEARL-SPAWN-REQUEST","CreatorPearlRuntime.ReadSpawnRequest",error,file);}
  }
- public static void Ready(Room room){if(room==null||room.game==null||room.abstractRoom==null)return;string name=room.abstractRoom.name;if(IteratorCatalog.OwnsEntry(name))room.gravity=0;Spawn(room);}
+ public static void Ready(Room room){if(room==null||room.game==null||room.abstractRoom==null)return;string name=room.abstractRoom.name;if(IteratorCatalog.OwnsEntry(name))CreatorRoomSettings.WaitingGravity(room);Spawn(room);}
  public static void Tick(RainWorldGame game){
-  var state=sessions.GetOrCreateValue(game);foreach(var cam in game.cameras){var room=cam.room;if(room!=null&&IteratorCatalog.OwnsEntry(room.abstractRoom.name))room.gravity=0;}
+  var state=sessions.GetOrCreateValue(game);foreach(var cam in game.cameras){var room=cam.room;if(room!=null&&IteratorCatalog.OwnsEntry(room.abstractRoom.name))CreatorRoomSettings.WaitingGravity(room);}
   if(Time.realtimeSinceStartup<state.next)return;state.next=Time.realtimeSinceStartup+.8f;
   CreatorPearlCatalog.All();
   if(state.collection!=CreatorPearlCollection.Generation&&game.world!=null){
@@ -129,6 +129,7 @@ public static class CreatorPearlRuntime {
 }
 public sealed class CreatorDataPearl:DataPearl {
  readonly CreatorAudioChannel customMusic=new CreatorAudioChannel(20);
+ readonly ConditionalWeakTable<RoomCamera,RoomCamera.SpriteLeaser> nativeLeasers=new ConditionalWeakTable<RoomCamera,RoomCamera.SpriteLeaser>();
  readonly string runtimeId;public Vector2? hover;int tick;float beat;bool startedSong;
  public PearlProject Project{get{return CreatorPearlCatalog.Find(runtimeId);}}
  public CreatorDataPearl(AbstractPhysicalObject a,World w):base(a,w){runtimeId=((DataPearl.AbstractDataPearl)a).dataPearlType.value;}
@@ -147,7 +148,13 @@ public sealed class CreatorDataPearl:DataPearl {
   else if(startedSong){if(player!=null&&player.song is MoreSlugcats.HalcyonSong)player.song.FadeOut(80);startedSong=false;}
  }
  public override void Destroy(){customMusic.Stop();base.Destroy();}
- public override void InitiateSprites(RoomCamera.SpriteLeaser s,RoomCamera cam){base.InitiateSprites(s,cam);Array.Resize(ref s.sprites,5);s.sprites[3]=new FSprite("JetFishEyeA");s.sprites[4]=new FSprite("Futile_White");s.sprites[4].shader=cam.game.rainWorld.Shaders["VectorCircle"];cam.ReturnFContainer("Items").AddChild(s.sprites[3]);s.sprites[3].MoveBehindOtherNode(s.sprites[1]);cam.ReturnFContainer("ForegroundLights").AddChild(s.sprites[4]);}
+ public void RestoreAfterNativePickup(RoomCamera cam){
+  RoomCamera.SpriteLeaser leaser;if(!nativeLeasers.TryGetValue(cam,out leaser)||leaser.sprites==null||leaser.sprites.Length<5)return;
+  var secondary=leaser.sprites[3];var ring=leaser.sprites[4];if(secondary==null||ring==null)return;
+  secondary.RemoveFromContainer();cam.ReturnFContainer("Items").AddChild(secondary);secondary.MoveBehindOtherNode(leaser.sprites[1]);
+  ring.RemoveFromContainer();cam.ReturnFContainer("ForegroundLights").AddChild(ring);
+ }
+ public override void InitiateSprites(RoomCamera.SpriteLeaser s,RoomCamera cam){base.InitiateSprites(s,cam);Array.Resize(ref s.sprites,5);s.sprites[3]=new FSprite("JetFishEyeA");s.sprites[4]=new FSprite("Futile_White");s.sprites[4].shader=cam.game.rainWorld.Shaders["VectorCircle"];cam.ReturnFContainer("Items").AddChild(s.sprites[3]);s.sprites[3].MoveBehindOtherNode(s.sprites[1]);cam.ReturnFContainer("ForegroundLights").AddChild(s.sprites[4]);nativeLeasers.Remove(cam);nativeLeasers.Add(cam,s);}
  public override void DrawSprites(RoomCamera.SpriteLeaser s,RoomCamera cam,float t,Vector2 camera){base.DrawSprites(s,cam,t,camera);var p=Project;if(p==null||slatedForDeletetion||room!=cam.room)return;var a=p.appearance;Vector2 pos=Vector2.Lerp(firstChunk.lastPos,firstChunk.pos,t)-camera;
   Color body=IteratorDesign.C(a.baseColor);if(body==Color.black)body.g=1f/255;s.sprites[0].color=body;s.sprites[0].scale=a.size;s.sprites[1].color=IteratorDesign.C(a.highlightColor);s.sprites[1].scale=a.size;
   var secondary=s.sprites[3];secondary.isVisible=a.twoTone;secondary.color=IteratorDesign.C(a.secondaryColor);secondary.scale=a.size*.6f;secondary.SetPosition(pos+new Vector2(1,-1)*a.size);

@@ -12,12 +12,15 @@
 <p id="notice" role="status" aria-live="polite"></p>
 <main id="studio" inert>
   <section class="library panel">
+   <section class="project-settings" aria-labelledby="projectionProjectSettingsTitle">
+    <h2 id="projectionProjectSettingsTitle" data-i18n="projection.projectSettings">项目设置</h2>
+    <details class="mask-section" id="projectMaskSettings"><summary>项目默认蒙版</summary><label class="check-row"><input id="projectMaskEnabled" type="checkbox">启用矩形蒙版</label><div id="projectMaskFields" hidden><div class="field-pair"><label>左侧 %<input id="projectMaskx" type="number" required min="0" max="99.9" step="any"></label><label>顶部 %<input id="projectMasky" type="number" required min="0" max="99.9" step="any"></label><label>宽度 %<input id="projectMaskwidth" type="number" required min="0.1" max="100" step="any"></label><label>高度 %<input id="projectMaskheight" type="number" required min="0.1" max="100" step="any"></label></div></div></details>
+   </section>
    <div class="group-settings">
     <div class="section-heading"><h1>动画组</h1><button id="newGroup" class="compact">新建组</button></div>
     <div class="group-fields"><label>已保存动画<select id="saved" data-i18n-content></select></label>
     <label>组名<input id="groupName" maxlength="100" autocomplete="off"></label></div>
     <div class="check-row"><label><input id="enabled" type="checkbox">启用动画组</label><label><input id="loop" type="checkbox">循环</label><label><input id="confineToRoom" type="checkbox">限制在演算室内</label></div>
-    <details class="mask-section"><summary>项目默认蒙版</summary><label class="check-row"><input id="projectMaskEnabled" type="checkbox">启用矩形蒙版</label><div id="projectMaskFields" hidden><div class="field-pair"><label>左侧 %<input id="projectMaskx" type="number" required min="0" max="99.9" step="any"></label><label>顶部 %<input id="projectMasky" type="number" required min="0" max="99.9" step="any"></label><label>宽度 %<input id="projectMaskwidth" type="number" required min="0.1" max="100" step="any"></label><label>高度 %<input id="projectMaskheight" type="number" required min="0.1" max="100" step="any"></label></div></div><label class="check-row"><input id="showMask" type="checkbox" checked>显示蒙版边框</label></details>
    </div>
    <section class="binding-section">
       <div class="section-heading"><h2>触发绑定</h2><button id="refreshSources" class="compact" title="刷新对话来源">刷新</button></div>
@@ -31,7 +34,7 @@
    </section>
   </section>
   <section id="projectionWorkspace" class="workspace panel">
-    <div class="section-heading preview-heading"><h2>投影预览</h2><div class="zoom-controls"><label class="sr-only" for="zoom">预览缩放</label><input id="zoom" type="range" min="1" max="200" step="1" value="100"><output id="zoomValue" for="zoom">100%</output><button id="fit" class="compact">适应</button><button id="actualSize" class="compact">1:1</button></div></div>
+    <div class="section-heading preview-heading"><h2>投影预览</h2><div class="preview-tools"><label class="mask-preview-toggle"><input id="showMask" type="checkbox" checked>显示蒙版边框</label><div class="zoom-controls"><label class="sr-only" for="zoom">预览缩放</label><input id="zoom" type="range" min="1" max="200" step="1" value="100"><output id="zoomValue" for="zoom">100%</output><button id="fit" class="compact">适应</button><button id="actualSize" class="compact">1:1</button></div></div></div>
     <div id="viewport" class="viewport"><canvas id="preview" width="1000" height="600" tabindex="0" aria-label="拖动选中图层来设置位置"></canvas></div>
     <div class="playback-controls"><button id="play">播放</button><button id="pause" disabled>暂停</button><button id="stop">停止</button><output id="timeDisplay">0.00 / 0.00 s</output><span id="previewState" class="muted" role="status"></span></div>
     <label class="sr-only" for="playhead">播放位置</label><input id="playhead" class="playhead" type="range" min="0" max="1" step=".01" value="0">
@@ -53,6 +56,7 @@
        <label><span>开始延迟（秒）</span><input id="trackDelay" type="number" required min="0" max="120" step="any"></label><label id="trackColorField"><span>颜色</span><input id="trackColor" type="color"></label>
        <label id="trackStyleField" class="wide-field"><span>投影样式</span><select id="trackStyle"><option value="native">原版投影</option><option value="plain">普通透明图层</option></select></label>
        <label id="glyphIndexField"><span>符号编号</span><input id="glyphIndex" type="number" required min="0" max="49" step="1"></label>
+       <div class="button-row order-controls wide-field"><button id="trackUp" class="compact">图层上移</button><button id="trackDown" class="compact">图层下移</button></div>
       </div>
       <details class="mask-section"><summary>轨道蒙版</summary><label>蒙版来源<select id="trackMaskMode"><option value="inherit">项目默认</option><option value="none">不使用自定义蒙版</option><option value="custom">单独设置</option></select></label><div id="trackMaskFields" hidden><div class="field-pair"><label>左侧 %<input id="trackMaskx" type="number" required min="0" max="99.9" step="any"></label><label>顶部 %<input id="trackMasky" type="number" required min="0" max="99.9" step="any"></label><label>宽度 %<input id="trackMaskwidth" type="number" required min="0.1" max="100" step="any"></label><label>高度 %<input id="trackMaskheight" type="number" required min="0.1" max="100" step="any"></label></div></div></details>
       <div class="section-heading frame-heading"><h3>关键帧</h3><div class="button-row"><button id="addFrame" class="compact">新增帧</button><button id="removeFrame" class="compact quiet">删除帧</button></div></div>
@@ -63,11 +67,9 @@
        <label><span>缩放</span><input id="scale" type="number" required min=".01" max="10" step="any"></label><label><span>旋转（度）</span><input id="rotation" type="number" required min="-3600" max="3600" step="1"></label>
        <label><span>不透明度 %</span><input id="opacity" type="number" required min="0" max="100" step="1"></label><label><span>亮度</span><input id="brightness" type="number" required min="0" max="2" step="any"></label>
        <label><span>闪烁强度 %</span><input id="flicker" type="number" required min="0" max="100" step="1"></label>
-       <label class="wide-field"><span>缓动</span><select id="ease"><option value="linear">匀速</option><option value="smooth">平滑</option><option value="step" title="阶梯会保持上一关键帧的状态，在过渡时长结束时瞬间切换。">阶梯（无过渡）</option></select></label>
+       <label class="wide-field"><span>缓动</span><select id="ease"><option value="linear">匀速</option><option value="smooth">平滑</option><option value="step" title="阶梯会保持上一关键帧的状态，在过渡时长结束时瞬间切换。">阶梯（无过渡）</option><option value="quadIn" data-i18n="projection.ease.quadIn">二次缓入（LerpQuadEaseIn）</option><option value="quadOut" data-i18n="projection.ease.quadOut">二次缓出（LerpQuadEaseOut）</option><option value="quadInOut" data-i18n="projection.ease.quadInOut">二次缓入缓出（LerpQuadEaseInOut）</option><option value="sineInOut" data-i18n="projection.ease.sineInOut">正弦缓入缓出（LerpSinEaseInOut）</option><option value="expIn" data-i18n="projection.ease.expIn">指数缓入（LerpExpEaseIn）</option><option value="expOut" data-i18n="projection.ease.expOut">指数缓出（LerpExpEaseOut）</option><option value="expInOut" data-i18n="projection.ease.expInOut">指数缓入缓出（LerpExpEaseInOut）</option><option value="circIn" data-i18n="projection.ease.circIn">圆形缓入（LerpCircEaseIn）</option><option value="circOut" data-i18n="projection.ease.circOut">圆形缓出（LerpCircEaseOut）</option><option value="circInOut" data-i18n="projection.ease.circInOut">圆形缓入缓出（LerpCircEaseInOut）</option><option value="backIn" data-i18n="projection.ease.backIn">回退缓入（LerpBackEaseIn）</option><option value="backOut" data-i18n="projection.ease.backOut">回退缓出（LerpBackEaseOut）</option><option value="backInOut" data-i18n="projection.ease.backInOut">回退缓入缓出（LerpBackEaseInOut）</option><option value="elasticIn" data-i18n="projection.ease.elasticIn">弹性缓入（LerpElasticEaseIn）</option><option value="elasticOut" data-i18n="projection.ease.elasticOut">弹性缓出（LerpElasticEaseOut）</option><option value="elasticInOut" data-i18n="projection.ease.elasticInOut">弹性缓入缓出（LerpElasticEaseInOut）</option></select><span id="easeDescription" class="ease-description" hidden></span></label>
       </div>
-      <div class="button-row order-controls"><button id="trackUp" class="compact">图层上移</button><button id="trackDown" class="compact">图层下移</button></div>
     </div>
-    <p id="trackEmpty" class="muted">添加或选择一条轨道。</p>
    </section>
   </aside>
 </main>

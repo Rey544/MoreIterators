@@ -15,9 +15,13 @@
   community.replaceChildren();
   const url=safeLink(data?.community?.discordUrl,/^(discord\.gg|discord\.com)$/i);
   if(url){
-   const link=authored(node('a',undefined,'mi-discord-link'));link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.title='Discord';link.setAttribute('aria-label','Discord');
-   const icon=node('span',undefined,'mi-discord-icon');icon.setAttribute('aria-hidden','true');link.append(icon);community.append(link);
+   const link=authored(node('a',undefined,'mi-discord-link'));link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.setAttribute('aria-label','Discord');link.setAttribute('aria-describedby','miDiscordTooltip');
+   const icon=node('span',undefined,'mi-discord-icon');icon.setAttribute('aria-hidden','true');const tip=node('span',undefined,'mi-link-tooltip');tip.id='miDiscordTooltip';tip.setAttribute('role','tooltip');tip.append(node('strong','Discord'),node('span',english?'Join Discord to share your work, discuss bugs and suggest updates.':'加入dc 分享你的作品，讨论bug和更新建议'));link.append(icon,tip);community.append(link);
   }
+  const rainoc=authored(node('a',undefined,'mi-discord-link mi-rainoc-link'));rainoc.href='https://rey544.github.io/rainoctool/v1.1.3/';rainoc.target='_blank';rainoc.rel='noopener noreferrer';rainoc.setAttribute('aria-label',english?'RainocTool web app':'RainocTool 网页版');rainoc.setAttribute('aria-describedby','miRainocTooltip');
+  const rainocIcon=node('span',undefined,'mi-rainoc-icon');rainocIcon.setAttribute('aria-hidden','true');
+  const rainocTip=node('span',undefined,'mi-link-tooltip');rainocTip.id='miRainocTooltip';rainocTip.setAttribute('role','tooltip');rainocTip.append(node('strong',english?'RainocTool web app':'RainocTool 网页版'),node('span',english?'Rain World OC, region and lore editor.':'雨世界 OC、区域地图与文本编辑工具。'));
+  rainoc.append(rainocIcon,rainocTip);community.append(rainoc);
   const intro=english?'MoreIterators is a completely free, open-source OC creation tool for creators with no coding experience.':'MoreIterators 是完全免费、开源的 OC 制作工具，希望帮助没有编程基础的创作者实现自己的想法。';
   const source=english?'If someone charges you to provide or install this tool, please subscribe to the official version for free on Steam Workshop and notify the creator.':'如果有人收费提供或代装本工具，请到 Steam 创意工坊免费订阅官方版本，并告知创作者。';
   const request=english?'We ask that you avoid using this tool to offer paid OC creation commissions.':'不建议将基于本工具的 OC 制作作为有偿约稿服务出售。';
@@ -42,7 +46,12 @@
   section.append(node('h4',String(value.version||'')));
   const lines=value.changes?.[locale()]||value.changes?.['zh-CN']||[],list=node('ul');
   for(const line of lines)if(typeof line==='string')list.append(node('li',line));
-  section.append(list);return section;
+  section.append(list);
+    const notices=value.notices?.[locale()]||value.notices?.['zh-CN']||[];
+    for(const line of notices)if(typeof line==='string')section.append(node('p',line,'mi-about-acknowledgement'));
+  const acknowledgements=value.acknowledgements?.[locale()]||value.acknowledgements?.['zh-CN']||[];
+  for(const line of acknowledgements)if(typeof line==='string')section.append(node('p',line,'mi-about-acknowledgement'));
+  return section;
  }
  function render(){
   if(!dialog||!data)return;const scroll=body.scrollTop||0;

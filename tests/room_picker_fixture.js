@@ -1,0 +1,60 @@
+const roomCalls=[],roomErrors=[];window.addEventListener('error',e=>roomErrors.push(e.message));window.addEventListener('unhandledrejection',e=>roomErrors.push(String(e.reason)));
+const roomBinding={region:'ZZ',ai:'ZZ_AI',entry:'ZZ_ENTRY',oracleId:'fixture',entryMode:'copy',aiNode:0,entryNode:0};
+const roomItems=[{name:'ZZ_AI',region:'ZZ',position:[0,180],connections:['ZZ_ENTRY'],exitCount:1,verified:true,oracle:true},{name:'ZZ_ENTRY',region:'ZZ',position:[0,80],connections:['ZZ_AI','DISCONNECTED'],exitCount:2,verified:true},{name:'ZZ_POOL',region:'ZZ',position:[140,0],connections:['ZZ_GARDEN','DISCONNECTED'],exitCount:2,verified:true},{name:'ZZ_GARDEN',region:'ZZ',position:[300,80],connections:['ZZ_POOL','DISCONNECTED'],exitCount:2,verified:true},{name:'ZZ_BLOCKED',region:'ZZ',position:[300,180],connections:['ZZ_BUSY'],exitCount:1,verified:true}];
+const roomGeometry={width:60,height:40,solids:[],shortcuts:[[0,20],[59,20]],cameras:[[0,0]],image:null};
+for(let x=0;x<60;x++)for(let y=0;y<40;y++)if(x<3||x>56||y<3||y>36||y===15&&x>15&&x<42)roomGeometry.solids.push([x,y]);
+const roomCanvas=document.createElement('canvas');roomCanvas.width=600;roomCanvas.height=400;const rc=roomCanvas.getContext('2d');rc.fillStyle='#23272a';rc.fillRect(0,0,600,400);rc.fillStyle='#6e7779';for(const[x,y]of roomGeometry.solids)rc.fillRect(x*10,390-y*10,10,10);rc.fillStyle='#3e6667';rc.fillRect(30,285,540,85);roomGeometry.image=roomCanvas.toDataURL();
+let fixtureLive=true;window.roomSlow=false;
+window.fetch=async(input,options={})=>{
+ const url=new URL(input,'http://fixture.invalid'),route=url.pathname.replace('/api/','');let value;
+ if(url.pathname.startsWith('/locales/'))return {ok:true,json:async()=>CATALOGS[url.pathname.split('/').pop().replace('.json','')]};
+ const body=options.body?JSON.parse(options.body):null;roomCalls.push({route,query:Object.fromEntries(url.searchParams),body});
+ if(route==='room-picker-map')value={regions:[{id:'ZZ',name:'测试区域',count:5},{id:'YY',name:'无地图区域',count:1}],region:url.searchParams.get('region')==='YY'?'YY':'ZZ',name:'测试区域',layout:url.searchParams.get('region')==='YY'?'connections':'map',rooms:url.searchParams.get('region')==='YY'?[{name:'YY_ROOM',region:'YY',connections:[],position:null}]:roomItems};
+ else if(route==='room-picker-preview'){const name=url.searchParams.get('room');if(window.roomSlow&&name==='ZZ_POOL')await new Promise(r=>setTimeout(r,80));value={...roomGeometry,room:name,image:name==='YY_ROOM'?null:roomGeometry.image};}
+ else if(route==='projects')value=[{projectId:'oc-room-fixture',name:'房间连接测试'}];
+ else if(route==='rooms')value={source:'live',fresh:fixtureLive,complete:true,capturedAt:new Date().toISOString(),regions:[{name:'ZZ',rooms:roomItems}],ownedRooms:[{room:'ZZ_AI'},{room:'ZZ_ENTRY'}]};
+ else if(route==='room-binding')value={binding:roomBinding,editable:true,aiExitCount:1,entryExitCount:2,warnings:[]};
+ else if(route==='room-draft')value={revision:0};
+ else if(route==='overseer')value={config:{enabled:false,ownerAbbreviation:'',bodyColors:['#aaaaff'],tipColors:['#ffffff'],eyePupil:'#000000',eyeWhite:'#ffffff',probabilities:{lens:.35,GateScene:.2,Angry:0},guests:[]},editable:true,canApply:false,revision:0};
+ else if(route==='room-binding/preview')value={token:'fixture-token',plan:{binding:body.binding,connectionChanges:[{room:body.binding.ai,node:body.binding.aiNode,fromRoom:'DISCONNECTED',to:body.binding.entry}],worldFiles:{},roomCopies:[],warnings:[]}};
+ else if(route==='broadcast-rooms')value=roomItems.map(room=>({region:room.region,room:room.name}));
+ else if(route==='broadcasts')value=[];
+ else if(route==='broadcast-default')value={uid:'fixture-broadcast',id:'B01',name:'广播位置测试',revision:0,region:'ZZ',room:'ZZ_POOL',x:.5,y:.5,style:{font:'normal',size:1,speed:1,hold:2.5},speakers:[],useCharacterColors:false,pages:[{lines:[{text:'A short broadcast.',color:'#ffffff'}]}]};
+ else if(route==='broadcast-room')value=roomGeometry;
+ else throw Error('Unexpected isolated route '+route);
+ return {ok:true,json:async()=>structuredClone(value)};
+};
+window.MIOverseerPreview={draw(){}};
+const waitFor=async fn=>{for(let i=0;i<300;i++){if(fn())return;await new Promise(r=>setTimeout(r,10));}throw Error('UI wait timed out');};
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+window.runRoomPickerTests=async()=>{
+ let checks=0;const assert=(v,msg)=>{checks++;if(!v)throw Error(msg);};let selected=null;
+ const opened=MIRoomPicker.open({room:'ZZ_POOL',region:'ZZ',pickPoint:true,point:{x:.3,y:.4},onSelect:value=>selected=value});
+ await waitFor(()=>document.querySelector('.rp-detail h3')?.textContent==='ZZ_POOL'&&!document.querySelector('.mi-room-picker footer button:last-child').disabled);
+ assert(document.querySelectorAll('.rp-node').length===5,'Map nodes missing');assert(document.querySelectorAll('.rp-edge').length===2,'Connections missing');
+ const search=document.querySelector('.rp-toolbar input');search.value='GARDEN';search.dispatchEvent(new Event('input'));assert(document.querySelectorAll('.rp-room-list button').length===1,'Room search failed');
+ assert(selected===null,'Selection mutated before confirmation');document.querySelector('.rp-room-list button').click();await waitFor(()=>document.querySelector('.rp-detail h3').textContent==='ZZ_GARDEN'&&!document.querySelector('.mi-room-picker footer button:last-child').disabled);
+ const canvas=document.querySelector('.rp-preview'),r=canvas.getBoundingClientRect();canvas.dispatchEvent(new MouseEvent('click',{clientX:r.left+r.width/2,clientY:r.top+r.height/2,bubbles:true}));document.querySelector('.mi-room-picker footer button:last-child').click();await opened;
+ assert(selected.room==='ZZ_GARDEN','Wrong room returned');assert(Math.abs(selected.point.x-.5)<.004&&Math.abs(selected.point.y-.5)<.004,'Coordinates not normalized bottom-origin '+JSON.stringify(selected.point));assert(Math.abs(selected.pixelPoint.x-600)<4&&Math.abs(selected.pixelPoint.y-400)<4,'Pixel coordinates incorrect');
+ selected=null;const cancelled=MIRoomPicker.open({room:'ZZ_POOL',region:'ZZ',onSelect:v=>selected=v});await waitFor(()=>document.querySelector('.rp-detail h3')?.textContent==='ZZ_POOL');document.querySelector('.mi-room-picker header button').click();assert(await cancelled===null&&selected===null,'Cancel mutated selection');
+ const restricted=MIRoomPicker.open({room:'ZZ_BLOCKED',region:'ZZ',selectable:room=>room.name!=='ZZ_BLOCKED'});await waitFor(()=>document.querySelector('.rp-status')?.textContent===MI18n.text('此房间不可选择'));assert(document.querySelector('.mi-room-picker footer button:last-child').disabled,'Unavailable room allowed');document.querySelector('.mi-room-picker header button').click();await restricted;
+ const fallback=MIRoomPicker.open({room:'YY_ROOM',region:'YY'});await waitFor(()=>document.querySelector('.rp-hint')?.textContent===MI18n.text('房间地形'));assert(document.querySelector('.rp-map-heading>span').textContent===MI18n.text('连接示意'),'Invented map coordinates claimed');document.querySelector('.mi-room-picker header button').click();await fallback;
+ window.roomSlow=true;const stale=MIRoomPicker.open({room:'ZZ_POOL',region:'ZZ'});await waitFor(()=>document.querySelectorAll('.rp-node').length===5);document.querySelector('.rp-node[data-room="ZZ_GARDEN"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));await delay(120);assert(document.querySelector('.rp-detail h3').textContent==='ZZ_GARDEN','Stale response changed current room');document.querySelector('.mi-room-picker header button').click();await stale;window.roomSlow=false;
+ assert(!roomCalls.some(call=>call.body),'Picker wrote data');assert(!roomErrors.length,roomErrors.join('\n'));
+ return {checks,errors:roomErrors};
+};
+window.runConnectionTests=async()=>{
+ let checks=0;const assert=(v,msg)=>{checks++;if(!v)throw Error(msg);};await waitFor(()=>document.querySelector('#ai')?.value==='ZZ_AI'&&!document.querySelector('#bindingFields').disabled);
+ assert(document.querySelectorAll('.connection-endpoint').length===2,'Endpoint visual missing');assert(document.querySelector('.connection-endpoint #aiNode'),'AI port not in visual');assert(document.querySelector('.connection-endpoint #entryNode'),'Entry port not in visual');
+ roomCalls.length=0;document.querySelectorAll('.connection-room-preview')[1].click();await waitFor(()=>document.querySelectorAll('.rp-node').length===5);document.querySelector('.rp-node[data-room="ZZ_POOL"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));await waitFor(()=>!document.querySelector('.mi-room-picker footer button:last-child').disabled);document.querySelector('.mi-room-picker footer button:last-child').click();await waitFor(()=>!document.querySelector('.mi-room-picker'));
+ assert(document.querySelector('#entry').value==='ZZ_POOL'&&document.querySelector('#entryMode').value==='existing','Map selection did not update original form');assert(document.querySelector('#entryNode').value==='1','Did not choose free connection');assert(!roomCalls.some(call=>call.body),'Selection saved before preview');
+ document.querySelector('#bindingForm').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));await waitFor(()=>!document.querySelector('#applyBinding').disabled);assert(roomCalls.filter(call=>call.route==='room-binding/preview').length===1,'Skipped original connection preview');assert(!roomCalls.some(call=>call.route==='room-binding/apply'),'Applied without user action');
+ fixtureLive=false;document.querySelector('#refreshCatalog').click();await delay(40);document.querySelectorAll('.connection-room-preview')[1].click();await waitFor(()=>document.querySelectorAll('.rp-node').length===5);document.querySelector('.rp-node[data-room="ZZ_GARDEN"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));await delay(40);assert(document.querySelector('.mi-room-picker footer button:last-child').disabled,'Offline connection guard bypassed');document.querySelector('.mi-room-picker header button').click();assert(!roomErrors.length,roomErrors.join('\n'));return {checks,errors:roomErrors};
+};
+window.runBroadcastPickerTests=async()=>{
+ let checks=0;const assert=(v,msg)=>{checks++;if(!v)throw Error(msg);};await waitFor(()=>document.querySelector('#room')?.value==='ZZ_POOL');
+ assert(document.querySelector('#broadcastMapPicker'),'Broadcast map entry missing');roomCalls.length=0;document.querySelector('#broadcastMapPicker').click();await waitFor(()=>document.querySelectorAll('.rp-node').length===5);document.querySelector('.rp-node[data-room="ZZ_GARDEN"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));await waitFor(()=>!document.querySelector('.mi-room-picker footer button:last-child').disabled);
+ const canvas=document.querySelector('.rp-preview'),rect=canvas.getBoundingClientRect();canvas.dispatchEvent(new MouseEvent('click',{clientX:rect.left+rect.width*.3,clientY:rect.top+rect.height*.25,bubbles:true}));document.querySelector('.mi-room-picker footer button:last-child').click();await waitFor(()=>!document.querySelector('.mi-room-picker'));
+ assert(document.querySelector('#room').value==='ZZ_GARDEN','Broadcast room not updated');assert(Number(document.querySelector('#x').value)>25&&Number(document.querySelector('#x').value)<35,'Broadcast x lost');assert(Number(document.querySelector('#y').value)>70&&Number(document.querySelector('#y').value)<80,'Broadcast y not bottom-origin');assert(!roomCalls.some(call=>call.body),'Broadcast map saved prematurely');
+ const before=document.querySelector('#room').value;document.querySelector('#broadcastMapPicker').click();await waitFor(()=>document.querySelectorAll('.rp-node').length===5);document.querySelector('.mi-room-picker header button').click();assert(document.querySelector('#room').value===before,'Broadcast cancellation changed room');assert(!roomErrors.length,roomErrors.join('\n'));return {checks,errors:roomErrors};
+};

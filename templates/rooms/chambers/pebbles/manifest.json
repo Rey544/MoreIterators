@@ -1,0 +1,29 @@
+{
+  "schema": "moreiterators.chamber-template.v1",
+  "id": "mi-chamber-pebbles",
+  "name": {
+    "zh-CN": "五块卵石",
+    "en": "Five Pebbles"
+  },
+  "source": "source/chamber.txt",
+  "sourceBase": "source/chamber",
+  "renderedBase": "chamber",
+  "aiNode": 1,
+  "width": 48,
+  "height": 36,
+  "cameraCount": 1,
+  "preview": "thumbnail.png",
+  "origin": "Rain World SS_AI",
+  "roomDefaults": {
+    "roomPaletteMode": "room",
+    "roomGravityMode": "room"
+  },
+  "files": {
+    "chamber.txt": "07c163c6344daf24d163776bc8875b30763705717641e49f25f31fd414cc55db",
+    "chamber_1.png": "b9b91479905380ffa4ccb9cc2e4338800fd5633224fa06fbcd9b25ec731f7510",
+    "chamber_settings.txt": "96c0fd3e6c107db0541fea8d5b52203c0e702968d6c1546ad7921b1e04442a46",
+    "source/chamber.png": "0b0d4be03c96130e5bdb2573ce4c5b02be611ceeb48754230a8d9f32f7c77b3a",
+    "source/chamber.txt": "9d91f55950f8d9be3172776ba0a13feef6ac47c5a16eecadfd220993136b10da",
+    "thumbnail.png": "6f7b283d5b039a980a7afd90d57db86898cc8e1c3b759ee207c665fe158e403f"
+  }
+}

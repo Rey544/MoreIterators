@@ -19,25 +19,43 @@ internal static class CreatorStudioMenu {
  static readonly List<Menu.SimpleButton> navigation=new List<Menu.SimpleButton>();
  static readonly List<Menu.SimpleButton> collectionButtons=new List<Menu.SimpleButton>();
  static bool oldInfoVisible,entrySpawn=true;
- static int category,listOffset,pearlOffset,broadcastOffset,reader,pearlStage,textOffset,broadcastPage;
+ static int category,listOffset,pearlOffset,broadcastOffset,reader,pearlStage,textOffset,broadcastPage,pearlStageCount=5;
  static string selectedProject="",selectedPearl="",selectedBroadcast="",catalog="";
  static CreatorMenuScrollBar listScroll,textScroll;
  static readonly List<Menu.MenuLabel> textLabels=new List<Menu.MenuLabel>();
  static List<string> textLines=new List<string>();
  static float textTop,textBottom;
  static float nextPoll,left,right,top,listWidth,width,height;
+ static Menu.MainMenu transitionMenu;
+ static Menu.MenuObject transitionSelection;
+ static FSprite transitionFade;
+ static float transitionStart;
+ static int transitionTab;
+ static bool transitionReturning,transitionSwitched;
+ const float TransitionSeconds=.45f;
  const string Prefix="MI_STUDIO_";
  const float CollectionStep=50,CollectionSize=42;
  const float FooterY=42,FooterHeight=32,FooterGap=12,ContentBottom=90;
  internal static bool IsOpen { get { return menu!=null&&page!=null; } }
+ internal static bool IsTransitioning(Menu.Menu m){return transitionMenu!=null&&transitionMenu==m;}
  internal static int InsertBeforeRemix(IList<Menu.SimpleButton> list){
   for(int i=0;i<list.Count;i++)if(list[i].signalText=="REMIX")return list.Count-i;
   return 0;
  }
  public static void InstallHooks(List<Action> cleanup){
-  var hook=new On.Menu.Menu.hook_ShutDownProcess((orig,m)=>{if(m==menu)Close();orig(m);});
+  var hook=new On.Menu.Menu.hook_ShutDownProcess((orig,m)=>{
+   MiDiagnostics.CloseProcess("On.Menu.Menu.ShutDownProcess","MI studio menu",delegate{if(m==menu||IsTransitioning(m))Close();},delegate{orig(m);});
+  });
   On.Menu.Menu.ShutDownProcess+=hook;
-  cleanup.Add(delegate{Close();On.Menu.Menu.ShutDownProcess-=hook;});
+  cleanup.Add(delegate{On.Menu.Menu.ShutDownProcess-=hook;MiDiagnostics.Cleanup("MI-MENU-CLOSE","CreatorStudioMenu.RemoveHooks",Close,"Closing studio menu.");});
+  var buttons=new On.Menu.ButtonBehavior.hook_Update((orig,b)=>{
+   if(b.owner!=null&&IsTransitioning(b.owner.menu)){b.clicked=false;return;}orig(b);
+  });
+  On.Menu.ButtonBehavior.Update+=buttons;
+  cleanup.Add(delegate{On.Menu.ButtonBehavior.Update-=buttons;});
+  var graphics=new On.Menu.Menu.hook_GrafUpdate((orig,m,t)=>{orig(m,t);if(IsTransitioning(m))DrawTransition();});
+  On.Menu.Menu.GrafUpdate+=graphics;
+  cleanup.Add(delegate{On.Menu.Menu.GrafUpdate-=graphics;});
  }
  public static void Install(Menu.MainMenu m){
   Close();
@@ -50,8 +68,48 @@ internal static class CreatorStudioMenu {
   m.AddMainMenuButton(button,delegate{Open(m,0);},InsertBeforeRemix(list));
  }
  public static void Open(Menu.MainMenu m,int tab){
+  if(transitionMenu!=null)return;
   if(IsOpen&&menu==m){category=tab;textOffset=broadcastPage=0;Render();return;}
-  Close();menu=m;category=tab;textOffset=broadcastPage=0;originalPage=m.pages[0];originalScene=m.scene;originalBack=m.backObject;originalSelection=m.selectedObject;
+  if(CanTransition(m)){Close();BeginTransition(m,false,tab);}
+ }
+ static bool CanTransition(Menu.MainMenu m){return m!=null&&m.manager.currentMainLoop==m&&m.manager.upcomingProcess==null&&m.manager.dialog==null&&m.manager.fadeToBlack<=0;}
+ static void BeginTransition(Menu.MainMenu m,bool returning,int tab){
+  if(transitionMenu!=null||!CanTransition(m))return;
+  transitionMenu=m;transitionSelection=m.selectedObject;transitionReturning=returning;transitionSwitched=false;transitionTab=tab;transitionStart=Time.realtimeSinceStartup;
+  transitionFade=new FSprite("Futile_White"){color=Color.black,alpha=0,shader=m.manager.rainWorld.Shaders["EdgeFade"]};
+  Futile.stage.AddChild(transitionFade);ClearTransitionInput(m);DrawTransition();
+ }
+ static void ClearTransitionInput(Menu.MainMenu m){
+  m.pressButton=false;m.holdButton=m.lastHoldButton=m.HoldButtonDisregardingFreeze;
+  m.mouseDown=m.lastMouseDown=Input.GetMouseButton(0);m.lastInput=m.input;m.mouseScrollWheelMovement=0;
+ }
+ static void CancelTransition(){
+  var fade=transitionFade;transitionFade=null;transitionMenu=null;transitionSelection=null;if(fade!=null)fade.RemoveFromContainer();
+ }
+ static void DrawTransition(){
+  if(transitionFade==null)return;
+  float amount=Mathf.Clamp01((Time.realtimeSinceStartup-transitionStart)/TransitionSeconds);if(transitionSwitched)amount=1-amount;
+  Vector2 screen=transitionMenu.manager.rainWorld.screenSize;
+  transitionFade.x=screen.x*.5f;transitionFade.y=screen.y*.5f;
+   
+  transitionFade.scaleX=(screen.x*Mathf.Lerp(1.5f,1,amount)+2)/16;
+  transitionFade.scaleY=(screen.y*Mathf.Lerp(2.5f,1.5f,amount)+2)/16;
+  transitionFade.alpha=Mathf.InverseLerp(0,.9f,amount);
+  transitionFade.RemoveFromContainer();Futile.stage.AddChild(transitionFade);
+ }
+ static void UpdateTransition(Menu.MainMenu m){
+  if(!CanTransition(m)){Close();return;}
+  ClearTransitionInput(m);m.selectedObject=transitionSelection;
+  if(Time.realtimeSinceStartup-transitionStart>=TransitionSeconds){
+   if(transitionSwitched){CancelTransition();return;}
+   try{if(transitionReturning)ClosePage();else OpenNow(m,transitionTab);}
+   catch{Close();throw;}
+   transitionSelection=m.selectedObject;transitionSwitched=true;transitionStart=Time.realtimeSinceStartup;
+  }
+  DrawTransition();
+ }
+ static void OpenNow(Menu.MainMenu m,int tab){
+  ClosePage();menu=m;category=tab;textOffset=broadcastPage=0;originalPage=m.pages[0];originalScene=m.scene;originalBack=m.backObject;originalSelection=m.selectedObject;
   for(int i=0;i<m.container.GetChildCount();i++){var node=m.container.GetChildAt(i);hidden.Add(new KeyValuePair<FNode,bool>(node,node.isVisible));node.isVisible=false;}
   if(m.infoLabel!=null){oldInfoVisible=m.infoLabel.isVisible;m.infoLabel.isVisible=false;}
   page=new Menu.Page(m,null,"More Iterators",0);page.pos=page.lastPos=Vector2.zero;
@@ -67,13 +125,25 @@ internal static class CreatorStudioMenu {
   catalog=CreatorRuntime.Catalog();nextPoll=Time.realtimeSinceStartup+.5f;Render();
  }
  public static void Close(){
+  if(transitionMenu!=null)Cleanup(delegate{ClearTransitionInput(transitionMenu);transitionMenu.selectedObject=transitionSelection;},"Restoring transition input.");
+  Cleanup(CancelTransition,"Removing transition overlay.");ClosePage();
+ }
+ static void Cleanup(Action action,string context){MiDiagnostics.Cleanup("MI-MENU-CLOSE","CreatorStudioMenu.Close",action,context);}
+ static void ClosePage(){
   if(menu==null)return;
-  Clear();if(page!=null){page.RemoveSubObject(page.mouseCursor);page.mouseCursor.owner=originalPage;originalPage.subObjects.Add(page.mouseCursor);page.RemoveSprites();}
-  if(originalPage!=null){menu.pages[0]=originalPage;menu.currentPage=0;}
-  menu.scene=originalScene;menu.backObject=originalBack;menu.selectedObject=originalSelection;
-  foreach(var pair in hidden)pair.Key.isVisible=pair.Value;hidden.Clear();
-  if(menu.infoLabel!=null)menu.infoLabel.isVisible=oldInfoVisible;
-  menu=null;page=originalPage=null;originalScene=null;originalBack=originalSelection=null;
+  try{
+   Cleanup(Clear,"Removing studio controls.");
+   if(page!=null){
+    Cleanup(delegate{page.RemoveSubObject(page.mouseCursor);page.mouseCursor.owner=originalPage;if(originalPage!=null&&!originalPage.subObjects.Contains(page.mouseCursor))originalPage.subObjects.Add(page.mouseCursor);},"Returning native cursor.");
+    Cleanup(page.RemoveSprites,"Removing studio page.");
+   }
+   Cleanup(delegate{if(originalPage!=null){menu.pages[0]=originalPage;menu.currentPage=0;}menu.scene=originalScene;menu.backObject=originalBack;menu.selectedObject=originalSelection;},"Restoring native menu.");
+   foreach(var pair in hidden){var entry=pair;Cleanup(delegate{entry.Key.isVisible=entry.Value;},"Restoring native graphics.");}
+   if(menu.infoLabel!=null)Cleanup(delegate{menu.infoLabel.isVisible=oldInfoVisible;},"Restoring native information label.");
+  }finally{
+   hidden.Clear();controls.Clear();navigation.Clear();collectionButtons.Clear();textLabels.Clear();icons.Clear();listScroll=textScroll=null;
+   menu=null;page=originalPage=null;originalScene=null;originalBack=originalSelection=null;
+  }
  }
  static void Clear(){
   foreach(var item in controls){item.RemoveSprites();if(page!=null)page.RemoveSubObject(item);}controls.Clear();navigation.Clear();collectionButtons.Clear();textLabels.Clear();listScroll=textScroll=null;
@@ -239,15 +309,22 @@ internal static class CreatorStudioMenu {
   Label(selected.name,right,top,width-left-right,true);
   var readers=selected.readers??new PearlReaderProfile[0];if(readers.Length==0)return;
   reader=Mathf.Clamp(reader,0,readers.Length-1);var selectedReader=readers[reader];if(selectedReader==null)return;
+  bool native=!String.IsNullOrEmpty(selectedReader.nativeOracleId);
+  string readerName=native?(UiText.Get(selectedReader.nativeOracleId=="DM"||selectedReader.nativeOracleId=="SL"?"Looks to the Moon":"Five Pebbles")+" ("+selectedReader.nativeOracleId+")"):selectedReader.name;
   float span=width-left-right,controlsY=top-46;
-  string readerText=UiText.Format("Reader: {0}  ›",selectedReader.name);float readerWidth=CompactWidth(readerText,span);
+  string readerText=UiText.Format("Reader: {0}  ›",readerName);float readerWidth=CompactWidth(readerText,span);
+  pearlStageCount=native?(selectedReader.repeatEnabled?2:1):5;pearlStage=Mathf.Clamp(pearlStage,0,pearlStageCount-1);
   string[] stages={"First reading","Repeated delivery","Leaving midway","Return","Several this cycle"};string stage=UiText.Get(stages[pearlStage]);float stageWidth=CompactWidth(stage,span);
   bool sameRow=readerWidth+stageWidth+12<=span;float readerX=right+(span-(sameRow?readerWidth+stageWidth+12:readerWidth))*.5f;
   Button(readerText,"READER",readerX,controlsY,readerWidth);
   float stageX=sameRow?readerX+readerWidth+12:right+(span-stageWidth)*.5f;if(!sameRow)controlsY-=42;
-  Button(stage,"STAGE",stageX,controlsY,stageWidth);
-  var shared=CreatorDialogueProfile.For(IteratorDesign.ForId(selectedReader.oracleId)).pearlReading;var lines=new List<string>();
-  if(pearlStage==0)Lines(lines,selectedReader.read);else{var groups=pearlStage==1?shared.repeat:pearlStage==2?selectedReader.leaving:pearlStage==3?selectedReader.returning:shared.many;if(groups!=null)foreach(var group in groups){if(group==null)continue;Wrap(lines,group.name);Lines(lines,group.lines);lines.Add("");}}
+  Button(stage,"STAGE",stageX,controlsY,stageWidth).buttonBehav.greyedOut=pearlStageCount==1;
+  var lines=new List<string>();
+  if(pearlStage==0)Lines(lines,selectedReader.read);else{
+   var shared=native?null:CreatorDialogueProfile.For(IteratorDesign.ForId(selectedReader.oracleId)).pearlReading;
+   var groups=native?selectedReader.repeat:pearlStage==1?shared.repeat:pearlStage==2?selectedReader.leaving:pearlStage==3?selectedReader.returning:shared.many;
+   if(groups!=null)foreach(var group in groups){if(group==null)continue;Wrap(lines,group.name);Lines(lines,group.lines);lines.Add("");}
+  }
   Text(lines,controlsY-50);
  }
  static void Lines(List<string> result,CreatorDialogueLine[] lines){if(lines!=null)foreach(var line in lines)if(line!=null)Wrap(result,line.text);}
@@ -261,6 +338,7 @@ internal static class CreatorStudioMenu {
  static void SetTextOffset(int offset){textOffset=offset;for(int i=0;i<textLabels.Count;i++)textLabels[i].text=textOffset+i<textLines.Count?textLines[textOffset+i]:"";}
  static void Scroll(int delta){if(listScroll!=null)listScroll.Move(delta);}
  public static void Update(Menu.MainMenu m){
+  if(IsTransitioning(m)){UpdateTransition(m);return;}
   if(!IsOpen||m!=menu||!m.Active||m.manager.dialog!=null)return;
   if(listScroll!=null)listScroll.Poll();if(textScroll!=null)textScroll.Poll();
   if(m.mouseScrollWheelMovement!=0){
@@ -268,14 +346,15 @@ internal static class CreatorStudioMenu {
    if(m.mousePosition.x>=left&&m.mousePosition.x<=left+listWidth+22&&m.mousePosition.y>88&&m.mousePosition.y<top+(category==0?40:CollectionSize))Scroll(delta);
    else if(textScroll!=null&&m.mousePosition.x>=right&&m.mousePosition.x<=width-left&&m.mousePosition.y>=textBottom&&m.mousePosition.y<=textTop)textScroll.Move(delta*3);
   }
-  if(Input.GetKeyDown(KeyCode.Escape)){Close();return;}
+  if(Input.GetKeyDown(KeyCode.Escape)){BeginTransition(m,true,0);return;}
   if(Time.realtimeSinceStartup<nextPoll)return;nextPoll=Time.realtimeSinceStartup+.5f;string current=CreatorRuntime.Catalog();if(current!=catalog){catalog=current;Render();}
  }
  public static bool Signal(Menu.MainMenu m,string signal){
-  if(signal=="TEST_MENU"){if(IsOpen)Close();else Open(m,0);return true;}
+  if(IsTransitioning(m))return true;
+  if(signal=="TEST_MENU"){if(IsOpen&&menu==m)BeginTransition(m,true,0);else Open(m,0);return true;}
   if(signal=="TEST_PEARLS"||signal=="TEST_BROADCASTS"){Open(m,signal=="TEST_PEARLS"?2:1);return true;}
   if(String.IsNullOrEmpty(signal)||!signal.StartsWith(Prefix)||!IsOpen||m!=menu)return false;string action=signal.Substring(Prefix.Length);
-  if(action=="CLOSE"){Close();return true;}
+  if(action=="CLOSE"){BeginTransition(m,true,0);return true;}
   if(action.StartsWith("TAB_")){int.TryParse(action.Substring(4),out category);category=Mathf.Clamp(category,0,2);textOffset=broadcastPage=0;}
   else if(action.StartsWith("PROJECT_")){selectedProject=action.Substring(8);}
   else if(action.StartsWith("PEARL_")){int i;var all=CreatorPearlCatalog.All();if(int.TryParse(action.Substring(6),out i)&&i>=0&&i<all.Count){selectedPearl=all[i].uid;reader=pearlStage=textOffset=broadcastPage=0;}}
@@ -287,7 +366,7 @@ internal static class CreatorStudioMenu {
   else if(action=="KEEP")CreatorRuntime.Reset=!CreatorRuntime.Reset;
   else if(action=="MODE")CreatorRuntime.Mode=CreatorRuntime.Mode=="silent"?"story":CreatorRuntime.Mode=="story"?"read":"silent";
   else if(action=="READER"){var p=CreatorPearlCatalog.All().Find(v=>v.uid==selectedPearl);if(p!=null&&p.readers!=null&&p.readers.Length>0)reader=(reader+1)%p.readers.Length;textOffset=broadcastPage=0;}
-  else if(action=="STAGE"){pearlStage=(pearlStage+1)%5;textOffset=broadcastPage=0;}
+  else if(action=="STAGE"){pearlStage=(pearlStage+1)%pearlStageCount;textOffset=broadcastPage=0;}
   else if(action=="TEXT_UP"){broadcastPage=Math.Max(0,broadcastPage-1);textOffset=0;}
   else if(action=="TEXT_DOWN"){broadcastPage++;textOffset=0;}
   else if(action=="WEB"){StudioLauncher.Open(m,category==0?"appearance":category==1?"broadcasts":"pearls",category==0?selectedProject:"");return true;}

@@ -1,6 +1,6 @@
 {
   "schema": "moreiterators.changelog.v1",
-  "plannedRelease": "0.3.0",
+  "plannedRelease": "0.4.0",
   "thanks": [
     "粉笔",
     "LL77",
@@ -12,17 +12,108 @@
   ],
   "acknowledgements": {
     "zh-CN": [
-      "本次导出测试使用粉笔的 OC「渺宇一砾」（myys），包含五颗珍珠和投影动画。",
-      "特别感谢 xuanzebufeng 对本地化、运行环境打包和资源读取提出的修改建议。"
+      "本次 debug 测试使用了匿名用户的作品「pool moon」。",
+      "特别感谢 Xuanzebufeng 在兼容性问题上提供的建议。"
     ],
     "en": [
-      "Export testing for this update used 粉笔's OC 渺宇一砾 (myys), including five pearls and a projection animation.",
-      "Special thanks to xuanzebufeng for suggestions on localization, bundling the runtime, and loading mod resources."
+      "Debug testing for this update used pool moon, a work by an anonymous user.",
+      "Special thanks to Xuanzebufeng for suggestions on compatibility issues."
     ]
   },
   "entries": [
     {
+      "version": "0.4.0",
+      "changes": {
+        "zh-CN": [
+          "修复路径选择窗口无法正常显示及重复选择时报错的问题。",
+          "修复剧情对话与语音试听冲突的问题。",
+          "修复独立导出模组的印记与珍珠读取判断。",
+          "修复误收其他模组错误提示的问题。",
+          "补充游戏内菜单进入与返回的淡入淡出。",
+          "修复房间列表和投影预览读取未启用模组资源的问题。",
+          "修复 Rained 自定义素材路径与房间同步失败的问题。",
+          "优化导出界面，先选择内容，再选择格式。",
+          "新增项目 ZIP，包含对应房间及可选的额外房间。",
+          "新增整片区域打包，保留区域文件与依赖信息。",
+          "新增图层右键菜单，支持重命名、向下合并、删除与剪辑蒙版。",
+          "补充迭代器显示异常的诊断记录。",
+          "新增原版迭代器 DM、CL、SL、SS 珍珠读取者。",
+          "新增地图选房与房间位置预览。",
+          "优化区域连接界面。",
+          "新增房间色板与重力设置。",
+          "新增原版投影缓动与中英文对照，修复缓动预览。",
+          "新增诊断等级设置。",
+          "修复游戏退出后编辑器进程残留的问题。",
+          "修复房间导出遗漏地形色板的问题。",
+          "修复同时加载多个导出模组时的贴图冲突。",
+          "修复原版环境音校验与最新房间设置读取。",
+          "补充 RegionKit 额外色板导出。",
+          "优化演算室性能。",
+          "新增完整地图模组导出与剧情入口。",
+          "新增封面与纵深场景编辑，入口：外观调整 → 导出 → 导出完整地图模组 → 封面与场景。",
+          "调整剪辑蒙版层级显示，取消图层名称下划线。",
+          "新增 RainocTool 广播 JSON 导入导出，支持广播图标颜色编辑。",
+          "新增 RainocTool 入口，优化 Discord 图标提示。",
+          "整理各编辑页面的参数层级与作用范围。",
+          "修复导出选项丢失与旧广播样式被覆盖的问题。",
+          "新增五块卵石、仰望皓月、残破、不规则和多屏演算室房间预设，支持尺寸选择和房间替换。",
+          "新增第三方房间资源检查，导出时可选择冲突版本，保留本地作品。"
+        ],
+        "en": [
+          "Fix file selection dialogs failing to appear and errors when selecting a path again.",
+          "Fix conflicts between story dialogue and voice previews.",
+          "Fix mark checks and pearl reading in standalone exports.",
+          "Fix unrelated mod errors being reported by MI.",
+          "Add fade transitions when entering and leaving the in-game menu.",
+          "Fix room lists and projection previews reading resources from disabled mods.",
+          "Fix custom Rained asset paths and failed room synchronization.",
+          "Reorganize export options: choose content before the format.",
+          "Add project ZIP export with the matching rooms and optional additional rooms.",
+          "Add whole-region packaging with region files and dependency information.",
+          "Add a layer context menu with rename, merge down, delete, and clipping masks.",
+          "Add diagnostic records for iterator rendering issues.",
+          "Add pearl readers for the vanilla iterators DM, CL, SL and SS.",
+          "Add map-based room selection and room position previews.",
+          "Improve the region connection interface.",
+          "Add room palette and gravity settings.",
+          "Add native projection easing with translated names and fix easing previews.",
+          "Add diagnostic verbosity settings.",
+          "Fix editor processes remaining after the game exits.",
+          "Fix missing terrain palettes in room exports.",
+          "Fix texture conflicts when loading multiple exported mods.",
+          "Fix native ambient audio validation and loading of the latest room settings.",
+          "Include RegionKit extra palettes in exports.",
+          "Improve chamber performance.",
+          "Add complete map mod export with a story entry.",
+          "Add cover and depth scene editing, available under Appearance → Export → Export complete map mod → Cover and scenes.",
+          "Adjust clipping-mask hierarchy display and remove layer-name underlines.",
+          "Add RainocTool broadcast JSON import and export, with broadcast icon color editing.",
+          "Add a RainocTool link and improve the Discord icon tooltip.",
+          "Reorganize settings by object and scope across editor pages.",
+          "Fix lost export preferences and overwritten styles in older broadcasts.",
+          "Add Five Pebbles, Looks to the Moon, damaged, irregular and multi-screen chamber presets with size selection and room replacement.",
+          "Add third-party room asset checks and export version choices while preserving local projects."
+        ]
+      },
+      "notices": {
+        "zh-CN": [
+          "受时间和个人开发维护精力限制，本次更新还没来得及完成所有功能的实机测试。项目 ZIP、独立模组导出、新增房间预设与尺寸、完整地图的单人剧情与 Meadow 联机、游戏内纵深场景，以及 Steam 退出状态尚未完成完整验证；偶发半透明问题仍在排查。如果遇到 bug，请及时到 Discord 反馈。"
+        ],
+        "en": [
+          "With limited time and the workload of developing and maintaining this project on my own, I have not been able to test every feature in-game. Project ZIPs, standalone mod exports, the new room presets and sizes, complete maps in single-player Story and Meadow multiplayer, in-game depth scenes, and Steam returning to its stopped state still need full validation. The intermittent transparency issue is still under investigation. Please report any bugs on Discord."
+        ]
+      }
+    },
+    {
       "version": "0.3.0",
+      "acknowledgements": {
+        "zh-CN": [
+          "本次导出测试使用粉笔的 OC「渺宇一砾」（myys），包含五颗珍珠和投影动画。"
+        ],
+        "en": [
+          "Export testing for this update used 粉笔's OC 渺宇一砾 (myys), including five pearls and a projection animation."
+        ]
+      },
       "changes": {
         "zh-CN": [
           "Windows 64 位工坊包内置 Python 3.13 与 Pillow 环境，可一键启动，无需手动安装。",

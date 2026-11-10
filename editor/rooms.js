@@ -28,7 +28,7 @@ let overseerDocument=null,overseerConfig=null,overseerAll=null,overseerProfileId
 const overseerProbabilities=['lens','GateScene','Angry'];
 function notice(message='',bad=false){appliedNoticeBinding=null;$('notice').textContent=message;$('notice').dataset.kind=bad?'error':'info';}
 function warnings(host,items){$(host).replaceChildren(...(items||[]).map(message=>content('p',MI18n.text(message))));}
-function setBusy(value){busy=value;$('projects').disabled=value||!projects.length;$('bindingFields').disabled=value||!description?.editable;$('previewBinding').disabled=value||!description?.editable;$('refreshCatalog').disabled=value;$('applyBinding').disabled=value||!token;overseerControls();cleanupControls();if(catalog)renderRooms();}
+function setBusy(value){busy=value;for(const kind of ['ai','entry'])diagramParts[kind].preview.disabled=value||!project;$('projects').disabled=value||!projects.length;$('bindingFields').disabled=value||!description?.editable;$('previewBinding').disabled=value||!description?.editable;$('refreshCatalog').disabled=value;$('applyBinding').disabled=value||!token;overseerControls();cleanupControls();if(catalog)renderRooms();}
 function invalidate(){plan=null;token=null;$('planContent').hidden=true;$('planEmpty').hidden=false;$('planEmpty').textContent=t('previewNeeded');$('applyBinding').disabled=true;if(project)$('saveState').textContent=t(dirty?'pending':description?.editable?'saved':'readOnly');}
 function changed(){dirty=roomDraftDirty=true;invalidate();$('saveState').textContent=t('pending');renderPairs();notice();window.MIUndo?.changed();}
 function endpoint(room,node){return node===null||node===undefined?t('shaftUnknown',{room}):t('shaft',{room,node,ordinal:node+1});}
@@ -59,6 +59,7 @@ function renderNodes(){
   nodes('entryNode',room?.exitCount??description?.entryExitCount,binding.entryNode,room);
   let message='';if(binding.entryMode==='existing')message=!MIRoomChoices.live(catalog)?t('needsLive'):!room?t('chooseRoom'):!MIRoomChoices.verified(room)?t('unverifiedRoom'):!MIRoomChoices.free(room,binding.entryNode,description.binding)?t('occupied'):'';
   $('entryStatus').textContent=message;
+  renderConnectionDiagram();
 }
 function renderBinding(){
   if(!binding)return;for(const key of ['region','ai','entry','oracleId','entryMode'])$(key).value=binding[key];renderNodes();
@@ -159,6 +160,43 @@ function drawOverseer(time=0){
   if(!overseerConfig)return;
   MIOverseerPreview.draw($('overseerCanvas'),overseerConfig,time);
 }
+const connectionDiagram=el('div');connectionDiagram.className='connection-diagram';
+const diagramParts={};
+for(const [kind,label,nodeId]of [['ai','演算室','aiNode'],['entry','入口房间','entryNode']]){
+  const card=el('div');card.className='connection-endpoint';const title=el('span',MI18n.text(label)),preview=el('button');preview.type='button';preview.className='connection-room-preview';
+  const image=el('img');image.alt='';image.hidden=true;const name=content('span','');preview.append(image,name);card.append(title,preview,$(nodeId).closest('label'));
+  preview.onclick=()=>openConnectionPicker(kind);diagramParts[kind]={card,preview,image,name};connectionDiagram.append(card);
+  if(kind==='ai'){const line=el('span','↔');line.className='connection-arrow';line.setAttribute('aria-hidden','true');connectionDiagram.append(line);}
+}
+$('connectionDiagramHost').append(connectionDiagram);
+const catalogMapPicker=el('button',MI18n.text('地图选房'));catalogMapPicker.type='button';catalogMapPicker.id='catalogMapPicker';catalogMapPicker.onclick=()=>openConnectionPicker('entry');$('refreshCatalog').before(catalogMapPicker);
+let diagramPreviewKey='',diagramPreviewToken=0;
+function canUseEntry(room){return !!room&&!busy&&!!description?.editable&&MIRoomChoices.live(catalog)&&MIRoomChoices.verified(room)&&!MIRoomChoices.owned(catalog,room,description?.binding)&&room.name!==binding?.ai&&room.connections.some((_,node)=>MIRoomChoices.free(room,node,description.binding));}
+function chooseEntryRoom(room){
+  if(!canUseEntry(room))throw Error(t(!MIRoomChoices.live(catalog)?'needsLive':'unverifiedRoom'));
+  if(room.region!==binding.region){
+    if(!binding.ai.startsWith(binding.region+'_'))throw Error(t('identityMismatch'));
+    const ai=room.region+binding.ai.slice(binding.region.length);
+    if(!confirm(t('confirmRegionConnection',{room:room.name,fromRegion:binding.region,region:room.region,fromAI:binding.ai,ai})))return false;
+    binding.region=room.region;binding.ai=ai;
+  }
+  binding.entryMode='existing';binding.entry=room.name;
+  binding.entryNode=room.connections.findIndex((_,node)=>MIRoomChoices.free(room,node,description.binding));changed();renderBinding();renderRooms();
+  return true;
+}
+function openConnectionPicker(kind){
+  if(!project||!binding||!window.MIRoomPicker)return;
+  const readOnly=kind==='ai'||!description?.editable;
+  return MIRoomPicker.open({room:kind==='ai'?description.binding.ai:binding.entry,region:binding.region,projectId:project.projectId,readOnly,
+    selectable:room=>canUseEntry(MIRoomChoices.rooms(catalog).find(item=>item.name===room.name)),unavailableText:t(!MIRoomChoices.live(catalog)?'needsLive':'unverifiedRoom'),
+    onSelect:room=>chooseEntryRoom(MIRoomChoices.rooms(catalog).find(item=>item.name===room.room))});
+}
+function renderConnectionDiagram(){
+  if(!binding||!project)return;
+  for(const kind of ['ai','entry']){const part=diagramParts[kind];part.name.textContent=binding[kind];part.preview.disabled=busy;part.preview.setAttribute('aria-label',MI18n.text(kind==='ai'?'房间预览':'地图选房')+' '+binding[kind]);}
+  const sourceNames=[description.binding.ai,binding.entryMode==='copy'?description.binding.entry:binding.entry],key=[project.projectId,...sourceNames].join('\n');if(key===diagramPreviewKey)return;diagramPreviewKey=key;const token=++diagramPreviewToken;
+  ['ai','entry'].forEach((kind,index)=>{const part=diagramParts[kind];part.image.hidden=true;part.image.removeAttribute('src');api('room-picker-preview?room='+encodeURIComponent(sourceNames[index])+'&projectId='+encodeURIComponent(project.projectId)).then(value=>{if(token!==diagramPreviewToken)return;if(value.image){part.image.src=value.image;part.image.hidden=false;}}).catch(()=>{});});
+}
 let overseerPreviewFrame=0;
 function animateOverseerPreview(now){
   if(now-overseerPreviewFrame>90&&!document.hidden&&overseerConfig){
@@ -174,7 +212,7 @@ function renderRooms(){
     const card=el('article');card.className='room-card';card.classList.toggle('selected',room.name===binding?.entry&&binding?.entryMode==='existing');
     const header=el('div');header.className='room-card-header';header.append(content('strong',room.name));
     const owned=MIRoomChoices.owned(catalog,room,description?.binding),choose=el('button',t('useRoom'));choose.type='button';choose.disabled=busy||!description?.editable||!MIRoomChoices.live(catalog)||!MIRoomChoices.verified(room)||owned||room.name===binding?.ai||!room.connections.some((_,node)=>MIRoomChoices.free(room,node,description.binding));
-    choose.onclick=()=>{if(busy)return;const oldRegion=binding.region;binding.entryMode='existing';binding.entry=room.name;binding.region=room.region;if(binding.ai.startsWith(oldRegion+'_'))binding.ai=room.region+binding.ai.slice(oldRegion.length);binding.entryNode=room.connections.findIndex((_,node)=>MIRoomChoices.free(room,node,description.binding));changed();renderBinding();renderRooms();};header.append(choose);card.append(header);
+    choose.onclick=run(()=>chooseEntryRoom(room));const preview=el('button',MI18n.text('房间预览'));preview.type='button';preview.onclick=()=>MIRoomPicker.open({room:room.name,region:room.region,projectId:project?.projectId||'',readOnly:true});header.append(preview,choose);card.append(header);
     const meta=el('div');meta.className='room-meta';meta.append(content('span',room.region),el('span',Number.isInteger(room.exitCount)&&room.exitCount>=0?t('exits',{count:room.exitCount}):t('unknownExits')));if(owned)meta.append(el('span',t('projectOwnedRoom')));else if(room.oracle)meta.append(el('span',t('oracleRoom')));if(room.conditional)meta.append(el('span',t('conditional')));if(!room.verified)meta.append(el('span',t('unverified')));card.append(meta);
     const links=el('div');links.className='room-links';(room.connections||[]).forEach((target,node)=>links.append(content('p',connectionText(room,node))));card.append(links);return card;
   }));$('showMore').hidden=all.length<=limit;

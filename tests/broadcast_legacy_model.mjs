@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {createRequire} from 'node:module';
+
+const source=fs.readFileSync(new URL('../editor/broadcast-editor.js',import.meta.url),'utf8');
+const context=vm.createContext({MI18n:{text:value=>value}});
+vm.runInContext(source.slice(0,source.indexOf('const iconColor'))+`;globalThis.model={load:value=>{project=normalize(value)},get:()=>clone(project),rename:value=>{project.name=value},editStyle,editColors,lineColor,lineStyle,styleValue};`,context);
+const fixture={schema:'moreiterators.broadcast.v1',id:'LEGACY',uid:'1'.repeat(32),revision:0,name:'Original',region:'',room:'',x:.5,y:.5,pages:[{lines:[{text:'Moon: First',color:'#33aa66',font:'display',size:1.3,speed:.5,hold:4},{text:'Unprefixed',color:'#aa3377',font:'normal',size:.8,speed:2,hold:.4}]}]};
+const plain=value=>JSON.parse(JSON.stringify(value));
+context.model.load(fixture);context.model.rename('Renamed');
+const renamed=plain(context.model.get());assert.deepEqual(renamed.pages,fixture.pages);assert.equal(renamed.style,undefined);assert.equal(renamed.useCharacterColors,undefined);
+assert.equal(context.model.styleValue('speed'),'');assert.equal(context.model.lineColor(fixture.pages[0].lines[1]),'#aa3377');
+context.model.editStyle('speed',1.5);const edited=plain(context.model.get());
+assert.deepEqual(edited.pages[0].lines.map(line=>line.speed),[1.5,1.5]);
+for(let index=0;index<2;index++)for(const key of ['font','size','hold','color'])assert.equal(edited.pages[0].lines[index][key],fixture.pages[0].lines[index][key]);
+context.model.editColors(false);assert.equal(context.model.lineColor(fixture.pages[0].lines[0]),'#ffffff');
+const exchange=createRequire(import.meta.url)('../editor/broadcast-exchange.js');
+assert.throws(()=>exchange.exportRainoc(renamed),/MI JSON/);
+const compatible=structuredClone(renamed);compatible.pages[0].lines[1].text='Pebbles: Second';
+const compatibleSnapshot=structuredClone(compatible);
+const bundle=exchange.exportRainoc(compatible),document=bundle.project.documents.find(value=>value.kind==='broadcast');
+assert.equal(document.details.broadcast.useCharacterColors,true);assert.equal(bundle.project.documents.find(value=>value.title==='moon').details.characterColor,'#33aa66');
+assert.deepEqual(compatible,compatibleSnapshot);
+process.stdout.write(JSON.stringify({renamed,edited,fixture})+'\n');

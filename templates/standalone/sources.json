@@ -44,6 +44,7 @@
     "src/CreatorRearGlow.cs",
     "src/CreatorReceptionMotion.cs",
     "src/CreatorRoomGradient.cs",
+    "src/CreatorRoomSettings.cs",
     "src/CreatorRoomTone.cs",
     "templates/standalone/CreatorRuntime.cs",
     "src/CreatorScarf.cs",
@@ -67,6 +68,7 @@
     "src/MiDiagnostics.cs",
     "src/MoreIteratorsPlugin.cs",
     "src/NativeRoomProjects.cs",
+    "src/NativePearlReaders.cs",
     "src/NecklaceDesign.cs",
     "src/OracleRenderReport.cs",
     "src/OracleSpriteDiagnostics.cs",
@@ -90,6 +92,7 @@
     "encounter": "src/CreatorRuntime.cs"
   },
   "excluded": {
+    "src/MiOptions.cs": "Core Remix diagnostics settings; standalone playback defaults to info.",
     "src/StudioLauncher.cs": "Editor launcher; already excluded from standalone compilation.",
     "src/RoomCatalogSnapshot.cs": "Editor room discovery; already excluded from standalone compilation.",
     "src/CreatorMenuScrollBar.cs": "Entire file is excluded by the existing PLAYBACK define.",

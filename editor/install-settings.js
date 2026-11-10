@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
- let dialog, title, status, close, entries={}, busy=false;
+ let dialog, title, status, close, entries={}, loading=false, selecting=false;
  const tr=key=>MI18n.t('paths.'+key);
  function element(tag,text,cls){const value=document.createElement(tag);if(text!==undefined)value.textContent=text;if(cls)value.className=cls;return value;}
  function render(){
@@ -8,19 +8,20 @@
   for(const [kind,row] of Object.entries(entries)){
    row.label.textContent=tr(kind);row.button.textContent=tr('choose');
    row.button.setAttribute('aria-label',tr('choose')+' '+tr(kind));
-   row.button.disabled=busy;row.path.textContent=row.value?.found?row.value.path:tr('missing');
+   row.button.disabled=loading||selecting;row.path.textContent=row.value?.found?row.value.path:tr('missing');
    row.path.title=row.value?.found?row.value.path:'';
   }
  }
  function fill(data){for(const kind of Object.keys(entries))entries[kind].value=data[kind];render();}
  async function select(kind){
-  busy=true;status.textContent='';render();
+  if(loading||selecting)return;
+  selecting=true;status.textContent='';render();
   try{
    const response=await fetch('/api/install-paths/select',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind})});
    const data=await response.json();if(!response.ok)throw Error(MI18n.error(data,response.statusText));
    if(!data.cancelled)fill(data);
   }catch(error){status.textContent=error.message;}
-  finally{busy=false;render();}
+  finally{selecting=false;render();}
  }
  function mount(){
   if(dialog)return;
@@ -36,10 +37,12 @@
   dialog.append(head,body,actions);document.body.append(dialog);render();
  }
  async function open(){
-  await MI18n.ready;mount();if(!dialog.open)dialog.showModal();status.textContent='';busy=true;render();
+  await MI18n.ready;mount();if(!dialog.open)dialog.showModal();
+  if(loading||selecting){render();return;}
+  status.textContent='';loading=true;render();
   try{const response=await fetch('/api/install-paths',{cache:'no-store'});const data=await response.json();if(!response.ok)throw Error(MI18n.error(data,response.statusText));fill(data);}
   catch(error){status.textContent=error.message;}
-  finally{busy=false;render();}
+  finally{loading=false;render();}
  }
  window.MIInstallSettings={open};
  window.addEventListener('mi-language-change',()=>{if(dialog)render();});

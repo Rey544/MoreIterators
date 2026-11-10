@@ -1,0 +1,25 @@
+{
+  "schema": "moreiterators.chamber-template.v1",
+  "id": "mi-chamber-broken",
+  "name": {
+    "zh-CN": "残破",
+    "en": "Damaged"
+  },
+  "source": "source/chamber.txt",
+  "sourceBase": "source/chamber",
+  "renderedBase": "chamber",
+  "aiNode": 0,
+  "width": 48,
+  "height": 36,
+  "cameraCount": 1,
+  "preview": "thumbnail.png",
+  "origin": "Rained EditorSamples/SS_AI",
+  "files": {
+    "chamber.txt": "1928f1f50fd500bc192c3c4233040dc446754d01601f531f2f0cef4e596b9874",
+    "chamber_1.png": "eece2c4691e37423935022735650a0b85fd3d4ad69531ded9646def8e21aa32a",
+    "chamber_settings.txt": "78c804dcdbb601d46db2f0f923febd319315ff3682a0f93fe665190c5a3d2e3a",
+    "source/chamber.png": "0b0d4be03c96130e5bdb2573ce4c5b02be611ceeb48754230a8d9f32f7c77b3a",
+    "source/chamber.txt": "e5fc72f7a3b8a5891185b9c3745c2f18763e8aa59a6efe5ea22f8f71f3c94dbd",
+    "thumbnail.png": "0c6f38b1a084507eb8faaadc7d6bb96576364af2895acc053ce37559aeab2a2b"
+  }
+}

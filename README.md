@@ -2,13 +2,15 @@
 
 MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通过本地网页调整迭代器的外观、编写剧情、制作珍珠与广播、编辑投影动画，再到游戏中检查效果。完成的作品可以导出为独立游玩模组。
 
-已发布版本：**0.3.0**。模组面向 Rain World **v1.11.8**。
+已发布版本：**0.4.0**。模组面向 Rain World **v1.11.8**。
 
 [Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510)
 
 [必要依赖：Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893)
 
 [Rained 房间编辑器](https://github.com/pkhead/rained/releases)
+
+[RainocTool](https://rey544.github.io/rainoctool/v1.1.3/)
 
 [Discord](https://discord.gg/JBNxgz7E4h)
 
@@ -21,6 +23,46 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 - **投影动画**：导入透明 PNG，设置轨道与关键帧，选择匀速、平滑或阶梯过渡；替换图片时保留轨道与关键帧。
 - **房间与导出**：管理演算室、等待房间及连接，配合 Rained 制作自定义房间，将选定的作品内容导出为独立游玩模组。
 - **本地预览与管理**：提供网页预览、游戏内测试入口、保存历史及关联内容迁移。迭代器语音属于实验性功能。
+
+## 0.4.0 更新记录
+
+- 修复路径选择窗口无法正常显示及重复选择时报错的问题。
+- 修复剧情对话与语音试听冲突的问题。
+- 修复独立导出模组的印记与珍珠读取判断。
+- 修复误收其他模组错误提示的问题。
+- 补充游戏内菜单进入与返回的淡入淡出。
+- 修复房间列表和投影预览读取未启用模组资源的问题。
+- 修复 Rained 自定义素材路径与房间同步失败的问题。
+- 优化导出界面，先选择内容，再选择格式。
+- 新增项目 ZIP，包含对应房间及可选的额外房间。
+- 新增整片区域打包，保留区域文件与依赖信息。
+- 新增图层右键菜单，支持重命名、向下合并、删除与剪辑蒙版。
+- 补充迭代器显示异常的诊断记录。
+- 新增原版迭代器 DM、CL、SL、SS 珍珠读取者。
+- 新增地图选房与房间位置预览。
+- 优化区域连接界面。
+- 新增房间色板与重力设置。
+- 新增原版投影缓动与中英文对照，修复缓动预览。
+- 新增诊断等级设置。
+- 修复游戏退出后编辑器进程残留的问题。
+- 修复房间导出遗漏地形色板的问题。
+- 修复同时加载多个导出模组时的贴图冲突。
+- 修复原版环境音校验与最新房间设置读取。
+- 补充 RegionKit 额外色板导出。
+- 优化演算室性能。
+- 新增完整地图模组导出与剧情入口。
+- 新增封面与纵深场景编辑，入口：外观调整 → 导出 → 导出完整地图模组 → 封面与场景。
+- 调整剪辑蒙版层级显示，取消图层名称下划线。
+- 新增 RainocTool 广播 JSON 导入导出，支持广播图标颜色编辑。
+- 新增 RainocTool 入口，优化 Discord 图标提示。
+- 整理各编辑页面的参数层级与作用范围。
+- 修复导出选项丢失与旧广播样式被覆盖的问题。
+- 新增五块卵石、仰望皓月、残破、不规则和多屏演算室房间预设，支持尺寸选择和房间替换。
+- 新增第三方房间资源检查，导出时可选择冲突版本，保留本地作品。
+
+受时间和个人开发维护精力限制，本次更新还没来得及完成所有功能的实机测试。项目 ZIP、独立模组导出、新增房间预设与尺寸、完整地图的单人剧情与 Meadow 联机、游戏内纵深场景，以及 Steam 退出状态尚未完成完整验证；偶发半透明问题仍在排查。如果遇到 bug，请及时到 Discord 反馈。
+
+RainocTool JSON 保留广播正文与颜色。MI 的分页、房间和播放参数请使用 MI JSON 保留。旧版配置教程继续保留，并标明适用版本。
 
 ## 0.3.0 更新记录
 
@@ -61,7 +103,7 @@ MoreIterators 是为《雨世界》制作的免费开源 OC 创作工具。通�
 
 感谢测试与协助：粉笔、LL77、DESANTA、steelmachine、timerteo、xuanzebufeng、匿名测试者。
 
-本次导出测试使用粉笔的 OC「渺宇一砾」（myys），包含五颗珍珠和投影动画。特别感谢 xuanzebufeng 对本地化、运行环境打包和资源读取提出的修改建议。
+本次 debug 测试使用了匿名用户的作品「pool moon」。特别感谢 Xuanzebufeng 在兼容性问题上提供的建议。
 
 ## 许可
 
@@ -282,7 +324,7 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 ## 从源码构建
 
-普通创作者使用完整模组包及对应版本的教程即可。本仓库源码对应 0.3.0。GitHub 的 Source code ZIP 不附带可直接安装的完整运行包。
+普通创作者使用完整模组包及对应版本的教程即可。本仓库源码对应 0.4.0。GitHub 的 Source code ZIP 不附带可直接安装的完整运行包。
 
 开发者需要 Windows 的 .NET Framework C# 编译器，以及自己的 Rain World v1.11.8 安装和其自带 BepInEx/游戏程序集。在仓库根目录打开 PowerShell，运行下面整段后输入包含 RainWorld.exe 的文件夹：
 
@@ -301,13 +343,15 @@ GitHub 源码使用者注意：本教程主要面向工坊发行包。公开源�
 
 MoreIterators is a free, open-source OC creation tool for **Rain World**. Use its local web editor to customize iterators, write dialogue, create pearls and broadcasts, and animate projections, then check the results in the game. Finished creations can be exported as standalone playable mods.
 
-Published version: **0.3.0**. The mod targets Rain World **v1.11.8**.
+Published version: **0.4.0**. The mod targets Rain World **v1.11.8**.
 
 [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3823802510)
 
 [Required: Warp Menu](https://steamcommunity.com/sharedfiles/filedetails/?id=2920446893)
 
 [Rained room editor](https://github.com/pkhead/rained/releases)
+
+[RainocTool](https://rey544.github.io/rainoctool/v1.1.3/)
 
 [Discord](https://discord.gg/JBNxgz7E4h)
 
@@ -320,6 +364,46 @@ Published version: **0.3.0**. The mod targets Rain World **v1.11.8**.
 - **Projection animation:** Import transparent PNGs, edit tracks and keyframes, and choose linear, smooth, or step transitions. Replace images without rebuilding their tracks or keyframes.
 - **Rooms and export:** Manage iterator chambers, waiting rooms, and their connections. Use Rained for custom rooms and export selected creations as standalone playable mods.
 - **Local preview and project management:** Use browser previews, in-game testing, save history, and tools for transferring associated content. Iterator voice is an experimental feature.
+
+### 0.4.0 update history
+
+- Fix file selection dialogs failing to appear and errors when selecting a path again.
+- Fix conflicts between story dialogue and voice previews.
+- Fix mark checks and pearl reading in standalone exports.
+- Fix unrelated mod errors being reported by MI.
+- Add fade transitions when entering and leaving the in-game menu.
+- Fix room lists and projection previews reading resources from disabled mods.
+- Fix custom Rained asset paths and failed room synchronization.
+- Reorganize export options: choose content before the format.
+- Add project ZIP export with the matching rooms and optional additional rooms.
+- Add whole-region packaging with region files and dependency information.
+- Add a layer context menu with rename, merge down, delete, and clipping masks.
+- Add diagnostic records for iterator rendering issues.
+- Add pearl readers for the vanilla iterators DM, CL, SL and SS.
+- Add map-based room selection and room position previews.
+- Improve the region connection interface.
+- Add room palette and gravity settings.
+- Add native projection easing with translated names and fix easing previews.
+- Add diagnostic verbosity settings.
+- Fix editor processes remaining after the game exits.
+- Fix missing terrain palettes in room exports.
+- Fix texture conflicts when loading multiple exported mods.
+- Fix native ambient audio validation and loading of the latest room settings.
+- Include RegionKit extra palettes in exports.
+- Improve chamber performance.
+- Add complete map mod export with a story entry.
+- Add cover and depth scene editing, available under Appearance → Export → Export complete map mod → Cover and scenes.
+- Adjust clipping-mask hierarchy display and remove layer-name underlines.
+- Add RainocTool broadcast JSON import and export, with broadcast icon color editing.
+- Add a RainocTool link and improve the Discord icon tooltip.
+- Reorganize settings by object and scope across editor pages.
+- Fix lost export preferences and overwritten styles in older broadcasts.
+- Add Five Pebbles, Looks to the Moon, damaged, irregular and multi-screen chamber presets with size selection and room replacement.
+- Add third-party room asset checks and export version choices while preserving local projects.
+
+With limited time and the workload of developing and maintaining this project on my own, I have not been able to test every feature in-game. Project ZIPs, standalone mod exports, the new room presets and sizes, complete maps in single-player Story and Meadow multiplayer, in-game depth scenes, and Steam returning to its stopped state still need full validation. The intermittent transparency issue is still under investigation. Please report any bugs on Discord.
+
+RainocTool JSON preserves broadcast text and colors. Use MI JSON to preserve MI pages, room placement and playback settings. Older setup guides remain available with their applicable versions marked.
 
 ### 0.3.0 update history
 
@@ -360,7 +444,7 @@ Join our [Discord](https://discord.gg/JBNxgz7E4h) to discuss ideas and report pr
 
 Thanks for testing and assistance: 粉笔, LL77, DESANTA, steelmachine, timerteo, xuanzebufeng, Anonymous Tester.
 
-This export test uses 粉笔's OC 渺宇一砾 (myys), including five pearls and projection animation. Special thanks to xuanzebufeng for suggestions on localization, bundling the runtime, and asset lookup.
+Debug testing for this update used pool moon, a work by an anonymous user. Special thanks to Xuanzebufeng for suggestions on compatibility issues.
 
 ### License
 
@@ -581,7 +665,7 @@ For GitHub source users: this guide primarily covers the Workshop package. The p
 
 ### Build from source
 
-Creators should use a complete mod package and the guide for that version. This repository contains the 0.3.0 source. GitHub’s Source code ZIP is not a complete ready-to-install package.
+Creators should use a complete mod package and the guide for that version. This repository contains the 0.4.0 source. GitHub’s Source code ZIP is not a complete ready-to-install package.
 
 Developers need the Windows .NET Framework C# compiler, their own Rain World v1.11.8 installation, and its BepInEx/game assemblies. Open PowerShell in the repository root, paste this block, and enter the folder containing RainWorld.exe:
 
