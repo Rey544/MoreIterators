@@ -9,6 +9,7 @@ import base64,copy,datetime,hashlib,io,json,os,re,shutil,subprocess,tempfile,zip
 from PIL import Image
 import storage,dialogue,pearls,pearl_projects,broadcasts,native_projects,playback_adapters,room_editor,room_bindings,projections,overseers,audio_assets
 import palette_export_sources
+import csharp_source
 
 ATOMIC_ACTION={'type':str,'delay':float,'duration':float,'exitNode':int,**dict.fromkeys(('offsetX','offsetY','radius','endAngle'),float)}
 ACTION={**ATOMIC_ACTION,'actions':[ATOMIC_ACTION]}
@@ -187,24 +188,24 @@ def compiler_sources(destination,meta,projects=()):
     manifest,inputs=_runtime_source_plan()
     suffix=hashlib.sha256(meta['id'].encode()).hexdigest()[:12]
     namespace='IteratorContent_'+suffix
-    encounter=inputs[manifest['fragments']['encounter']].read_text('utf-8').split('public class CreatorEncounter:',1)[1]
-    encounter='public class CreatorEncounter:'+encounter.rsplit('}',1)[0]
+    encounter=csharp_source.extract_class(inputs[manifest['fragments']['encounter']].read_text('utf-8'),'CreatorEncounter')
     sources=[]
     for relative in manifest['sources']:
         file=inputs[relative]
         text=file.read_text('utf-8')
-        text=text.replace('__ENCOUNTER__',encounter).replace('__MOD_ID__',meta['id'])
-        text=text.replace('namespace MoreIterators','namespace '+namespace)
+        text=csharp_source.replace_identifier(text,'__ENCOUNTER__',encounter,required=relative=='templates/standalone/CreatorRuntime.cs')
+        text=csharp_source.replace_namespace(text,'MoreIterators',namespace)
         # Atlas and extensible-enum identifiers must also be unique per content mod.
-        text=text.replace('"MoreIterators_','"IC_'+suffix+'_').replace('"moreiterators_','"ic_'+suffix+'_')
+        text=csharp_source.replace_string_resources(text,prefixes=(('MoreIterators_','IC_'+suffix+'_'),('moreiterators_','ic_'+suffix+'_')),
+            placeholder=('__MOD_ID__',meta['id']) if relative=='templates/standalone/RuntimePaths.cs' else None)
         if file.name=='MoreIteratorsPlugin.cs':
-            text,count=re.subn(r'\[BepInPlugin\("moreiterators\.core",\s*"[^"\\]*",\s*BuildVersion\.Plugin\)\]',lambda match:'[BepInPlugin('+json.dumps(meta['id'])+', '+json.dumps(meta['name'],ensure_ascii=False)+', '+json.dumps(meta['version'])+')]',text)
-            if count!=1:raise ValueError('Playback plugin identity replacement failed')
-            if any(p.get('legacyOracle') for p in projects):text=text.replace('Instance=this; RuntimePaths.Initialize();','Instance=this; RuntimePaths.Initialize(); IteratorIntegrations.Register(new PlaybackAppearanceIntegration());')
+            text=csharp_source.replace_plugin_identity(text,meta['id'],meta['name'],meta['version'])
+            if any(p.get('legacyOracle') for p in projects):text=csharp_source.replace_code(text,'RuntimePaths.Initialize();',
+                'RuntimePaths.Initialize(); IteratorIntegrations.Register(new PlaybackAppearanceIntegration());','Playback legacy registration')
         if file.name=='MoreIteratorsPlugin.cs':
-            text=text.replace('orig(cam,extension==null?pal:extension.BasePalette(cam,pal),ref texture);','orig(cam,extension==null?(target!=null&&IteratorCatalog.IsAI(target.abstractRoom.name)&&!CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(target))&&IteratorDesign.ForRoom(target).roomTemplate=="ir"?13:pal):extension.BasePalette(cam,pal),ref texture);')
+            text=csharp_source.replace_code(text,'orig(cam,extension==null?pal:extension.BasePalette(cam,pal),ref texture);','orig(cam,extension==null?(target!=null&&IteratorCatalog.IsAI(target.abstractRoom.name)&&!CreatorRoomSettings.RoomPalette(IteratorDesign.ForRoom(target))&&IteratorDesign.ForRoom(target).roomTemplate=="ir"?13:pal):extension.BasePalette(cam,pal),ref texture);','Playback room palette call')
         if file.name=='CreatorLaunch.cs':
-            text=text.replace('请在编辑器重新应用项目。','请重新安装此内容模组。').replace('请重新应用项目后进入。','请重新安装此内容模组。').replace('请重新应用项目。','请重新安装此内容模组。').replace('请重新应用项目后重启游戏。','请重新安装此内容模组并重启游戏。')
+            text=csharp_source.replace_string_resources(text,replacements=(('请在编辑器重新应用项目。','请重新安装此内容模组。'),('请重新应用项目后进入。','请重新安装此内容模组。'),('请重新应用项目。','请重新安装此内容模组。'),('请重新应用项目后重启游戏。','请重新安装此内容模组并重启游戏。')))
         target=destination/file.name;target.write_text(text,'utf-8');sources.append(target)
     sources+=playback_adapters.export_sources(destination,projects,namespace)
     return sources,suffix
