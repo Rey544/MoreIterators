@@ -1,6 +1,6 @@
 {
   "schema": "moreiterators.changelog.v1",
-  "plannedRelease": "0.5.1",
+  "plannedRelease": "0.5.2",
   "thanks": [
     "粉笔",
     "LL77",
@@ -19,6 +19,35 @@
     ]
   },
   "entries": [
+    {
+      "version": "0.5.2",
+      "changes": {
+        "zh-CN": [
+          "新增预览部件选择、轮廓高亮和名称提示，支持重叠部件切换、高亮颜色调整与参数跳转。",
+          "新增参考图，支持拖动、大小、旋转、前后层、透明度和恢复初始设置，撤回作品编辑不再移除参考图。",
+          "新增 X轴、Y轴对称绘制和右键擦除，直线笔刷支持直线擦除。",
+          "调整导出交互，补全房间设置与区域坐标读取，支持自动同步、缺失文件手动导入，并恢复项目 JSON 导出。",
+          "修复第三方房间工具的设置优先级和同步遗漏，保留房间对象、额外色板及其他房间设置。",
+          "修复对话会话、好感度、广播与贴图的异常处理和清理，修正独立导出的色板透明度。",
+          "完善编辑器版本检查、错误日志和后台关闭，优化部分 UI 和 UX。",
+          "整理源码格式，独立导出的源码读取不再依赖空格和换行。"
+        ],
+        "en": [
+          "Added preview part selection, outline highlights and name tooltips, with overlapping part cycling, highlight colors and parameter navigation.",
+          "Added reference images with dragging, scaling, rotation, front/back layers, opacity and reset controls. Undoing project edits no longer removes reference images.",
+          "Added X-axis and Y-axis painting symmetry and right-button erasing, including straight-line erasing.",
+          "Improved export controls, room settings and region coordinate reading, automatic syncing and manual import for missing files, and restored project JSON export.",
+          "Fixed third-party room setting priority and incomplete syncing while preserving room objects, extra palettes and other room settings.",
+          "Fixed dialogue sessions, affinity, broadcasts and texture handling and cleanup, and corrected palette alpha in standalone exports.",
+          "Improved editor version checks, error logs, background service shutdown and parts of the UI and UX.",
+          "Formatted source code and made standalone source generation independent of whitespace and line breaks."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
     {
       "version": "0.5.1",
       "changes": {
