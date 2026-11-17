@@ -9,7 +9,8 @@ namespace MoreIterators
 
         public static void Use(RainWorld game)
         {
-            if (game != null) current = game;
+            if (game != null)
+                current = game;
         }
 
         public static string LanguageKey
@@ -18,13 +19,15 @@ namespace MoreIterators
             {
                 RainWorld game = current != null ? current : RWCustom.Custom.rainWorld;
                 return game != null && game.inGameTranslator != null
-                    ? game.inGameTranslator.currentLanguage.ToString() : "English";
+                    ? game.inGameTranslator.currentLanguage.ToString()
+                    : "English";
             }
         }
 
         public static string Get(string original)
         {
-            if (String.IsNullOrEmpty(original)) return original ?? "";
+            if (String.IsNullOrEmpty(original))
+                return original ?? "";
             try
             {
                 RainWorld game = current != null ? current : RWCustom.Custom.rainWorld;
@@ -35,7 +38,10 @@ namespace MoreIterators
                         return Display(translated);
                 }
             }
-            catch (Exception error) { MiDiagnostics.Report("MI-I18N-003", "UiText.Get", error, "original=" + original); }
+            catch (Exception error)
+            {
+                MiDiagnostics.Report("MI-I18N-003", "UiText.Get", error, "original=" + original);
+            }
             return Display(original);
         }
 
@@ -46,7 +52,10 @@ namespace MoreIterators
 
         public static string Format(string original, params object[] values)
         {
-            try { return String.Format(System.Globalization.CultureInfo.CurrentCulture, Get(original), values); }
+            try
+            {
+                return String.Format(System.Globalization.CultureInfo.CurrentCulture, Get(original), values);
+            }
             catch (FormatException error)
             {
                 MiDiagnostics.Report("MI-I18N-004", "UiText.Format", error, "original=" + original);

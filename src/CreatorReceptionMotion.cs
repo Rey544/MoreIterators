@@ -11,12 +11,23 @@ namespace MoreIterators
         const int ReleaseDelay = 100;
 
         string mode = "";
-        bool present, hasMark;
-        int arrival, quiet = ReleaseDelay + 1;
+        bool present,
+            hasMark;
+        int arrival,
+            quiet = ReleaseDelay + 1;
 
-        public bool Working { get; private set; }
-        public int EncounterTicks { get; private set; }
-        public bool CanSpeak { get; private set; }
+        public bool Working
+        {
+            get; private set;
+        }
+        public int EncounterTicks
+        {
+            get; private set;
+        }
+        public bool CanSpeak
+        {
+            get; private set;
+        }
 
         public CreatorReceptionMotion()
         {
@@ -52,11 +63,10 @@ namespace MoreIterators
         {
             quiet = responseActive ? 0 : Math.Min(ReleaseDelay + 1, quiet + 1);
             int entryEnd = hasMark ? MarkedReceptionEnd : UnmarkedReceptionEnd;
-            bool entryReception = mode == "story" && present
-                && arrival > WorkLeadIn && arrival <= entryEnd;
+            bool entryReception = mode == "story" && present && arrival > WorkLeadIn && arrival <= entryEnd;
             bool finishingResponse = CanSpeak && present && quiet <= ReleaseDelay;
-            bool active = manualReception || (mode != "silent"
-                && (responseActive || entryReception || finishingResponse));
+            bool active =
+                manualReception || (mode != "silent" && (responseActive || entryReception || finishingResponse));
 
             Working = !active;
             EncounterTicks = active ? Math.Min(36000, EncounterTicks + 1) : -1;
