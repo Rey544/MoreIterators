@@ -3,6 +3,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -314,6 +315,23 @@ class ExternalRoomPriorityTests(unittest.TestCase):
         self.assertEqual(exported['regions/XX/properties.txt'], properties)
         self.assertEqual(exported['regions/XX/xx_settingstemplate_custom.txt'], template)
         self.assertEqual(exported['palettes/palette9401.png'], (fixture.project_file.parent / 'rooms/palettes/palette9401.png').read_bytes())
+        self.assertEqual((self.snapshot(fixture.local), self.snapshot(fixture.installed), self.snapshot(fixture.project_file.parent)), before)
+        fixture.palette(fixture.installed / 'palettes/palette9401.png', (210, 180, 150))
+        for name in ('XX_AI', 'XX_ENTRY'):
+            for path in (fixture.installed / 'world/xx-rooms').glob(name + '*'):
+                if path.suffix == '.png' or path.name == name + '.txt':
+                    os.utime(path, (2000000000, 2000000000))
+            os.utime(cache / (name + '_settings.txt'), (2000001000, 2000001000))
+        before = self.snapshot(fixture.local), self.snapshot(fixture.installed), self.snapshot(fixture.project_file.parent)
+        source = room_bindings.source_for(self.project, 'ai')
+        self.assertEqual(source, fixture.installed / 'world/xx-rooms/XX_AI')
+        self.assertIsNone(room_source_choices.selected_asset('selected', 'palettes/palette9401.png'))
+        self.assertEqual(project_packages.selected_room_settings(self.project, 'XX_AI', source), cache / 'XX_AI_settings.txt')
+        exported = fixture.unpack(fixture.payload())
+        self.assertEqual(exported['palettes/palette9401.png'], (fixture.project_file.parent / 'rooms/palettes/palette9401.png').read_bytes())
+        preview = room_preview.preview('XX_AI', 'selected')
+        with Image.open(io.BytesIO(base64.b64decode(preview['image'].split(',', 1)[1]))) as image:
+            self.assertEqual(image.getpixel((0, 0)), (33, 66, 99, 255))
         self.assertEqual((self.snapshot(fixture.local), self.snapshot(fixture.installed), self.snapshot(fixture.project_file.parent)), before)
 
     def test_explicit_palette_choice_overrides_same_number_owned_palette_in_preview(self):

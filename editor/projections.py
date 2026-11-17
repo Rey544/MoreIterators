@@ -419,8 +419,10 @@ def room_palette(project,source,camera=0):
         relative=Path('palettes')/('palette'+str(number)+'.png')
         imported=None
         if project.get('projectId'):
+            import project_packages
             import standalone
-            imported=standalone.room_palette_source(project,source,number)
+            selected_settings=project_packages.selected_room_settings(project,Path(source).name.upper(),source)
+            imported=standalone.room_palette_source(project,selected_settings,number)
         candidates=[imported] if imported is not None else ([own/relative] if own is not None else [])+[root/relative for root in room_bindings.enabled_asset_roots()]
         for file in candidates:
             if (file==imported or own is not None and file==own/relative or room_bindings.is_enabled_asset(file)) and file.is_file():
