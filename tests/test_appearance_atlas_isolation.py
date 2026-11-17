@@ -5,6 +5,10 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+try:
+    from .csharp_sources import before_code
+except ImportError:
+    from csharp_sources import before_code
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'editor'))
@@ -32,7 +36,7 @@ class AppearanceAtlasIsolationTests(unittest.TestCase):
                     namespaces.append('IteratorContent_' + suffix)
             inputs = []
             for index, source in enumerate(appearance):
-                text = source.read_text('utf-8-sig').split(' public static void PaintMesh(', 1)[0] + '\n}\n}\n'
+                text = before_code(source.read_text('utf-8-sig'), 'public static void PaintMesh(') + '\n}\n}\n'
                 if legacy:
                     import re
                     text = re.sub(r'"(?:moreiterators|ic_[0-9a-f]{12})_creator_"', '"mi_creator_"', text)

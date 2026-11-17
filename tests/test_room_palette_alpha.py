@@ -1,9 +1,12 @@
 import os
 from pathlib import Path
-import re
 import subprocess
 import tempfile
 import unittest
+try:
+    from .csharp_sources import code_index, extract_block, extract_statements, replace_code
+except ImportError:
+    from csharp_sources import code_index, extract_block, extract_statements, replace_code
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,20 +22,14 @@ class RoomPaletteAlphaTests(unittest.TestCase):
         cls.addClassCleanup(cls.temporary.cleanup)
         cls.directory = Path(cls.temporary.name)
         source = (ROOT / 'src/CreatorRuntime.cs').read_text('utf-8-sig')
-        start = source.index('public static void Palette(Texture2D t,RoomCamera cam,int palette)')
-        opening = source.index('{', start)
-        depth = 1
-        end = opening + 1
-        while depth:
-            depth += (source[end] == '{') - (source[end] == '}')
-            end += 1
-        method = source[start:end]
+        method = extract_block(source, 'public static void Palette(Texture2D t,RoomCamera cam,int palette)')
         harness = (ROOT / 'tests/room_palette_alpha_check.cs').read_text('utf-8')
         plugin = (ROOT / 'src/MoreIteratorsPlugin.cs').read_text('utf-8-sig')
-        neck = re.search(r'neck\.color=[^;]+;\s*neck\.alpha=1;', plugin)[0]
+        neck = extract_statements(plugin, 'neck.color=', 2)
+        code_index(neck, 'neck.alpha=1;')
         cls.executables = {}
         for variant in ('actual', 'legacy'):
-            selected = method if variant == 'actual' else method.replace('tint.a=c.a;', '')
+            selected = method if variant == 'actual' else replace_code(method, 'tint.a=c.a;', '', 'legacy palette alpha removal')
             unit = cls.directory / (variant + '.cs')
             neck_code = neck if variant == 'actual' else 'neck.color=head.color*.88f; neck.alpha=1;'
             unit.write_text(harness.replace('__PALETTE_METHOD__', selected).replace('__NECK_COLOR__', neck_code), 'utf-8')

@@ -5,6 +5,10 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+try:
+    from .csharp_sources import before_code, extract_block
+except ImportError:
+    from csharp_sources import before_code, extract_block
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -29,7 +33,7 @@ class UnmarkedVoiceFlowTests(unittest.TestCase):
                 target.write_text(prefix + (ROOT / 'src' / name).read_text('utf-8-sig'), 'utf-8')
                 sources.append(str(target))
             models = work / 'PearlModels.cs'
-            models.write_text(prefix + (ROOT / 'src/CreatorPearls.cs').read_text('utf-8-sig').split('public static class CreatorPearlCatalog', 1)[0] + '\n}\n', 'utf-8')
+            models.write_text(prefix + before_code((ROOT / 'src/CreatorPearls.cs').read_text('utf-8-sig'), 'public static class CreatorPearlCatalog') + '\n}\n', 'utf-8')
             sources.append(str(models))
             
             
@@ -47,12 +51,12 @@ class UnmarkedVoiceFlowTests(unittest.TestCase):
             host = host.replace('public static class CreatorProjections {', 'public static class CreatorProjections {public static int starts;')
             host = host.replace('public static float Prepare(Oracle o,object owner,string id){return 0;}', 'public static float Prepare(Oracle o,object owner,string id){starts++;return 0;}')
             plugin = (ROOT / 'src/MoreIteratorsPlugin.cs').read_text('utf-8-sig')
-            mark = plugin[plugin.index('        public static bool HasCommunicationMark('):plugin.index('        public static bool SuppressNativePalette(')]
+            mark = extract_block(plugin, 'public static bool HasCommunicationMark(')
             old = 'public static bool HasCommunicationMark(Oracle o){return MoreIteratorsPlugin.Active&&CreatorRuntime.Mark||o.room.game.IsStorySession&&o.room.game.GetStorySession.saveState.deathPersistentSaveData.theMark;}'
             self.assertIn(old, host)
             host = host.replace(old, mark)
             guard = (ROOT / 'src/CreatorMarkGuard.cs').read_text('utf-8-sig')
-            mark_guard = guard[guard.index('  public static bool HasMarkV1('):guard.index('  static bool KnownGuard(')]
+            mark_guard = extract_block(guard, 'public static bool HasMarkV1(')
             host += '\nnamespace MoreIterators { public static class CreatorMarkGuard {' + mark_guard + '} }\n'
             host_file = work / 'NativeHost.cs'
             host_file.write_text(host, 'utf-8')

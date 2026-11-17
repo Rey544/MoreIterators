@@ -4,19 +4,12 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+try:
+    from .csharp_sources import extract_block
+except ImportError:
+    from csharp_sources import extract_block
 
 ROOT=Path(__file__).resolve().parents[1]
-
-def block(source, marker):
-    start=source.index(marker)
-    brace=source.index('{',start)
-    depth=1
-    end=brace+1
-    while depth:
-        if source[end]=='{':depth+=1
-        elif source[end]=='}':depth-=1
-        end+=1
-    return source[start:end]
 
 class ShutdownCleanupTests(unittest.TestCase):
     def test_core_and_playback_cleanup_failures_do_not_block_native_shutdown(self):
@@ -24,10 +17,9 @@ class ShutdownCleanupTests(unittest.TestCase):
         if not compiler.is_file():self.skipTest('Windows compiler required')
         plugin=(ROOT/'src/MoreIteratorsPlugin.cs').read_text('utf-8-sig')
         panel=(ROOT/'src/CreatorControlPanel.cs').read_text('utf-8-sig')
-        methods='\n'.join(block(plugin,signature) for signature in ('void StopCapture()','void RemoveHooks()','void OnDisable()'))
-        hook=block(plugin,'var registeredHook35=')
-        game='public static void GameClose(Action<RainWorldGame> orig,RainWorldGame g)'+hook[hook.index('{'):]
-        actual='using System;namespace MoreIterators { public partial class ShutdownPlugin {'+methods+game+'} public static partial class CreatorControlPanel {'+block(panel,'public static void Close()')+'}}'
+        methods='\n'.join(extract_block(plugin,signature) for signature in ('void StopCapture()','void RemoveHooks()','void OnDisable()'))
+        game='public static void GameClose(Action<RainWorldGame> orig,RainWorldGame g)'+extract_block(plugin,'var registeredHook35=',body_only=True)
+        actual='using System;namespace MoreIterators { public partial class ShutdownPlugin {'+methods+game+'} public static partial class CreatorControlPanel {'+extract_block(panel,'public static void Close()')+'}}'
         with tempfile.TemporaryDirectory(prefix='mi-shutdown-cleanup-') as folder:
             extracted=Path(folder)/'ActualShutdown.cs';extracted.write_text(actual,'utf-8')
             for mode in ('core','playback'):

@@ -4,6 +4,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+try:
+    from .csharp_sources import replace_namespace
+except ImportError:
+    from csharp_sources import replace_namespace
 
 
 class StandaloneCatalogueRuntimeTests(unittest.TestCase):
@@ -37,7 +41,7 @@ class StandaloneCatalogueRuntimeTests(unittest.TestCase):
                 ('ContentAssets', assets),
             ):
                 path = cls.work / (namespace + name + '.cs')
-                path.write_text(content.replace('namespace MoreIterators {', 'namespace ' + namespace + ' {'), 'utf-8')
+                path.write_text(replace_namespace(content, 'MoreIterators', namespace), 'utf-8')
                 generated.append(str(path))
         cls.two_exe = cls.work / 'two-catalogue-check.exe'
         result = subprocess.run([

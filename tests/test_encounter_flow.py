@@ -5,6 +5,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+try:
+    from .csharp_sources import before_code, between_code
+except ImportError:
+    from csharp_sources import before_code, between_code
 
 
 class EncounterFlowTests(unittest.TestCase):
@@ -26,12 +30,12 @@ class EncounterFlowTests(unittest.TestCase):
                 target.write_text(prefix + (root / 'src' / name).read_text('utf-8-sig'), 'utf-8')
                 sources.append(str(target))
             target = work / 'PearlModels.cs'
-            target.write_text(prefix + (root / 'src/CreatorPearls.cs').read_text('utf-8-sig').split('public static class CreatorPearlCatalog', 1)[0] + '\n}\n', 'utf-8')
+            target.write_text(prefix + before_code((root / 'src/CreatorPearls.cs').read_text('utf-8-sig'), 'public static class CreatorPearlCatalog') + '\n}\n', 'utf-8')
             sources.append(str(target))
             runtime = (root / 'src/CreatorRuntime.cs').read_text('utf-8-sig')
-            predicate = runtime[runtime.index('static bool HasEncounter('):runtime.index('public static void Hit(')]
+            predicate = between_code(runtime, 'static bool HasEncounter(', 'public static void Hit(')
             plugin = (root / 'src/MoreIteratorsPlugin.cs').read_text('utf-8-sig')
-            hook = plugin[plugin.index('var affinityHitHook='):plugin.index('var registeredHook28=')]
+            hook = between_code(plugin, 'var affinityHitHook=', 'var registeredHook28=')
             target = work / 'ActualHitHook.cs'
             target.write_text('using System;using System.Collections.Generic;namespace MoreIterators {public partial class CreatorEncounter {' + predicate + '}public static class ActualHitHook {static readonly List<Action> removeHooks=new List<Action>();public static void Install(){' + hook + '}}}', 'utf-8')
             sources.append(str(target))
