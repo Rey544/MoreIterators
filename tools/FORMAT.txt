@@ -1,0 +1,51 @@
+MoreIterators formatting
+
+Use tools/format.ps1 as the formatting and check entry point. The product still
+targets .NET Framework 4.0 and the installed C# 5 compiler. SDK 8.0.419 and Roslyn
+are development tools only; they must not become requirements for playing or
+exporting a content mod.
+
+Check:
+  pwsh ./tools/format.ps1 -Mode check -EvidenceDirectory <new-outside-directory>
+Write:
+  pwsh ./tools/format.ps1 -Mode write -EvidenceDirectory <new-outside-directory>
+Limit an edit:
+  add -Files src/CreatorAffinity.cs
+Use a private SDK installation:
+  add -Dotnet <absolute-path-to-dotnet>
+
+The script only selects src/*.cs and templates/standalone/*.cs. It first copies
+inputs into the evidence directory. The .editorconfig whitespace passes avoid
+ambiguous compact token boundaries before CSharpier 1.2.2 applies wrapping and
+normalize spacing and block layout after wrapping.
+The final guard restores original using order and removes only newly introduced
+initializer/enum trailing commas. It then requires identical C# token spelling,
+order, comments, directives and every conditional-compilation branch. Invalid or
+unexpected changes fail before production files are written. Original inputs and
+reports remain in the evidence directory; do not reuse a prior result directory.
+
+Style: UTF-8, LF, four spaces, separate statements and declarations, readable
+wrapped conditions, block braces on separate lines. 120 columns is a wrapping target, not a reason
+to change a long string, comment, identifier or literal. Do not reorder using
+directives, move them across namespaces, add braces or change expression grouping
+under the label of formatting.
+
+Do not run style/analyzer auto-fixes for a formatting task. Existing null checks,
+guards, bounds checks, catch blocks, string keys, defaults and comments are not
+cleanup targets. The product source guard is deliberately stricter than a claim
+that two expressions appear to behave the same.
+
+The template's __ENCOUNTER__ placeholder is masked only in the temporary copy,
+then restored and checked. The Python exporter reads C# tokens and balanced
+declarations rather than fixed spaces. After changing that reader, check generated
+sources as well as the main plugin. Include editor/csharp_source.py when assembling
+a runtime/editor distribution; copying an older release file list is insufficient.
+
+Keep formatting commits separate from generator changes and behavior fixes.
+Record the formatting-only commit in .git-blame-ignore-revs after it exists.
+Do not run unchanged functional tests solely to obtain another passing result.
+
+Tool references:
+https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format
+https://csharpier.com/docs/Configuration
+https://csharpier.com/docs/CLI

@@ -1,0 +1,30 @@
+name: C# formatting
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'templates/standalone/**'
+      - 'tools/format*'
+      - 'tools/format-guard/**'
+      - '.editorconfig'
+      - '.csharpierrc.json'
+      - '.config/dotnet-tools.json'
+      - 'global.json'
+      - '.github/workflows/format.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.419'
+      - name: Check formatting and preservation
+        shell: pwsh
+        run: ./tools/format.ps1 -Mode check -EvidenceDirectory (Join-Path $env:RUNNER_TEMP 'mi-format-check')
