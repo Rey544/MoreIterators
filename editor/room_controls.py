@@ -18,16 +18,29 @@ def validate(design):
     return design
 
 
+def external_tools(project):
+    editor = project.get('editor')
+    return isinstance(editor, dict) and editor.get('externalRoomTools') is True
+
+
+def effective_design(project):
+    design = dict(project.get('design', {}))
+    if external_tools(project):
+        for field in MODES:
+            design[field] = 'room'
+    return design
+
+
 def room_palette(project):
-    return project.get('design', {}).get('roomPaletteMode', 'mi') == 'room'
+    return external_tools(project) or project.get('design', {}).get('roomPaletteMode', 'mi') == 'room'
 
 
 def room_gravity(project):
-    return project.get('design', {}).get('roomGravityMode', 'mi') == 'room'
+    return external_tools(project) or project.get('design', {}).get('roomGravityMode', 'mi') == 'room'
 
 
 def entry_gravity(project):
-    return project.get('design', {}).get('entryGravityMode', 'zero') == 'room'
+    return external_tools(project) or project.get('design', {}).get('entryGravityMode', 'zero') == 'room'
 
 
 def copy_owned_room(project, source, directory, name, kind, server, replace=False):
@@ -41,7 +54,7 @@ def copy_owned_room(project, source, directory, name, kind, server, replace=Fals
     text = setting_bytes[name+'_settings.txt'].decode('utf-8-sig').replace('\r\n','\n').replace('\r','\n')
     target = directory / (name + '_settings.txt')
     update = replace or not target.exists() or (kind == 'ai' and room_palette(project)) or (kind == 'entry' and entry_gravity(project))
-    server.copy_room(source, directory, name, replace=replace)
+    server.copy_room(source, directory, name, replace=replace, settings_source=settings)
     if update:
         if kind == 'ai' and not room_palette(project):
             text = re.sub(r'(?m)^Palette:.*', 'Palette: 26', text)

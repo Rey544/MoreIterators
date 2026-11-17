@@ -589,6 +589,9 @@ def _parameter_signals(pid, name, version):
 
 def _parameter_conflicts(project, binding, name, settings):
     design = project.get('design') if isinstance(project.get('design'), dict) else {}
+    import room_controls
+    if room_controls.external_tools(project):
+        design = room_controls.effective_design(project)
     modes = {}
     if name == binding['ai']:
         modes = dict(palette=design.get('roomPaletteMode', 'mi'), gravity=design.get('roomGravityMode', 'mi'))

@@ -708,6 +708,8 @@ def _room_files(stage,name):
 def _room_region_file(project,source,name,filename):
     import project_packages
     source=Path(source).resolve();region=name.split('_')[0]
+    preferred=project_packages._settings_region_source(project,region,source,filename)
+    if preferred is not None:return preferred
     if source.parent.parent.name.lower()=='world':
         owner=source.parent.parent.parent
         if owner.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',owner.name):owner=owner.parent
@@ -1147,9 +1149,9 @@ def audit(stage,ids,extra_rooms=None,region_context=None):
             if not (stage/relative).is_file():continue
             import room_package_dependencies
             text=(stage/relative).read_text('utf-8-sig')
-            names={line.split(':',1)[0].strip().upper() for line in text.splitlines() if line.strip()}
-            if names-set(rooms):reject('房间地图包含未选择的房间',relative)
-            room_package_dependencies.map_positions(text,names);allowed.add(relative)
+            map_names={line.split(':',1)[0].strip().upper() for line in text.splitlines() if line.strip()}
+            if map_names-set(rooms):reject('房间地图包含未选择的房间',relative)
+            room_package_dependencies.map_positions(text,map_names);allowed.add(relative)
     suffix=hashlib.sha256(info['id'].encode()).hexdigest()[:12]
     allowed.add('plugins/IteratorContent_'+suffix+'.dll')
     required=allowed-{'thumbnail.png'}

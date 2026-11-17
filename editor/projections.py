@@ -348,7 +348,7 @@ def background(pid,server):
         if not file.is_file():raise ValueError('演算室相机图缺失：'+file.name)
         with Image.open(file) as image:
             if room_controls.room_palette(project):palette=room_palette(project,source,index-1)
-            image.load();art=decode_room_image(image,palette,project.get('design',{}))
+            image.load();art=decode_room_image(image,palette,room_controls.effective_design(project))
             # Room files store camera offsets from the room's top-left.
             canvas.alpha_composite(art,(round(x),round(y)))
             depth.paste(projection_depth_map(image),(round(x),round(y)))
@@ -419,9 +419,9 @@ def room_palette(project,source,camera=0):
         relative=Path('palettes')/('palette'+str(number)+'.png')
         imported=None
         if project.get('projectId'):
-            import project_packages
-            imported=project_packages.palette_source(project['projectId'],number)
-        candidates=([own/relative] if own is not None else [])+([imported] if imported is not None else [])+[root/relative for root in room_bindings.enabled_asset_roots()]
+            import standalone
+            imported=standalone.room_palette_source(project,source,number)
+        candidates=[imported] if imported is not None else ([own/relative] if own is not None else [])+[root/relative for root in room_bindings.enabled_asset_roots()]
         for file in candidates:
             if (file==imported or own is not None and file==own/relative or room_bindings.is_enabled_asset(file)) and file.is_file():
                 with Image.open(file) as image:
@@ -435,6 +435,13 @@ def room_palette(project,source,camera=0):
         if fade:
             values=[part.strip() for part in fade[1].split(',')]
             if len(values)>camera+1:palette=Image.blend(palette,load(int(values[0])),max(0,min(1,float(values[camera+1]))))
+        extra = {int(match[1]): match[2].split(',') for match in re.finditer(r'(?m)^MorePalette(\d+):[ \t]*([^\r\n]+)', text)}
+        index = 0
+        while index in extra:
+            values = extra[index]
+            if len(values) > camera + 1:
+                palette = Image.blend(palette, load(int(values[0])), max(0, min(1, float(values[camera + 1]))))
+            index += 1
         return palette
     else:
         

@@ -179,7 +179,7 @@ def preview(name, project_id=''):
                 palette = projections.room_palette(appearance, source, i)
             except (ValueError, OSError):
                 continue
-            art = projections.decode_room_image(image, palette, appearance.get('design', {}))
+            art = projections.decode_room_image(image, palette, projections.room_controls.effective_design(appearance))
         canvas.alpha_composite(art, (round(x), round(y)))
         count += 1
     if count:

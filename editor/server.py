@@ -366,18 +366,19 @@ def room_camera_count(text):
         if not re.fullmatch(r'-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?',camera):raise ValueError('房间相机位置格式错误：'+camera)
     return len(cameras)
 
-def copy_room(source,directory,name,palette=None,replace=False):
+def copy_room(source,directory,name,palette=None,replace=False,settings_source=None):
     """Copy a room's own geometry, camera art and settings; never share its exits."""
     text=Path(str(source)+'.txt').read_text('utf-8-sig')
     suffixes=['.txt','_settings.txt']+['_'+str(i)+'.png' for i in range(1,room_camera_count(text)+1)]
     # Validate the complete source before writing anything. Every camera needs its own image.
     for suffix in suffixes:
-        if not Path(str(source)+suffix).is_file():raise ValueError('房间模板素材缺失：'+source.name+suffix)
+        file=Path(settings_source) if suffix=='_settings.txt' and settings_source is not None else Path(str(source)+suffix)
+        if not file.is_file():raise ValueError('房间模板素材缺失：'+file.name)
     directory.mkdir(parents=True,exist_ok=True)
     for suffix in suffixes:
         dest=directory/(name+suffix)
         if dest.exists() and not replace:continue
-        src=Path(str(source)+suffix)
+        src=Path(settings_source) if suffix=='_settings.txt' and settings_source is not None else Path(str(source)+suffix)
         if suffix=='.txt':
             lines=src.read_text('utf-8-sig').splitlines();lines[0]=name;dest.write_text('\n'.join(lines)+'\n',encoding='utf-8')
         elif suffix=='_settings.txt':
@@ -390,6 +391,7 @@ def copy_room(source,directory,name,palette=None,replace=False):
 def compile_design(p):
     import copy
     p=copy.deepcopy(p)
+    p['design']=room_controls.effective_design(p)
     wardrobe.defaults(p['design'])
     ai,entry,oid=roomnames(p);d=dict(p['design'],schema='moreiterators.oracle.v1',projectId=p['projectId'],name=p['name'],oracleId=oid,roomTemplate=p.get('roomTemplate','fp'),previewToken=datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
     preset=p.get('chamberPreset','')
@@ -506,7 +508,7 @@ def sync_linked_rooms(p,ai,entry):
         relative=Path('world')/(name.split('_')[0].lower()+'-rooms')
         rooms=target/relative
         room_controls.copy_owned_room(p,source,rooms,name,kind,sys.modules[__name__],replace=True)
-        if installed.is_dir():copy_room(rooms/name,installed/relative,name,replace=True)
+        if installed.is_dir():room_controls.copy_owned_room(p,rooms/name,installed/relative,name,kind,sys.modules[__name__],replace=True)
 
 def deploy(p):
     with LOCK:return _deploy(p)

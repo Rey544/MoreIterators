@@ -493,9 +493,31 @@ def inspect_choices(pid, server, check=True):
     return dict(projectId=pid, rooms=result, extraRooms=[row['name'] for row in (metadata or {}).get('rooms', []) if row.get('kind') == 'extra'])
 
 
+def _settings_region_source(project, region, source, filename):
+    if filename != 'properties.txt' and not re.fullmatch(re.escape(region.lower()) + r'_settingstemplate_[a-z0-9-]+\.txt', filename):return None
+    name = Path(source).name.upper()
+    if not room_bindings.ROOM_RE.fullmatch(name) or name.split('_')[0] != region:return None
+    settings = _settings(project, name, source)
+    import rtm_room_sources
+    routed = rtm_room_sources.region_root_for_source(settings.with_name(name), room_bindings.enabled_asset_roots())
+    project_root = _project_dir(project['projectId'])
+    if routed is not None:
+        root = routed;relative = 'world/' + region.lower() + '/' + filename
+    elif settings.parent.parent.name.casefold() == 'world' and settings.parent.name.casefold() == region.lower() + '-rooms':
+        root = settings.parent.parent.parent;relative = 'world/' + region.lower() + '/' + filename
+    elif settings.parent.resolve() == (project_root / 'rooms/rendered').resolve():
+        root = project_root;relative = 'rooms/regions/' + region + '/' + filename
+    else:return None
+    candidate = _sibling(_safe(root, relative), '')
+    candidate = _safe(root, candidate.relative_to(root).as_posix())
+    return candidate if candidate.is_file() else None
+
+
 def _region_source(project, region, source, filename, include_imported=True, required_rooms=()):
     import rtm_room_sources
     import room_source_choices
+    preferred = _settings_region_source(project, region, source, filename)
+    if preferred is not None:return preferred
     enabled_roots = room_bindings.enabled_asset_roots()
     rtm_root = rtm_room_sources.region_root_for_source(source, enabled_roots)
     shared = {root for path in room_source_choices.selected_region_sources(project['projectId'], region)
@@ -987,7 +1009,7 @@ def before_deploy(project, server):
     pid = storage.valid_id(project['projectId']);metadata = load_metadata(pid)
     if not metadata:return dict(projectId=pid, files={}, rooms=[], worldFiles={})
     import standalone
-    binding = room_bindings.binding(project);rows = _catalog_rows();files = {};owned = [];palette_refs = [];region_sources = {};asset_refs=[];sky_rooms=[]
+    binding = room_bindings.binding(project);rows = _catalog_rows();files = {};owned = [];palette_refs = [];region_sources = {};region_settings = {};asset_refs=[];sky_rooms=[]
     if binding != room_bindings.binding(storage.load_project(pid)):
         raise ValueError('房间绑定已改变，请先在区域连接保存后再应用项目')
     for kind in ('ai', 'entry'):
@@ -1005,6 +1027,11 @@ def before_deploy(project, server):
         rendered = _collect_render(source, settings, name, setting_files)
         try:region_files, region_paths = _collect_region(project, room['region'], source, {row['name'] for row in metadata['rooms']})
         except ValueError as error:raise ValueError('房间 ' + name + '（' + _dependency_origin(project, settings) + '）：' + str(error)) from error
+        for filename,content in region_files.items():
+            if filename != 'properties.txt' and '_settingstemplate_' not in filename:continue
+            key = room['region'] + '/' + filename
+            if key in region_settings and region_settings[key] != content:raise ValueError('房间引用的区域设置不一致：' + key)
+            region_settings[key] = content
         sky = room_package_dependencies.validate_room(room['region'], name, {filename: _text(rendered[filename], filename) for filename in setting_files},
                                                       {filename: _region_text(content, filename) for filename, content in region_files.items()},
                                                       lambda filename: _dependency_origin(project, setting_files[filename]))
