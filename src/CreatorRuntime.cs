@@ -275,6 +275,19 @@ namespace MoreIterators
 
         public static void Tick(RainWorldGame g)
         {
+            if (
+                g == null
+                || g.cameras == null
+                || g.cameras.Length == 0
+                || g.cameras[0] == null
+                || g.cameras[0].room == null
+                || g.cameras[0].room.abstractRoom == null
+            )
+            {
+                CurrentRoom = "";
+                Panel = false;
+                return;
+            }
             CurrentRoom = g.cameras.Length > 0 && g.cameras[0].room != null ? g.cameras[0].room.abstractRoom.name : "";
             if (!CanControl)
                 Panel = false;
@@ -319,7 +332,6 @@ namespace MoreIterators
                     string s = File.ReadAllText(controlFile);
                     if (s != control)
                     {
-                        control = s;
                         var d = Json.Deserialize(s) as Dictionary<string, object>;
                         if (d == null)
                             throw new InvalidDataException("Creator control must be a JSON object.");
@@ -334,6 +346,7 @@ namespace MoreIterators
                         PalettePreview = Get(d, "palettePreview", -1f);
                         StudioRuntime.Pose.hasMark = Mark;
                         SyncPose();
+                        control = s;
                     }
                 }
                 catch (Exception error)

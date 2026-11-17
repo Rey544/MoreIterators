@@ -88,6 +88,29 @@ def live_snapshot(path):
 def file_age(path):
     try:return datetime.datetime.now().timestamp()-path.stat().st_mtime
     except OSError:return float('inf')
+def creator_status():
+    status_path=DESIGNS/'creator/status.json';heartbeat_path=DESIGNS/'creator/heartbeat.json'
+    status=live_snapshot(status_path);heartbeat=live_snapshot(heartbeat_path)
+    def fresh(value,path):
+        if not value or not 0<=file_age(path)<8:return False
+        stamp=value.get('time')
+        if not isinstance(stamp,str):return False
+        try:
+            moment=datetime.datetime.fromisoformat(stamp.replace('Z','+00:00'))
+            if moment.tzinfo is None:return False
+            age=(datetime.datetime.now(datetime.timezone.utc)-moment).total_seconds()
+            return 0<=age<8
+        except (ValueError,OverflowError):return False
+    status_fresh=fresh(status,status_path);heartbeat_fresh=fresh(heartbeat,heartbeat_path)
+    if heartbeat_fresh:
+        same=all(isinstance(heartbeat.get(key),str) and heartbeat[key] and heartbeat[key]==status.get(key) for key in ('project','room'))
+        value=dict(status) if same and status_fresh else {}
+        value.update(heartbeat)
+    else:value=dict(status if status_fresh or not heartbeat else heartbeat)
+    value['online']=heartbeat_fresh or status_fresh
+    value['frameOnline']=value['online'] and 0<=file_age(DESIGNS/'studio-frame.png')<5
+    return value
+
 def atomic(path,data):
     path.parent.mkdir(parents=True,exist_ok=True)
     with LOCK:
@@ -782,10 +805,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200,project_association(pid))
             if path=='/api/projects':return self.reply(200,[dict(json.loads(f.read_text('utf-8')),fixedProject=bool(storage.binding(f.parent.name))) for f in storage.project_files() if not project_lifecycle.archived(f.parent.name)])
             if path=='/api/status':
-                f=DESIGNS/'creator/status.json';d=live_snapshot(f);h=DESIGNS/'creator/heartbeat.json';beat=live_snapshot(h)
-                if beat:d.update(beat)
-                else:h=f
-                d['online']=file_age(h)<8;frame=DESIGNS/'studio-frame.png';d['frameOnline']=d['online'] and file_age(frame)<5;return self.reply(200,d)
+                return self.reply(200,creator_status())
             if path=='/api/control':
                 f=DESIGNS/'creator/control.json';return self.reply(200,json.loads(f.read_text('utf-8')) if f.exists() else {'mode':'silent','behavior':'work','paused':False,'hasMark':True,'rearGlow':True,'lightning':True,'pearls':True,'glyphs':True,'palettePreview':-1})
             if path=='/api/history':
