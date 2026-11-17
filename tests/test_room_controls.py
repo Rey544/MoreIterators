@@ -101,17 +101,21 @@ class RoomControlTests(unittest.TestCase):
                 image=Image.new('RGBA',(1,1),(255,255,255,255))
                 self.assertEqual(projections.decode_room_image(image,palette,native['design']).getpixel((0,0)),(0,0,255,255))
 
-    def test_subset_sky_and_template_dependencies_are_blocked_not_erased(self):
+    def test_project_sky_keeps_context_and_native_template_fallback(self):
         f=self.fixture();settings=f.local/'world/xx-rooms/XX_AI_settings.txt'
         text=settings.read_text('utf-8')+'Effects: AboveCloudsView-1-0-0,\n'
         
         text=text.replace('Effects: ZeroG-0.25-1-1,\n','');settings.write_text(text,'utf-8')
-        with self.assertRaisesRegex(ValueError,'整片区域'):f.payload()
-        with self.assertRaisesRegex(ValueError,'整片区域'):
-            standalone.copy_selected_room(f.project,settings.with_name('XX_AI'),'XX_AI','YY_AI',f.root/'copy',server)
+        files=f.unpack(f.payload())
+        self.assertIn('rooms/XX_AI/rendered/XX_AI_mi_background.json',files)
+        standalone.copy_selected_room(f.project,settings.with_name('XX_AI'),'XX_AI','YY_AI',f.root/'copy',server)
+        context=__import__('json').loads((f.root/'copy/YY_AI_mi_background.json').read_text('utf-8'))
+        self.assertEqual(context['room'],'YY_AI')
+        self.assertEqual(context['mapPosition'],__import__('json').loads(files['rooms/XX_AI/rendered/XX_AI_mi_background.json'])['mapPosition'])
         self.assertEqual(settings.read_text('utf-8'),text)
         settings.write_text('Template: XX_SettingsTemplate_Outside\nPalette: 9100\n','utf-8')
-        with self.assertRaisesRegex(ValueError,'模板'):f.payload()
+        files=f.unpack(f.payload())
+        self.assertIn(b'Outside',files['rooms/XX_AI/rendered/XX_AI_settings.txt'])
         self.assertIn('Outside',settings.read_text('utf-8'))
 
     def test_import_and_actual_apply_keep_native_settings_and_original_json_modes(self):

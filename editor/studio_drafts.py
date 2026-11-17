@@ -43,3 +43,13 @@ def save(data,atomic):
     binding=_binding(data.get('binding'))
     value=dict(schema=SCHEMA,projectId=pid,revision=previous['revision']+1,binding=binding)
     atomic(_path(pid),value);return load(pid)
+
+
+def align_applied(pid,binding,revision,atomic):
+    if type(revision) is not int or revision<0:raise ValueError('房间草稿已在其他页面更新，请重新打开后再修改')
+    previous=_stored(pid)
+    if previous['revision']!=revision:
+        return dict(draftRevision=previous['revision'],draftPreserved=previous['binding'] is not None and previous['binding']!=binding)
+    value=dict(schema=SCHEMA,projectId=pid,revision=revision+1,binding=_binding(binding))
+    atomic(_path(pid),value)
+    return dict(draftRevision=value['revision'],draftPreserved=False)

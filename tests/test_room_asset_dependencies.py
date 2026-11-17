@@ -88,7 +88,9 @@ class RoomAssetTests(unittest.TestCase):
         assets(f.local,'green');before=(f.local/'decals/my-decal.png').read_bytes()
         
         imported=project_packages.asset_source('selected','decals/my-decal.png');os.utime(imported,(2100000000,2100000000))
-        with self.assertRaisesRegex(ValueError,'未归属'):project_packages.before_deploy(project,f.server)
+        with self.assertRaises(room_bindings.RoomBindingError) as raised:project_packages.before_deploy(project,f.server)
+        self.assertEqual(raised.exception.code,'rooms.error.migrationUnownedFile')
+        self.assertEqual(raised.exception.params['file'],'decals/my-decal.png')
         self.assertEqual((f.local/'decals/my-decal.png').read_bytes(),before)
 
     def test_standalone_extra_room_includes_assets_and_audit_rejects_missing_or_unreferenced(self):

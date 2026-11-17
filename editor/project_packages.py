@@ -16,6 +16,8 @@ import room_editor
 import room_migration
 import storage
 import room_asset_dependencies
+import room_package_dependencies
+import room_connection_checks
 
 SCHEMA = 'moreiterators.project-package.v1'
 LOCAL_SCHEMA = 'moreiterators.project-package.local.v1'
@@ -27,11 +29,11 @@ MAX_ROOMS = 256
 MAX_PIXELS = 64 * 1024 * 1024
 OUTPUT_MANIFEST = '.mi-project-package-assets.json'
 OUTPUT_SCHEMA = 'moreiterators.project-package-assets.v1'
-OUTPUT_PATH = re.compile(r'world/[a-z0-9]+-rooms/[A-Z][A-Z0-9]{1,7}_[A-Z0-9_]{1,64}(?:\.txt|_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_[1-9][0-9]*\.png)|palettes/palette\d+\.png|'+room_asset_dependencies.PATH_PATTERN)
+OUTPUT_PATH = re.compile(r'world/[a-z0-9]+-rooms/[A-Z][A-Z0-9]{1,7}_[A-Z0-9_]{1,64}(?:\.txt|_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_mi_background\.json|_[1-9][0-9]*\.png)|palettes/palette\d+\.png|'+room_asset_dependencies.PATH_PATTERN)
 
 
 def _local_file(relative):
-    return bool(re.fullmatch(r'rooms/(?:rendered/[A-Z0-9_]+(?:_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|\.txt|\.png)|[A-Z0-9_]+\.(?:txt|png)|palettes/palette\d+\.png|regions/[A-Z0-9]+/(?:properties|displayname|map_[a-z0-9]+)\.txt)',relative) or
+    return bool(re.fullmatch(r'rooms/(?:rendered/[A-Z0-9_]+(?:_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_mi_background\.json|\.txt|\.png)|[A-Z0-9_]+\.(?:txt|png)|palettes/palette\d+\.png|regions/[A-Z0-9]+/(?:properties|displayname|map_[a-z0-9]+|[a-z0-9]+_settingstemplate_[a-z0-9-]+)\.txt)',relative) or
                 relative.startswith('rooms/assets/') and room_asset_dependencies.PATH.fullmatch(relative[len('rooms/assets/'):]))
 
 
@@ -93,11 +95,15 @@ def _png(content, label):
         raise ValueError('房间图片无效：' + label) from error
 
 
-def _text(content, label):
+def _text(content, label, allow_empty=False):
     try:text = content.decode('utf-8-sig')
     except UnicodeError as error:raise ValueError('房间文本编码无效：' + label) from error
-    if not text.strip() or '\x00' in text:raise ValueError('房间文本无效：' + label)
+    if not allow_empty and not text.strip() or '\x00' in text:raise ValueError('房间文本无效：' + label)
     return text
+
+
+def _region_text(content, label):
+    return _text(content, label, bool(re.fullmatch(r'[a-z0-9]+_settingstemplate_[a-z0-9-]+\.txt', Path(label).name)))
 
 
 def _geometry(content, name):
@@ -109,14 +115,8 @@ def _geometry(content, name):
         if not 0 < width <= 10000 or not 0 < height <= 10000:raise ValueError()
         cameras = [value.strip() for value in rows[3].split('|') if value.strip()]
         if not cameras or len(cameras) > 256 or any(not re.fullmatch(r'-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?', value) for value in cameras):raise ValueError()
-        if rows[9] == '0':
-            return len(cameras), room_bindings.geometry(None, content=content)['exitCount']
-        nodes = rows[9].split('|');count = int(nodes[1])
-        if int(nodes[0]) < 0 or not 0 < count <= 1024 or len(nodes) < count + 3:raise ValueError()
-        types = [int(value.split(',')[0]) for value in nodes[3:3 + count]]
-        exits = next((index for index, kind in enumerate(types) if kind != 0), count)
-        if 0 in types[exits:]:raise ValueError()
-        return len(cameras), exits
+        if rows[9] != '0' and not 0 < int(rows[9].split('|')[1]) <= 1024:raise ValueError()
+        return len(cameras), room_bindings.geometry(None, content=content)['exitCount']
     except (ValueError, IndexError, TypeError) as error:
         raise ValueError('房间地形或相机数据无效：' + name) from error
 
@@ -133,7 +133,9 @@ def _sibling(prefix, suffix):
 def _collect_render(source, settings, name, setting_files=None):
     
     if not isinstance(name, str) or not room_bindings.ROOM_RE.fullmatch(name):raise ValueError('房间编号无效')
-    geometry = _file(_sibling(source, '.txt'))
+    import room_source_choices
+    chosen = room_source_choices.selected_render_files(name, source)
+    geometry = _file(chosen.get(name + '.txt', _sibling(source, '.txt')))
     cameras, _ = _geometry(geometry, name)
     setting_bytes = _file(settings)
     _text(setting_bytes, name + '_settings.txt')
@@ -143,7 +145,7 @@ def _collect_render(source, settings, name, setting_files=None):
         content=_file(path);_text(content,filename);files[filename]=content
     for index in range(1, cameras + 1):
         filename = name + '_' + str(index) + '.png'
-        content = _file(_sibling(source, '_' + str(index) + '.png'))
+        content = _file(chosen.get(filename, _sibling(source, '_' + str(index) + '.png')))
         _png(content, filename);files[filename] = content
     return files
 
@@ -154,6 +156,36 @@ def _records(files):
 
 def _project_dir(pid):
     return storage.project_file(storage.valid_id(pid)).parent
+
+
+def complete_preset_metadata(project, metadata, plan):
+    binding = room_bindings.binding(project)
+    if not isinstance(plan, dict) or plan.get('binding') != binding:
+        raise ValueError('房间绑定已改变，请先在区域连接保存后再应用项目')
+    result = copy.deepcopy(metadata)
+    result.setdefault('regions', [])
+    result.setdefault('palettes', [])
+    for kind in ('ai', 'entry'):
+        existing = [row for row in result['rooms'] if row['kind'] == kind]
+        if existing:
+            if [row['name'] for row in existing] != [binding[kind]]:
+                raise ValueError('房间编号已改变，导入房间清单尚未迁移；已停止应用，避免写回旧房间。')
+            continue
+        name = binding[kind]
+        planned = []
+        for text in plan['worldFiles'].values():
+            planned.extend(room_bindings.parse_world(text, binding['region']))
+            for line in text.splitlines():
+                if line.startswith('[REPLACE]'):
+                    planned.extend(room_bindings.parse_world('ROOMS\n' + line[len('[REPLACE]'):] + '\nEND ROOMS\n', binding['region']))
+        row = next((row for row in planned if row['name'] == name), None)
+        if row is None or any(item['name'] == name for item in result['rooms']):
+            raise ValueError('房间编号已改变，导入房间清单尚未迁移；已停止应用，避免写回旧房间。')
+        result['rooms'].append(dict(name=name, kind=kind, region=binding['region'],
+                                   connections=list(row['connections']), tags=row.get('tags', ''),
+                                   sourceAvailable=_safe(_project_dir(project['projectId']), 'rooms/' + name + '.txt').is_file(),
+                                   updatedAtNs=0))
+    return result
 
 
 def load_metadata(pid):
@@ -180,6 +212,12 @@ def load_metadata(pid):
         _safe(_project_dir(pid), path)
         if path in paths or not _local_file(path):raise ValueError('项目房间文件清单无效')
         paths.add(path)
+    if 'regions' not in value and 'palettes' not in value and len(value['rooms']) == 1 and value['rooms'][0]['kind'] == 'ai':
+        project = storage.load_project(pid)
+        binding = room_bindings.binding(project)
+        plan = room_bindings._stored_plan(pid)
+        if project.get('chamberPreset') and value['rooms'][0]['name'] == binding['ai'] and isinstance(plan, dict) and plan.get('binding') == binding:
+            value = complete_preset_metadata(project, value, plan)
     return value
 
 
@@ -196,8 +234,7 @@ def asset_source(pid,relative):
     import room_source_choices
     selected=room_source_choices.selected_asset(pid,relative)
     if selected is not None:return selected
-    metadata=load_metadata(pid);local='rooms/assets/'+relative
-    if not metadata or not any(item.get('path')==local for item in metadata['files']):return None
+    local='rooms/assets/'+relative
     path=_safe(_project_dir(pid),local)
     return path if path.is_file() else None
 
@@ -213,19 +250,26 @@ def palette_source(pid, index):
 
 def region_file(pid, region, filename):
     if not isinstance(region, str) or not room_bindings.REGION_RE.fullmatch(region):raise ValueError('区域编号无效')
-    if filename not in ('properties.txt', 'displayname.txt', 'map_' + region.lower() + '.txt'):raise ValueError('区域文件无效')
+    if not room_package_dependencies.region_filename(region, filename):raise ValueError('区域文件无效')
     path = _safe(_project_dir(pid), 'rooms/regions/' + region + '/' + filename)
     return path if path.is_file() else None
 
 
-def _catalog_rows():
+def _catalog_rows(refresh=False):
+    offline = room_bindings.offline_catalog(refresh=True, include_reserved=False) if refresh else None
     result = {}
-    for region in room_bindings.catalog().get('regions', []):
+    catalog = room_bindings.catalog(include_reserved=False) if refresh else room_bindings.catalog()
+    for region in catalog.get('regions', []):
         for row in region.get('rooms', []):
             name = row.get('name', '')
             if room_bindings.ROOM_RE.fullmatch(name):
                 if name in result:result[name]['conditional'] = True
                 else:result[name] = copy.deepcopy(row)
+    if offline:
+        for region in offline.get('regions', []):
+            for row in region.get('rooms', []):
+                name = row.get('name', '')
+                if room_bindings.ROOM_RE.fullmatch(name):result.setdefault(name, copy.deepcopy(row))
     return result
 
 
@@ -314,10 +358,7 @@ def room_settings_files(project,name,settings):
         if not path.is_file():raise ValueError('缺少房间设置变体：'+candidate.name)
         seen[key]=path;result[filename]=path
     root=_project_dir(project['projectId']);cached=root/'rooms/rendered'
-    folders=[cached,storage.target_mod(project['projectId'])/'world'/(name.split('_')[0].lower()+'-rooms')]
-    installed=storage.installed_mod(project['projectId'],required=False)
-    if installed is not None:folders.append(installed/'world'/(name.split('_')[0].lower()+'-rooms'))
-    if settings.parent.resolve() not in {folder.resolve() for folder in folders}:return result
+    if settings.parent.resolve() != cached.resolve():return result
     metadata=load_metadata(project['projectId'])
     for item in (metadata or {}).get('files',[]):
         relative=item['path']
@@ -336,7 +377,18 @@ def _origin(project, path):
     return 'enabled'
 
 
-def _connections(project, name, source, rows):
+def saved_connection_rows(project):
+    if not project.get('roomConnections'):return {}
+    import room_workflow
+    value=room_workflow.normalize_connections(project,project['roomConnections'])
+    return {row['name']:row for row in value['rows']}
+
+
+def _connections(project, name, source, rows, details=False):
+    def result(links, tags, origin):
+        return (list(links), tags, origin) if details else (list(links), tags)
+    saved=saved_connection_rows(project).get(name)
+    if saved is not None:return result(saved['connections'],saved.get('tags',''),'project.json')
     pid = project['projectId'];region = name.split('_')[0]
     
     roots = [storage.target_mod(pid)]
@@ -349,7 +401,7 @@ def _connections(project, name, source, rows):
         if not file.is_file():continue
         matches = [row for row in room_bindings.parse_world(_text(_file(file), file.name), region) if row['name'] == name]
         if len(matches) == 1 and not matches[0].get('conditional'):
-            candidates.append((file.stat().st_mtime_ns, matches[0]['connections'], matches[0].get('tags', '')))
+            candidates.append((file.stat().st_mtime_ns, matches[0]['connections'], matches[0].get('tags', ''), _source_label(project, file)))
             continue
         if matches:raise ValueError('房间包含条件连接，不能简化导出：' + name)
     metadata = load_metadata(pid)
@@ -359,36 +411,71 @@ def _connections(project, name, source, rows):
             stamp = previous.get('updatedAtNs', metadata.get('importedAtNs'))
             if stamp is None:stamp = (_project_dir(pid) / LOCAL_MANIFEST).stat().st_mtime_ns
             if type(stamp) is not int or stamp < 0:raise ValueError('项目房间导入时间无效')
-            candidates.append((stamp, list(previous['connections']), previous.get('tags', '')))
+            candidates.append((stamp, list(previous['connections']), previous.get('tags', ''), LOCAL_MANIFEST))
     if candidates:
-        _, connections, tags = max(candidates, key=lambda value: value[0])
-        return list(connections), tags
+        _, connections, tags, origin = max(candidates, key=lambda value: value[0])
+        return result(connections, tags, origin)
     if name in rows and rows[name].get('connections') is not None:
-        return list(rows[name]['connections']), rows[name].get('tags', '')
+        return result(rows[name]['connections'], rows[name].get('tags', ''), 'room-catalog.json')
     binding = room_bindings.binding(project)
-    _, count = _geometry(_file(_sibling(source, '.txt')), name)
+    count = room_bindings.geometry(None,content=_file(_sibling(source, '.txt')))['exitCount']
     links = ['DISCONNECTED'] * count
     if name in (binding['ai'], binding['entry']):
         key = 'ai' if name == binding['ai'] else 'entry';node = binding[key + 'Node']
-        if node >= count:raise ValueError('房间出口与项目连接不一致：' + name)
+        if node >= count:links.extend(['DISCONNECTED'] * (node + 1 - count))
         links[node] = binding['entry' if key == 'ai' else 'ai']
-    return links, ''
+    return result(links, '', 'project.json/roomBinding')
+
+
+def _source_label(project, path):
+    path = Path(path).resolve()
+    roots = [('project', _project_dir(project['projectId'])), ('local', storage.target_mod(project['projectId']))]
+    installed = storage.installed_mod(project['projectId'], required=False)
+    if installed is not None:roots.append(('installed', installed))
+    for label, root in roots:
+        if path.is_relative_to(root.resolve()):return label + '/' + path.relative_to(root.resolve()).as_posix()
+    return path.name
+
+
+def connection_snapshot(project, name, rows=None, source=None, connections=None):
+    import room_source_choices
+    rows = _catalog_rows() if rows is None else rows
+    source = selected_room_source(project, name, rows) if source is None else Path(source)
+    links, tags, origin = _connections(project, name, source, rows, details=True)
+    if connections is not None:links = list(connections)
+    geometry_file = room_source_choices.selected_render_files(name, source).get(name + '.txt', _sibling(source, '.txt'))
+    try:content = _file(geometry_file)
+    except (ValueError,OSError):content = b''
+    check = room_connection_checks.inspect(name, links, content, _source_label(project, geometry_file), origin)
+    check.update(name=name, connections=links, tags=tags, source=source)
+    check['canReconcile'] = check['actualExitCount'] is not None and all(value == 'DISCONNECTED' for value in links[check['actualExitCount']:])
+    for issue in check['issues']:issue['canReconcile'] = check['canReconcile']
+    return check
 
 
 def selected_room_connections(project, name, source, rows=None):
     return _connections(project, name, source, _catalog_rows() if rows is None else rows)
 
 
-def inspect_choices(pid, server):
+def inspect_choices(pid, server, check=True):
+    import room_source_choices
     project = storage.load_project(storage.valid_id(pid));binding = room_bindings.binding(project)
-    rows = _catalog_rows();metadata = load_metadata(pid)
+    rows = _catalog_rows(refresh=True);metadata = load_metadata(pid)
+    scanned = {row['room']: row for row in room_source_choices.preflight([project]).get('rooms', [])} if check else {}
+    source_dir = _safe(_project_dir(pid), 'rooms')
+    source_names = {path.name.casefold() for path in source_dir.iterdir() if path.suffix.lower() == '.txt'} if source_dir.is_dir() else set()
     for row in (metadata or {}).get('rooms', []):rows.setdefault(row['name'], row)
     required = {binding['ai']: 'ai', binding['entry']: 'entry'}
     names = sorted(set(rows) | set(required));result = []
     for name in names:
-        kind = required.get(name, 'extra');available = True;reason = ''
+        kind = required.get(name, 'extra');available = True;reason = '';state = None
         try:
-            if name in required or any(row['name'] == name for row in (metadata or {}).get('rooms', [])):
+            if name in scanned:
+                current = scanned[name]
+                available = all(any(version['complete'] for version in current[field]) for field in ('renderVersions', 'settingsVersions'))
+                state = current.get('state', 'ready' if available else 'missing')
+                reason = current.get('reason', '')
+            elif name in required or any(row['name'] == name for row in (metadata or {}).get('rooms', [])):
                 source = _source(project, name, rows)
                 available = _sibling(source, '.txt').is_file() and _settings(project, name, source).is_file()
             else:
@@ -396,13 +483,32 @@ def inspect_choices(pid, server):
                 available = bool(path and not row.get('conditional') and Path(path).is_file())
         except (OSError, ValueError) as error:available = False;reason = str(error)
         row = dict(name=name, region=name.split('_')[0], kind=kind, required=name in required,
-                   available=available, sourceAvailable=_safe(_project_dir(pid), 'rooms/' + name + '.txt').is_file())
+                   available=available, sourceAvailable=(name + '.txt').casefold() in source_names and _safe(_project_dir(pid), 'rooms/' + name + '.txt').is_file())
+        row['state'] = state or ('ready' if available else 'needs_sync' if '尚未同步' in reason else 'missing')
+        if name in scanned:
+            for key in ('recommendedSourceId', 'recommendedSettingsId', 'missing'):
+                if key in scanned[name]:row[key] = copy.deepcopy(scanned[name][key])
         if reason:row['reason'] = reason
         result.append(row)
     return dict(projectId=pid, rooms=result, extraRooms=[row['name'] for row in (metadata or {}).get('rooms', []) if row.get('kind') == 'extra'])
 
 
-def _region_source(project, region, source, filename):
+def _region_source(project, region, source, filename, include_imported=True, required_rooms=()):
+    import rtm_room_sources
+    import room_source_choices
+    enabled_roots = room_bindings.enabled_asset_roots()
+    rtm_root = rtm_room_sources.region_root_for_source(source, enabled_roots)
+    shared = {root for path in room_source_choices.selected_region_sources(project['projectId'], region)
+              if (root := rtm_room_sources.region_root_for_source(path, enabled_roots)) is not None}
+    if len(shared) == 1:rtm_root = next(iter(shared))
+    if rtm_root is not None and (room_package_dependencies.region_filename(region, filename) or filename == 'world_' + region.lower() + '.txt'):
+        folders = [rtm_root / 'maps'] if filename == 'map_' + region.lower() + '.txt' else []
+        folders.append(rtm_root / 'world' / region.lower())
+        for folder in folders:
+            candidate = _safe(rtm_root, (folder / filename).relative_to(rtm_root).as_posix())
+            candidate = _sibling(candidate, '')
+            candidate = _safe(rtm_root, candidate.relative_to(rtm_root).as_posix())
+            if candidate.is_file():return candidate
     own = region == room_bindings.binding(project)['region']
     roots = []
     if own:
@@ -414,9 +520,20 @@ def _region_source(project, region, source, filename):
     for root in roots:
         path = root / 'world' / region.lower() / filename
         if path.is_file():candidates.append(path)
-    imported = region_file(project['projectId'], region, filename)
+    imported = region_file(project['projectId'], region, filename) if include_imported else None
     if imported is not None:candidates.append(imported)
-    return max(candidates, key=lambda path: path.stat().st_mtime_ns) if candidates else None
+    required = {name for name in required_rooms if name.split('_')[0] == region}
+    def rank(path):
+        covered = set()
+        if required and filename == 'map_' + region.lower() + '.txt':
+            if imported is not None and path == imported:
+                covered = {room['name'] for room in (load_metadata(project['projectId']) or {}).get('rooms', []) if room['region'] == region}
+            else:
+                world = path.with_name('world_' + region.lower() + '.txt')
+                if world.is_file():covered = {room['name'] for room in room_bindings.parse_world(_text(_file(world), world.name), region)}
+            if not covered:covered = {line.split(':', 1)[0].strip().upper() for line in _text(_file(path), path.name).splitlines() if ':' in line}
+        return len(required & covered), path.stat().st_mtime_ns
+    return max(candidates, key=rank) if candidates else None
 
 
 def _map_subset(content, names):
@@ -426,16 +543,93 @@ def _map_subset(content, names):
 
 
 def _check_template(text, label, properties=False):
-    pattern = r'(?m)^Room Setting Templates:\s*([^\r\n]+)' if properties else r'(?m)^Template:\s*([^\r\n]+)'
+    pattern = r'(?m)^Room Setting Templates:[ \t]*([^ \t\r\n][^\r\n]*)' if properties else r'(?m)^Template:[ \t]*([^ \t\r\n][^\r\n]*)'
     value = re.search(pattern, text)
     if value and value[1].strip().upper() != 'NONE':
         raise ValueError('房间 ' + label + ' 包含尚未支持完整迁移的模板依赖：' + value[1].strip() + '；不会修改为 NONE 或导出不完整的项目包。')
 
 
-def collect_rooms(project, selections, server):
+def _dependency_origin(project, path):
+    path = Path(path).resolve();pid = project['projectId']
+    roots = [('项目', _project_dir(pid)), ('本地模组', storage.target_mod(pid))]
+    installed = storage.installed_mod(pid, required=False)
+    if installed is not None:roots.append(('已安装模组', installed))
+    for label, root in roots:
+        if path.is_relative_to(Path(root).resolve()):return label + '/' + path.relative_to(Path(root).resolve()).as_posix()
+    parts = path.parts
+    index = next((i for i, part in enumerate(parts) if part.lower() == 'world'), None)
+    return '已启用模组/' + ('/'.join(parts[index:]) if index is not None else path.name)
+
+
+def _collect_region(project, region, source, names):
+    result = {};paths = {}
+    for filename in ('properties.txt', 'displayname.txt', 'map_' + region.lower() + '.txt'):
+        file = _region_source(project, region, source, filename, required_rooms=names)
+        if file is None:continue
+        content = _file(file)
+        if filename.startswith('map_'):
+            content = _map_subset(content, names)
+            if content is None:continue
+        _text(content, filename);result[filename] = content;paths[filename] = file
+    properties = _text(result['properties.txt'], 'properties.txt') if 'properties.txt' in result else ''
+    for filename in room_package_dependencies.template_files(region, properties):
+        file = _region_source(project, region, source, filename)
+        if file is None:raise ValueError('区域 ' + region + ' 缺少房间模板：' + filename)
+        content = _file(file);_region_text(content, filename);result[filename] = content;paths[filename] = file
+    return result, paths
+
+
+def _room_size(content, name):
+    _geometry(content, name)
+    return tuple(map(int, _text(content, name).splitlines()[1].split('|')[0].split('*')))
+
+
+def _background_context(project, name, source, geometry, rows):
+    size = _room_size(geometry, name)
+    region = name.split('_')[0]
+    map_file = _region_source(project, region, source, 'map_' + region.lower() + '.txt', required_rooms={name})
+    if map_file is not None:
+        variants = [path.name for path in map_file.parent.iterdir() if path.is_file() and re.fullmatch('map_' + re.escape(region.lower()) + r'-[A-Za-z0-9_-]+\.txt', path.name, re.I)]
+        if variants:raise ValueError('房间 ' + name + ' 的角色地图坐标尚未核对：' + ', '.join(sorted(variants)))
+    map_text = _text(_file(map_file), map_file.name) if map_file else ''
+    raw_position = room_package_dependencies.map_positions(map_text, {name}).get(name)
+    fingerprint = hashlib.sha256(_json(raw_position)).hexdigest()
+    candidates = [_sibling(source, '_mi_background.json'), _safe(_project_dir(project['projectId']), 'rooms/rendered/' + name + '_mi_background.json')]
+    for existing in candidates:
+        if existing.is_file():
+            value = _read_json(_file(existing), existing.name)
+            room_package_dependencies.background(value, name, size)
+            if value.get('mapFingerprint', fingerprint) == fingerprint:return value
+    position = (0.0, 0.0)
+    if map_file is not None:
+        world_file = _region_source(project, region, source, 'world_' + region.lower() + '.txt', include_imported=False)
+        world_rows = room_bindings.parse_world(_text(_file(world_file), world_file.name), region) if world_file else [row for row in rows.values() if row.get('region') == region]
+        if not world_rows or any(row.get('conditional') for row in world_rows):
+            raise ValueError('房间 ' + name + ' 无法核对源区域房间列表：world_' + region.lower() + '.txt')
+        names = {row['name'] for row in world_rows}
+        if name not in names:raise ValueError('源区域未登记房间：' + name)
+        positions = room_package_dependencies.map_positions(map_text, names)
+        origin = [0.0, 0.0]
+        for row in world_rows:
+            room = row['name'];room_source = source if room == name else source.with_name(room)
+            path = _sibling(room_source, '.txt')
+            if not path.is_file():
+                known = rows.get(room, {}).get('geometryPath')
+                if known:path = Path(known)
+            if not path.is_file():
+                try:path = room_bindings.resolve_room_source(room).with_suffix('.txt')
+                except (ValueError, OSError):pass
+            if not path.is_file():raise ValueError('房间 ' + name + ' 缺少计算背景坐标所需的房间尺寸：' + room + '.txt')
+            width, height = _room_size(_file(path), room)
+            x, y = positions.get(room, (0.0, 0.0))
+            origin[0] = min(origin[0], x - width * 1.5);origin[1] = min(origin[1], y - height * 1.5)
+        x, y = positions.get(name, (0.0, 0.0));position = (x - origin[0], y - origin[1])
+    return dict(schema='moreiterators.background-coordinates.v1', room=name, sourceRegion=region, size=list(size), mapPosition=list(position), mapFingerprint=fingerprint)
+
+
+def collect_rooms(project, selections, server, available_rooms=None, allow_pending=False):
     
     import standalone
-    import room_controls
     if not isinstance(selections, list) or not 2 <= len(selections) <= MAX_ROOMS:raise ValueError('请选择有效房间')
     rows = _catalog_rows();metadata = load_metadata(project['projectId'])
     for row in (metadata or {}).get('rooms', []):rows.setdefault(row['name'], row)
@@ -449,13 +643,10 @@ def collect_rooms(project, selections, server):
         source = _source(project, name, rows);settings = _settings(project, name, source)
         setting_files=room_settings_files(project,name,settings)
         rendered = _collect_render(source, settings, name, setting_files)
-        for filename in setting_files:
-            _check_template(_text(rendered[filename], filename), filename)
-            room_controls.require_portable_subset(_text(rendered[filename], filename),filename)
         for filename, content in rendered.items():files['rooms/' + name + '/rendered/' + filename] = content
         connections, tags = _connections(project, name, source, rows)
         _, exits = _geometry(rendered[name + '.txt'], name)
-        if len(connections) != exits:raise ValueError('房间出口数量与世界连接不一致：' + name)
+        if not allow_pending:room_connection_checks.require(connection_snapshot(project,name,rows,source,connections))
         editable = _safe(_project_dir(project['projectId']), 'rooms/' + name + '.txt')
         import room_source_choices
         chosen = room_source_choices.selected_version(project['projectId'], name)
@@ -473,20 +664,22 @@ def collect_rooms(project, selections, server):
                             sourceAvailable=source_available, sourceOrigin=_origin(project, source),
                             settingsOrigin=_origin(project, settings)))
         texts = [(_text(rendered[filename], filename), path) for filename,path in setting_files.items()]
-        if region not in regions:
-            region_files = []
-            for filename in ('properties.txt', 'displayname.txt', 'map_' + region.lower() + '.txt'):
-                asset = _region_source(project, region, source, filename)
-                if asset is None:continue
-                content = _file(asset)
-                if filename.startswith('map_'):
-                    content = _map_subset(content, set(names))
-                    if content is None:continue
-                _text(content, filename)
-                if filename == 'properties.txt':_check_template(_text(content, filename), region, properties=True)
-                files['regions/' + region + '/' + filename] = content;region_files.append(filename)
-                if filename == 'properties.txt':texts.append((_text(content, filename), source))
-            regions[region] = dict(code=region, files=region_files)
+        try:region_files, region_paths = _collect_region(project, region, source, set(names))
+        except ValueError as error:raise ValueError('房间 ' + name + '（' + _dependency_origin(project, settings) + '）：' + str(error)) from error
+        region_texts = {filename: _region_text(content, filename) for filename, content in region_files.items()}
+        sky = room_package_dependencies.validate_room(region, name, {filename: _text(rendered[filename], filename) for filename in setting_files},
+                                                      region_texts, lambda filename: _dependency_origin(project, setting_files[filename]))
+        if sky:
+            room_package_dependencies.require_sky_rooms(region, name, set(names) | set(available_rooms or ()), _dependency_origin(project, settings))
+            try:context = _background_context(project, name, source, rendered[name + '.txt'], rows)
+            except ValueError as error:raise ValueError('房间 ' + name + '（' + _dependency_origin(project, settings) + '）：' + str(error)) from error
+            files['rooms/' + name + '/rendered/' + name + '_mi_background.json'] = _json(context)
+        for filename, content in region_files.items():
+            key = 'regions/' + region + '/' + filename
+            if key in files and files[key] != content:raise ValueError('房间引用的区域设置不一致：' + region + '/' + filename)
+            files[key] = content
+            if filename == 'properties.txt' or '_settingstemplate_' in filename:texts.append((_region_text(content, filename), region_paths[filename]))
+        regions[region] = dict(code=region, files=sorted(region_files))
         for text, palette_owner in texts:
             for index in standalone.room_palette_ids(text):
                 asset = palette_source(project['projectId'], index) if _origin(project, palette_owner) == 'project' else None
@@ -505,12 +698,12 @@ def collect_rooms(project, selections, server):
 def _summary(project, manifest, compressed, unpacked):
     rooms = [{key: row[key] for key in ('name', 'kind', 'region', 'sourceAvailable', 'sourceOrigin', 'settingsOrigin') if key in row} for row in manifest['rooms']]
     exists = storage.project_file(project['projectId']).exists() or _project_dir(project['projectId']).exists()
-    return dict(projectId=project['projectId'], name=project['name'], exists=exists, collision=exists, rooms=rooms,
+    return dict(projectId=project['projectId'], name=project['name'], exists=exists, collision=exists, rooms=rooms, connectionsPending=manifest.get('connectionState')=='pending',
                 missingSources=[row['name'] for row in rooms if not row['sourceAvailable']],
                 compressedBytes=compressed, uncompressedBytes=unpacked)
 
 
-def export_package(pid, extra_rooms, server):
+def export_package(pid, extra_rooms, server, available_rooms=None):
     pid = storage.valid_id(pid);project = copy.deepcopy(storage.load_project(pid));server.validate(copy.deepcopy(project))
     import room_source_choices
     project=room_source_choices.export_project(project)
@@ -521,9 +714,10 @@ def export_package(pid, extra_rooms, server):
         raise ValueError('房间选择重复')
     selected = [dict(name=binding['ai'], kind='ai'), dict(name=binding['entry'], kind='entry')]
     selected += [dict(name=name, kind='extra') for name in extra_rooms]
-    rooms, files, regions, palettes = collect_rooms(project, selected, server)
+    rooms, files, regions, palettes = collect_rooms(project, selected, server, available_rooms, allow_pending=True)
     files['project.json'] = _json(project)
     manifest = dict(schema=SCHEMA, projectId=pid, rooms=rooms, regions=regions, palettes=palettes, files=_records(files))
+    if package_connection_issues(project,manifest,files):manifest['connectionState']='pending'
     files['manifest.json'] = _json(manifest)
     if len(files) > MAX_FILES or sum(map(len, files.values())) > MAX_UNCOMPRESSED:raise ValueError('项目包体积超限')
     content = io.BytesIO()
@@ -532,7 +726,7 @@ def export_package(pid, extra_rooms, server):
     payload = content.getvalue()
     if len(payload) > MAX_COMPRESSED:raise ValueError('项目包压缩体积超限')
     
-    _inspect(payload, server)
+    _inspect(payload, server, available_rooms, check_destination=False)
     storage.EXPORTS.mkdir(parents=True, exist_ok=True)
     filename = pid + '-project-' + uuid.uuid4().hex[:12] + '.zip'
     destination = storage.EXPORTS / filename
@@ -571,12 +765,24 @@ def _archive(payload):
     return files
 
 
-def _inspect(payload, server):
+def package_connection_issues(project, manifest, files):
+    issues=[]
+    for row in manifest['rooms']:
+        name=row['name'];relative='rooms/'+name+'/rendered/'+name+'.txt'
+        check=room_connection_checks.inspect(name,row['connections'],files[relative],relative,'manifest.json')
+        issues.extend(check['issues'])
+    binding=room_bindings.binding(project)
+    if not room_connection_checks.connected(manifest['rooms'],binding['ai'],binding['entry']) or not room_connection_checks.connected(manifest['rooms'],binding['entry'],binding['ai']):
+        issues.append(dict(code='roomsDisconnected',room=binding['ai']))
+    return issues
+
+
+def _inspect(payload, server, available_rooms=None, *, check_destination=True):
     files = _archive(payload)
     if 'manifest.json' not in files or 'project.json' not in files:raise ValueError('不是完整的 MI 项目包')
     manifest = _read_json(files['manifest.json'], 'manifest.json');project = _read_json(files['project.json'], 'project.json')
     if not isinstance(manifest, dict) or manifest.get('schema') != SCHEMA:raise ValueError('项目包版本不支持')
-    if set(manifest) != {'schema', 'projectId', 'rooms', 'regions', 'palettes', 'files'}:raise ValueError('项目包清单字段无效')
+    if set(manifest)-{'connectionState'} != {'schema', 'projectId', 'rooms', 'regions', 'palettes', 'files'} or 'connectionState' in manifest and manifest['connectionState']!='pending':raise ValueError('项目包清单字段无效')
     if not isinstance(project, dict):raise ValueError('项目数据无效')
     pid = storage.valid_id(project.get('projectId'))
     if manifest.get('projectId') != pid:raise ValueError('项目编号与清单不一致')
@@ -584,7 +790,7 @@ def _inspect(payload, server):
     project = server.validate(copy.deepcopy(project))
     rooms = manifest.get('rooms');regions = manifest.get('regions');palettes = manifest.get('palettes');entries = manifest.get('files')
     if not isinstance(rooms, list) or not 2 <= len(rooms) <= MAX_ROOMS or not isinstance(regions, list) or not isinstance(palettes, list) or not isinstance(entries, list):raise ValueError('项目房间清单无效')
-    expected = {'project.json'};room_names = set();kinds = {};required_palettes = set();asset_references=[];optional_asset_references=[]
+    expected = {'project.json'};room_names = set();kinds = {};required_palettes = set();asset_references=[];optional_asset_references=[];room_dependencies=[]
     import standalone
     for row in rooms:
         if not isinstance(row, dict) or set(row) - {'name', 'kind', 'region', 'connections', 'tags', 'sourceAvailable', 'sourceOrigin', 'settingsOrigin'} or not {'name', 'kind', 'region', 'connections', 'tags', 'sourceAvailable'}.issubset(row):raise ValueError('房间清单字段无效')
@@ -598,16 +804,22 @@ def _inspect(payload, server):
             if path not in files:raise ValueError('项目包缺少房间文件：' + path)
         expected.update((prefix + '.txt', prefix + '_settings.txt'))
         cameras, exits = _geometry(files[prefix + '.txt'], name)
-        from room_controls import require_portable_subset
         setting_paths=[path for path in files if re.fullmatch(re.escape(prefix)+r'(?:_settings(?:-[A-Za-z0-9_-]+)?|_properties)\.txt',path)]
+        settings_texts = {}
         for path in setting_paths:
             expected.add(path);settings=_text(files[path],path)
-            _check_template(settings,path);require_portable_subset(settings,path)
+            settings_texts[PurePosixPath(path).name] = settings
             required_palettes.update(standalone.room_palette_ids(settings))
             asset_references.extend(room_asset_dependencies.references(settings,path))
             optional_asset_references.extend(room_asset_dependencies.optional_references(settings,path))
+        background_path = prefix + '_mi_background.json'
+        if background_path in files:
+            expected.add(background_path)
+            room_package_dependencies.background(_read_json(files[background_path], background_path), name, _room_size(files[prefix + '.txt'], name))
+        room_dependencies.append((name, region, settings_texts, background_path))
         links = row['connections']
-        if not isinstance(links, list) or len(links) != exits or any(not isinstance(link, str) or link != 'DISCONNECTED' and not room_bindings.ROOM_RE.fullmatch(link) for link in links):raise ValueError('房间连接数据无效：' + name)
+        if not isinstance(links, list) or len(links)>1024 or any(not isinstance(link, str) or link != 'DISCONNECTED' and not room_bindings.ROOM_RE.fullmatch(link) for link in links):raise ValueError('房间连接数据无效：' + name)
+        if len(links)!=exits and manifest.get('connectionState')!='pending':raise ValueError('房间连接数据无效：' + name)
         for index in range(1, cameras + 1):
             path = prefix + '_' + str(index) + '.png';expected.add(path)
             if path not in files:raise ValueError('项目包缺少相机图片：' + path)
@@ -619,27 +831,35 @@ def _inspect(payload, server):
             if source + '.png' in files:expected.add(source + '.png');_png(files[source + '.png'], source + '.png')
     binding = room_bindings.binding(project)
     if kinds.get('ai') != [binding['ai']] or kinds.get('entry') != [binding['entry']]:raise ValueError('项目的演算室或等待房间与清单不一致')
-    catalogue_rows = _catalog_rows()
-    for row in rooms:
-        if row['kind'] == 'ai' or row['kind'] == 'entry' and binding['entryMode'] == 'copy':
-            _assert_extra_available(project, row, catalogue_rows)
+    if check_destination:
+        catalogue_rows = _catalog_rows()
+        for row in rooms:
+            if row['kind'] == 'ai' or row['kind'] == 'entry' and binding['entryMode'] == 'copy':
+                _assert_extra_available(project, row, catalogue_rows)
     region_codes = set()
     for row in regions:
         if not isinstance(row, dict) or set(row) != {'code', 'files'}:raise ValueError('区域清单无效')
         region = row['code'];names = row['files']
         if not isinstance(region, str) or not room_bindings.REGION_RE.fullmatch(region) or region in region_codes or region not in {r['region'] for r in rooms}:raise ValueError('区域清单无效')
-        if not isinstance(names, list) or len(names) != len(set(names)) or any(name not in ('properties.txt', 'displayname.txt', 'map_' + region.lower() + '.txt') for name in names):raise ValueError('区域文件清单无效')
+        if not isinstance(names, list) or len(names) != len(set(names)) or any(not room_package_dependencies.region_filename(region, name) for name in names):raise ValueError('区域文件清单无效')
         region_codes.add(region)
         for name in names:
             path = 'regions/' + region + '/' + name;expected.add(path)
             if path not in files:raise ValueError('项目包缺少区域文件：' + path)
-            text = _text(files[path], path)
-            if name == 'properties.txt':
-                _check_template(text, region, properties=True)
+            text = _region_text(files[path], path)
+            if name == 'properties.txt' or '_settingstemplate_' in name:
                 required_palettes.update(standalone.room_palette_ids(text))
                 asset_references.extend(room_asset_dependencies.references(text,path))
                 optional_asset_references.extend(room_asset_dependencies.optional_references(text,path))
             if name.startswith('map_') and any(line.strip() and line.split(':', 1)[0].strip().upper() not in room_names for line in text.splitlines()):raise ValueError('地图包含未选择的房间')
+        properties = files.get('regions/' + region + '/properties.txt', b'').decode('utf-8-sig')
+        templates = room_package_dependencies.template_files(region, properties)
+        if set(name for name in names if '_settingstemplate_' in name) != set(templates):raise ValueError('区域模板清单与模板登记不一致：' + region)
+    for name, region, settings, background_path in room_dependencies:
+        region_texts = {path.rsplit('/', 1)[1]: _region_text(content, path) for path, content in files.items() if path.startswith('regions/' + region + '/')}
+        sky = room_package_dependencies.validate_room(region, name, settings, region_texts, lambda filename: '项目包/rooms/' + name + '/rendered/' + filename)
+        if sky:room_package_dependencies.require_sky_rooms(region, name, room_names | set(available_rooms or ()), '项目包/rooms/' + name + '/rendered/' + name + '_settings.txt')
+        if sky and background_path not in files:raise ValueError('房间 ' + name + ' 缺少天空远景坐标：' + background_path)
     if any(type(index) is not int or not 0 <= index <= 1000000 for index in palettes) or len(set(palettes)) != len(palettes) or set(palettes) != required_palettes:raise ValueError('调色板清单与房间引用不一致')
     for index in palettes:
         path = 'palettes/palette' + str(index) + '.png';expected.add(path)
@@ -664,17 +884,19 @@ def _inspect(payload, server):
         if name in indexed or name not in expected or type(entry['size']) is not int or entry['size'] != len(files[name]) or entry['sha256'] != hashlib.sha256(files[name]).hexdigest():raise ValueError('项目包文件校验失败：' + name)
         indexed[name] = entry
     if set(indexed) != expected:raise ValueError('项目包文件清单不完整')
+    if package_connection_issues(project,manifest,files):manifest['connectionState']='pending'
+    else:manifest.pop('connectionState',None)
     return project, manifest, files
 
 
 def inspect_import(payload, server):
     project, manifest, files = _inspect(payload, server)
-    return _summary(project, manifest, len(payload), sum(map(len, files.values())))
+    return dict(_summary(project, manifest, len(payload), sum(map(len, files.values()))),connectionIssues=package_connection_issues(project,manifest,files))
 
 
 def _local_path(path):
     if path == 'project.json':return path
-    match = re.fullmatch(r'rooms/([A-Z0-9_]+)/(rendered|source)/([A-Z0-9_]+(?:_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|\.txt|\.png))', path)
+    match = re.fullmatch(r'rooms/([A-Z0-9_]+)/(rendered|source)/([A-Z0-9_]+(?:_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_mi_background\.json|\.txt|\.png))', path)
     if match:
         name, kind, filename = match.groups()
         return 'rooms/' + ('rendered/' if kind == 'rendered' else '') + filename
@@ -724,8 +946,13 @@ def import_package(payload, server, replace=False):
             transaction.json(_safe(base, LOCAL_MANIFEST), local)
             
             
-            if project.get('roomBinding'):
-                plan = room_bindings.plan(project, project['roomBinding'])
+            if manifest.get('connectionState')=='pending':
+                transaction.remove(_safe(base,'room-binding-plan.json'))
+            elif project.get('roomBinding'):
+                if project.get('roomConnections'):
+                    import room_workflow
+                    plan=room_workflow.import_plan(project)
+                else:plan = room_bindings.plan(project, project['roomBinding'])
                 transaction.json(_safe(base, 'room-binding-plan.json'), plan)
         except Exception:
             transaction.rollback()
@@ -734,7 +961,7 @@ def import_package(payload, server, replace=False):
             for directory in sorted(created_dirs, key=lambda path: len(path.parts), reverse=True):
                 if directory.is_dir() and not any(directory.iterdir()):directory.rmdir()
             raise
-        return dict(ok=True, project=project, rooms=summary['rooms'], missingSources=summary['missingSources'], requiresApply=True)
+        return dict(ok=True, project=project, rooms=summary['rooms'], missingSources=summary['missingSources'], requiresApply=True,connectionsPending=summary['connectionsPending'],connectionIssues=package_connection_issues(project,manifest,files))
 
 
 def _assert_extra_available(project, room, rows):
@@ -760,7 +987,7 @@ def before_deploy(project, server):
     pid = storage.valid_id(project['projectId']);metadata = load_metadata(pid)
     if not metadata:return dict(projectId=pid, files={}, rooms=[], worldFiles={})
     import standalone
-    binding = room_bindings.binding(project);rows = _catalog_rows();files = {};owned = [];palette_refs = [];region_sources = {};asset_refs=[]
+    binding = room_bindings.binding(project);rows = _catalog_rows();files = {};owned = [];palette_refs = [];region_sources = {};asset_refs=[];sky_rooms=[]
     if binding != room_bindings.binding(storage.load_project(pid)):
         raise ValueError('房间绑定已改变，请先在区域连接保存后再应用项目')
     for kind in ('ai', 'entry'):
@@ -771,11 +998,19 @@ def before_deploy(project, server):
         if room['kind'] == 'entry' and binding['entryMode'] == 'existing':continue
         _assert_extra_available(project, room, rows)
         source = selected_room_source(project, name, rows)
+        room_connection_checks.require(connection_snapshot(project,name,rows,source))
         region_sources.setdefault(room['region'], source)
         settings = selected_room_settings(project, name, source)
         setting_files=room_settings_files(project,name,settings)
         rendered = _collect_render(source, settings, name, setting_files)
-        for filename in setting_files:_check_template(_text(rendered[filename],filename),filename)
+        try:region_files, region_paths = _collect_region(project, room['region'], source, {row['name'] for row in metadata['rooms']})
+        except ValueError as error:raise ValueError('房间 ' + name + '（' + _dependency_origin(project, settings) + '）：' + str(error)) from error
+        sky = room_package_dependencies.validate_room(room['region'], name, {filename: _text(rendered[filename], filename) for filename in setting_files},
+                                                      {filename: _region_text(content, filename) for filename, content in region_files.items()},
+                                                      lambda filename: _dependency_origin(project, setting_files[filename]))
+        if sky:
+            rendered[name + '_mi_background.json'] = _json(_background_context(project, name, source, rendered[name + '.txt'], rows))
+            if room['region'] == 'OE' or name.startswith('OE_'):sky_rooms.append((name, _dependency_origin(project, settings)))
         for filename, content in rendered.items():
             files['world/' + room['region'].lower() + '-rooms/' + filename] = content
         for filename,path in setting_files.items():
@@ -785,10 +1020,10 @@ def before_deploy(project, server):
         owned.append(name)
     for region in metadata['regions']:
         region_source = region_sources.get(region['code'], _project_dir(pid) / 'rooms/rendered')
-        properties = _region_source(project, region['code'], region_source, 'properties.txt')
-        if properties:
-            text = _text(_file(properties), properties.name);_check_template(text, region['code'], properties=True)
-            palette_owner = properties if _origin(project, properties) != 'project' else _project_dir(pid) / 'rooms/rendered'
+        region_files, region_paths = _collect_region(project, region['code'], region_source, {row['name'] for row in metadata['rooms']})
+        for filename, content in region_files.items():
+            if filename != 'properties.txt' and '_settingstemplate_' not in filename:continue
+            text = _region_text(content, filename);palette_owner = region_paths[filename]
             palette_refs.extend((index, palette_owner) for index in standalone.room_palette_ids(text))
             asset_refs.append((palette_owner,text))
     for index, source in palette_refs:
@@ -804,17 +1039,26 @@ def before_deploy(project, server):
             if relative in files and files[relative]!=content:raise ValueError('房间使用同名但内容不同的素材：'+relative)
             files[relative]=content
     target = storage.target_mod(pid)
+    connection_rows=[]
+    for room in metadata['rooms']:
+        source=selected_room_source(project,room['name'],rows)
+        links,_=selected_room_connections(project,room['name'],source,rows)
+        connection_rows.append(dict(name=room['name'],connections=links))
+    if not room_connection_checks.connected(connection_rows,binding['ai'],binding['entry']) or not room_connection_checks.connected(connection_rows,binding['entry'],binding['ai']):
+        raise room_bindings.RoomBindingError('workflowMissingConnections',room=binding['ai'])
     previous = output_manifest(target)
-    owners = {path: owner for owner, paths in previous['projects'].items() for path in paths}
+    owners = {}
+    for owner,paths in previous['projects'].items():
+        for path in paths:owners.setdefault(path,set()).add(owner)
     core = {binding['ai'], binding['entry']}
     borrowed = set()
     for relative, content in files.items():
         path = _safe(target, relative)
-        if relative in owners and owners[relative] != pid:
-            if not path.is_file() or _file(path) != content:raise ValueError('项目包素材与其他作品冲突：' + relative)
+        if owners.get(relative,set())-{pid}:
+            if not path.is_file() or _file(path) != content:raise room_bindings.RoomBindingError('migrationSharedFile',file=relative)
         if path.is_file() and relative not in owners:
-            is_core = any(relative.startswith('world/' + binding['region'].lower() + '-rooms/' + name) for name in core)
-            if not is_core and _file(path) != content:raise ValueError('本地已有未归属本项目的素材：' + relative)
+            is_core = any(re.fullmatch('world/' + binding['region'].lower() + '-rooms/' + re.escape(name) + r'(?:\.txt|_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_[1-9][0-9]*\.png)', relative) for name in core)
+            if not is_core and _file(path) != content:raise room_bindings.RoomBindingError('migrationUnownedFile',file=relative)
             if not is_core:borrowed.add(relative)
     registry = storage.RUNTIME / 'creator/registry.json'
     records = _read_json(_file(registry), registry.name) if registry.is_file() else []
@@ -822,6 +1066,13 @@ def before_deploy(project, server):
     records = [record for record in records if record['projectId'] != pid]
     records.append(storage.registry_record(project, binding['ai'], binding['entry'], binding['oracleId']))
     worlds = room_bindings.compile_worlds(records)
+    if sky_rooms:
+        world_text = worlds.get('world/oe/world_oe.txt')
+        if world_text is None:
+            world_file = _region_source(project, 'OE', region_sources.get('OE', _project_dir(pid) / 'rooms/rendered'), 'world_oe.txt', include_imported=False)
+            world_text = _text(_file(world_file), 'world_oe.txt') if world_file else ''
+        available = {row['name'] for row in room_bindings.parse_world(world_text, 'OE')}
+        for name, label in sky_rooms:room_package_dependencies.require_sky_rooms('OE', name, available, label)
     installed = storage.installed_mod(pid, required=False)
     installed_previous = output_manifest(installed) if installed is not None else None
     return dict(projectId=pid, files=files, rooms=owned, worldFiles=worlds, previous=previous,
@@ -912,15 +1163,31 @@ def _replace_world_rows(text, replacements):
 def augment_worlds(records, files):
     
     files = dict(files);rows = None;region_owners = {}
+    world_manifest=storage.DATA/'local-mod/.mi-room-bindings.json'
+    managed_worlds=set(json.loads(world_manifest.read_text('utf-8')).get('files',[])) if world_manifest.is_file() else set()
     for record in records:
         if record.get('ownerMod') == 'moreiterators.local':region_owners.setdefault(record['ai'].split('_')[0], set()).add(record['projectId'])
-    chosen_region_files = {};added_regions = set()
+    chosen_region_files = {};added_regions = set();region_claims = {}
+    for code, owners in region_owners.items():
+        for owner in owners:
+            for region in (load_metadata(owner) or {}).get('regions', []):
+                if region['code'] != code:continue
+                for filename in region['files']:
+                    if filename.startswith('map_'):continue
+                    path = region_file(owner, code, filename)
+                    if path is None:raise ValueError('导入区域文件缺失：' + code + '/' + filename)
+                    claims = region_claims.setdefault((code, filename), {})
+                    claims[owner] = _region_text(_file(path), filename).replace('\r\n', '\n')
+                    if len(set(claims.values())) > 1:raise ValueError('所选项目区域设置冲突：' + code + '/' + filename)
     for record in records:
         pid = record['projectId']
         if record.get('ownerMod') != 'moreiterators.local' or storage.binding(pid):continue
         metadata = load_metadata(pid)
         if not metadata:continue
         project = storage.load_project(pid);binding = room_bindings.binding(project)
+        saved_rows=saved_connection_rows(project)
+        added_regions.update(code for code in project.get('roomConnections',{}).get('ownedRegions',[])
+                             if 'world/'+code.lower()+'/world_'+code.lower()+'.txt' in files)
         
         
         if record.get('ai') != binding['ai'] or record.get('entry') != binding['entry']:continue
@@ -932,6 +1199,7 @@ def augment_worlds(records, files):
             if room['kind'] == 'extra':_assert_extra_available(project, room, rows)
             source = selected_room_source(project, name, rows)
             region_sources.setdefault(region, source)
+            if saved_rows.get(name,{}).get('owned'):continue
             links, tags = selected_room_connections(project, name, source, rows)
             _, exits = _geometry(_file(_sibling(source, '.txt')), name)
             if len(links) != exits:raise ValueError('额外房间出口数量不一致：' + name)
@@ -943,7 +1211,8 @@ def augment_worlds(records, files):
             prefix = 'modify/' if binding['entryMode'] == 'existing' and region == binding['region'] else ''
             
             existing_region = any(row.get('region') == region for row in rows.values())
-            if region != binding['region'] and existing_region:prefix = 'modify/'
+            base_world='world/'+region.lower()+'/world_'+region.lower()+'.txt'
+            if region != binding['region'] and existing_region and base_world not in files and base_world not in managed_worlds:prefix = 'modify/'
             relative = prefix + 'world/' + region.lower() + '/world_' + region.lower() + '.txt'
             updates.setdefault(relative, {})[name] = line
             if not prefix:added_regions.add(region)
@@ -953,20 +1222,24 @@ def augment_worlds(records, files):
         for region in metadata['regions']:
             code = region['code']
             if code not in added_regions:continue
-            for filename in region['files']:
-                source = _region_source(project, code, region_sources.get(code, _project_dir(pid) / 'rooms/rendered'), filename)
+            region_source = region_sources.get(code, _project_dir(pid) / 'rooms/rendered')
+            selected = {room['name'] for room in metadata['rooms']}
+            latest, _ = _collect_region(project, code, region_source, selected)
+            filenames = {filename for filename in region['files'] if '_settingstemplate_' not in filename} | set(latest)
+            for filename in sorted(filenames):
+                source = _region_source(project, code, region_source, filename, required_rooms=selected)
                 if source is None:raise ValueError('导入区域文件缺失：' + code + '/' + filename)
-                relative = 'world/' + code.lower() + '/' + filename;text = _text(_file(source), filename).replace('\r\n', '\n')
+                relative = 'world/' + code.lower() + '/' + filename;text = _region_text(_file(source), filename).replace('\r\n', '\n')
                 if filename.startswith('map_'):
                     combined = {}
-                    selected = {room['name'] for room in metadata['rooms']}
                     subset = _map_subset(text.encode('utf-8'), selected)
                     text = subset.decode('utf-8') if subset else ''
                     for line in (files.get(relative, '') + '\n' + text).splitlines():
                         if line.strip():combined[line.split(':', 1)[0].strip()] = line
                     files[relative] = '\n'.join(combined.values()) + '\n';continue
                 if relative in chosen_region_files and chosen_region_files[relative] != text:raise ValueError('所选项目区域设置冲突：' + relative)
-                if len(region_owners.get(code, set())) > 1 and relative in files and files[relative] != text:
+                other_defaults = region_owners.get(code, set()) - set(region_claims.get((code, filename), {}))
+                if len(region_owners.get(code, set())) > 1 and other_defaults and relative in files and files[relative] != text:
                     raise ValueError('区域被多个项目共用，不能覆盖其他作品的设置：' + code)
                 chosen_region_files[relative] = text;files[relative] = text
     registration = set(line for line in files.get('modify/world/regions.txt', '').splitlines() if line)

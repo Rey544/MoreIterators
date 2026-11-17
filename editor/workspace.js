@@ -126,7 +126,7 @@
    divider.addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();resizeHeight(heightFor(divider)+(e.key==='ArrowDown'?1:-1)*(e.shiftKey?80:24));}else if(e.key==='Home'){e.preventDefault();state.height=0;persist();schedule();}});
    divider.addEventListener('dblclick',()=>{state.height=0;persist();schedule();});
   }
-  function setPreviewZoom(value){state.preview.zoom=Math.round(clamp(finite(value,5),.25,20)*100)/100;zoomLabels();persist();render();}
+  function setPreviewZoom(value){PreviewSelection.cancel();state.preview.zoom=Math.round(clamp(finite(value,5),.25,20)*100)/100;zoomLabels();persist();render();}
   function setPaintZoom(value){state.paintZoom=Math.round(clamp(finite(value,8),.25,32)*100)/100;zoomLabels();updatePaint();persist();render();}
   for(const [id,setter,max] of [['zoomValue',setPreviewZoom,2000],['paintZoomValue',setPaintZoom,3200]]){
    const input=byId(id);
@@ -145,16 +145,16 @@
    paintCenter={x:(viewport.left+paintStage.clientLeft+paintStage.clientWidth/2-rect.left)/state.paintZoom,y:(viewport.top+paintStage.clientTop+paintStage.clientHeight/2-rect.top)/state.paintZoom};
   });
   let paintPan=null;paintStage.style.touchAction='none';
-  paintStage.addEventListener('pointerdown',e=>{if(e.button!==1&&e.button!==2||typeof stroke!=='undefined'&&stroke)return;e.preventDefault();paintPan={pointer:e.pointerId,x:e.clientX,y:e.clientY,left:paintStage.scrollLeft,top:paintStage.scrollTop};paintStage.setPointerCapture(e.pointerId);});
+  paintStage.addEventListener('pointerdown',e=>{if(e.button!==1||typeof stroke!=='undefined'&&stroke)return;e.preventDefault();paintPan={pointer:e.pointerId,x:e.clientX,y:e.clientY,left:paintStage.scrollLeft,top:paintStage.scrollTop};paintStage.setPointerCapture(e.pointerId);});
   paintStage.addEventListener('pointermove',e=>{if(!paintPan||e.pointerId!==paintPan.pointer)return;paintStage.scrollLeft=paintPan.left+paintPan.x-e.clientX;paintStage.scrollTop=paintPan.top+paintPan.y-e.clientY;});
   const endPaintPan=e=>{if(paintPan&&e.pointerId===paintPan.pointer)paintPan=null;};
   for(const type of ['pointerup','pointercancel','lostpointercapture'])paintStage.addEventListener(type,endPaintPan);
   paintStage.addEventListener('contextmenu',e=>e.preventDefault());
   let pan=null;
-  puppet.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1)return;e.preventDefault();pan={x:e.clientX,y:e.clientY,center:{...state.preview.center}};puppet.setPointerCapture(e.pointerId);puppet.classList.add('panning');});
-  puppet.addEventListener('pointermove',e=>{if(!pan)return;state.preview.center={x:pan.center.x-(e.clientX-pan.x)/state.preview.zoom,y:pan.center.y-(e.clientY-pan.y)/state.preview.zoom};render();});
-  const endPan=()=>{if(pan)persist();pan=null;puppet.classList.remove('panning');};
-  puppet.addEventListener('pointerup',endPan);puppet.addEventListener('pointercancel',endPan);puppet.addEventListener('lostpointercapture',endPan);
+  puppet.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1)return;e.preventDefault();pan={pointer:e.pointerId,button:e.button,x:e.clientX,y:e.clientY,center:{...state.preview.center},moved:false};puppet.setPointerCapture(e.pointerId);});
+  puppet.addEventListener('pointermove',e=>{if(!pan){PreviewSelection.move(e);return;}if(e.pointerId!==pan.pointer)return;if(!pan.moved&&Math.hypot(e.clientX-pan.x,e.clientY-pan.y)<=4)return;pan.moved=true;PreviewSelection.cancel();puppet.classList.add('panning');state.preview.center={x:pan.center.x-(e.clientX-pan.x)/state.preview.zoom,y:pan.center.y-(e.clientY-pan.y)/state.preview.zoom};render();});
+  const endPan=e=>{if(!pan||e.pointerId!==pan.pointer)return;const click=e.type==='pointerup'&&pan.button===0&&!pan.moved;if(pan.moved)persist();pan=null;puppet.classList.remove('panning');if(click)PreviewSelection.click(e);else PreviewSelection.cancel();};
+  puppet.addEventListener('pointerup',endPan);puppet.addEventListener('pointercancel',endPan);puppet.addEventListener('lostpointercapture',endPan);puppet.addEventListener('pointerleave',()=>{if(!pan)PreviewSelection.leave();});
   puppet.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey)return;e.preventDefault();setPreviewZoom(state.preview.zoom*Math.exp(-e.deltaY*.002));},{passive:false});
   const observer=new ResizeObserver(schedule);for(const el of [main,previewStage,paintStage,document.querySelector('header'),byId('notice')])observer.observe(el);
   window.addEventListener('resize',schedule);window.addEventListener('mi-language-change',schedule);zoomLabels();schedule();

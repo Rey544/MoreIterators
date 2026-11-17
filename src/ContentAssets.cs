@@ -13,7 +13,7 @@ namespace MoreIterators {
  public static class ContentAssets {
   static readonly HashSet<string> warned=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
   sealed class ModState {
-   public string id,path,targeted,newest;public bool hasTargeted,hasNewest;
+   public ModManager.Mod identity;public string id,path,basePath,version,targetVersion,targeted,newest;public bool enabled,hasTargeted,hasNewest;public int loadOrder;
   }
   sealed class DirectoryState {
    public double loaded;public List<ContentAsset> files;public List<string> ambiguous;
@@ -21,23 +21,24 @@ namespace MoreIterators {
   static readonly Stopwatch clock=Stopwatch.StartNew();
   static readonly Dictionary<string,DirectoryState> directories=new Dictionary<string,DirectoryState>(StringComparer.OrdinalIgnoreCase);
   static readonly List<ModState> mods=new List<ModState>();
-  static string gameRoot,consoleRoot;static bool initialized,hadMods;static int generation;
+  static string gameRoot,consoleRoot;static object activeMods;static bool initialized,hadMods,ready;static int generation;
   public static int Generation {get{CheckContext();return generation;}}
   static void CheckContext(){
    string root=RWCustom.Custom.RootFolderDirectory(),console=AssetManager.GetConsoleFilesSubfolder();
    bool present=ModManager.ActiveMods!=null;
-   bool same=initialized&&gameRoot==root&&consoleRoot==console&&hadMods==present&&mods.Count==(present?ModManager.ActiveMods.Count:0);
+   bool same=initialized&&gameRoot==root&&consoleRoot==console&&hadMods==present&&ready==ModManager.InitializationScreenFinished&&ReferenceEquals(activeMods,ModManager.ActiveMods)&&mods.Count==(present?ModManager.ActiveMods.Count:0);
    if(same&&present)for(int i=0;i<mods.Count;i++){
     var current=ModManager.ActiveMods[i];var previous=mods[i];
-    if(previous.id!=current.id||previous.path!=current.path||previous.hasTargeted!=current.hasTargetedVersionFolder||previous.hasNewest!=current.hasNewestFolder||
+    if(!ReferenceEquals(previous.identity,current)||current==null||previous.id!=current.id||previous.path!=current.path||previous.basePath!=current.basePath||previous.version!=current.version||previous.targetVersion!=current.targetGameVersion||previous.enabled!=current.enabled||previous.loadOrder!=current.loadOrder||previous.hasTargeted!=current.hasTargetedVersionFolder||previous.hasNewest!=current.hasNewestFolder||
        previous.targeted!=(current.hasTargetedVersionFolder?current.TargetedPath:null)||previous.newest!=(current.hasNewestFolder?current.NewestPath:null)){same=false;break;}
    }
    if(same)return;
    directories.Clear();mods.Clear();generation++;
-   gameRoot=root;consoleRoot=console;hadMods=present;initialized=true;
-   if(present)foreach(var mod in ModManager.ActiveMods)mods.Add(new ModState{id=mod.id,path=mod.path,hasTargeted=mod.hasTargetedVersionFolder,hasNewest=mod.hasNewestFolder,
+   gameRoot=root;consoleRoot=console;hadMods=present;ready=ModManager.InitializationScreenFinished;activeMods=ModManager.ActiveMods;initialized=true;
+   if(present)foreach(var mod in ModManager.ActiveMods)mods.Add(mod==null?new ModState():new ModState{identity=mod,id=mod.id,path=mod.path,basePath=mod.basePath,version=mod.version,targetVersion=mod.targetGameVersion,enabled=mod.enabled,loadOrder=mod.loadOrder,hasTargeted=mod.hasTargetedVersionFolder,hasNewest=mod.hasNewestFolder,
     targeted=mod.hasTargetedVersionFolder?mod.TargetedPath:null,newest=mod.hasNewestFolder?mod.NewestPath:null});
   }
+  public static void InvalidateDirectory(string directory){directory=Relative(directory);CheckContext();directories.Remove(directory);generation++;}
   public static string Relative(string value){
    if(value==null)throw new ArgumentNullException("value");
    string path=value.Replace('\\','/');
@@ -64,10 +65,10 @@ namespace MoreIterators {
   public static List<ContentAsset> Files(string directory,string extension,string owner=null){
    directory=Relative(directory);CheckContext();
    DirectoryState snapshot;double now=clock.Elapsed.TotalSeconds;
-   if(!directories.TryGetValue(directory,out snapshot)||now-snapshot.loaded>=.25){
+   if(!ready||!directories.TryGetValue(directory,out snapshot)||now-snapshot.loaded>=.25){
     snapshot=ReadDirectory(directory);snapshot.loaded=clock.Elapsed.TotalSeconds;
     if(directories.Count>=128)directories.Clear();
-    directories[directory]=snapshot;
+    if(ready)directories[directory]=snapshot;
    }
    foreach(string path in snapshot.ambiguous)if((String.IsNullOrEmpty(extension)||String.Equals(Path.GetExtension(path),extension,StringComparison.OrdinalIgnoreCase))&&warned.Add(path))
     MiDiagnostics.Warn("MI-ASSET-AMBIGUOUS","ContentAssets.Files",UiText.Get("Merged content has multiple providers; keeping each pack's own file."),path);

@@ -66,7 +66,7 @@
         const token=++roomToken;current=room;geometry=null;image=null;point=initial&&options.point?{...options.point}:null;roomName.textContent=room.name;markSelection();updateUse();drawPreview();status.textContent=text('正在加载');connections.replaceChildren();
         try{const value=await request('room-picker-preview',{room:room.name,projectId:options.projectId||''});if(closed||token!==roomToken)return;geometry=value;
           if(value.image){const loaded=new Image();loaded.src=value.image;await loaded.decode();if(closed||token!==roomToken)return;image=loaded;}
-          previewKind.textContent=text(image?'相机预览':'房间地形');status.textContent=options.selectable?.(room)===false?text(options.unavailableText||'此房间不可选择'):'';
+          previewKind.textContent=text(image?'相机预览':'房间地形');status.textContent=!options.readOnly&&options.selectable?.(room)===false?text(options.unavailableText||'此房间不可选择'):'';
           const destinations=(room.connections||[]).filter(name=>name&&name!=='DISCONNECTED');if(destinations.length){connections.append(node('span','连接房间'));for(const name of [...new Set(destinations)]){const target=data.rooms.find(item=>item.name===name),b=button('',()=>{if(target)select(target);});global.MI18n?.content(b);b.textContent=name;b.disabled=!target;connections.append(b);}}
           drawPreview();updateUse();
         }catch(error){if(!closed&&token===roomToken){status.textContent=error.message;drawPreview();updateUse();}}

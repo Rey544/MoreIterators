@@ -44,7 +44,7 @@ class ProjectPackageTests(unittest.TestCase):
             patch.object(storage, 'GAME', self.game),
             patch.object(storage, 'LINKS', []),
             patch.object(storage, 'settings', {}),
-            patch.object(room_bindings, 'catalog', side_effect=lambda: copy.deepcopy(self.catalogue)),
+            patch.object(room_bindings, 'catalog', side_effect=lambda **kwargs: copy.deepcopy(self.catalogue)),
             patch.object(room_bindings, '_asset_roots', side_effect=lambda: [self.local, self.installed, self.external]),
             patch.object(room_bindings, 'resolve_room_source', side_effect=lambda name: self.external / 'world/yy-rooms' / name),
         ):
@@ -134,6 +134,101 @@ class ProjectPackageTests(unittest.TestCase):
         worlds = room_bindings.compile_worlds([record])
         self.assertIn('XX_AI : DISCONNECTED, XX_ENTRY', worlds['world/xx/world_xx.txt'])
         self.assertFalse(storage.RUNTIME.exists());self.assertFalse(self.installed.exists())
+
+    def test_v2_package_roundtrip_preserves_selected_exits_after_apply(self):
+        self.project['roomConnections']=dict(version=2,ownedRegions=['XX'],rows=[
+            dict(name='XX_AI',region='XX',connections=['XX_ENTRY','DISCONNECTED'],tags='',owned=True,kind='ai'),
+            dict(name='XX_ENTRY',region='XX',connections=['DISCONNECTED','XX_AI'],tags='SHELTER',owned=True,kind='entry')])
+        self.project_file.write_text(json.dumps(self.project),'utf-8')
+        payload=self.payload();self.target()
+        imported=packages.import_package(payload,self.server)['project']
+        self.assertEqual(imported['roomConnections'],self.project['roomConnections'])
+        plan=json.loads((storage.project_file('selected').parent/'room-binding-plan.json').read_text('utf-8'))
+        self.assertEqual(plan['connectionVersion'],2)
+        binding=imported['roomBinding']
+        record=dict(projectId='selected',ownerMod='moreiterators.local',roomBinding=binding,
+                    ai=binding['ai'],entry=binding['entry'],oracleId=binding['oracleId'])
+        worlds=room_bindings.compile_worlds([record])
+        self.assertIn('XX_AI : XX_ENTRY, DISCONNECTED',worlds['world/xx/world_xx.txt'])
+        self.assertIn('XX_ENTRY : DISCONNECTED, XX_AI : SHELTER',worlds['world/xx/world_xx.txt'])
+        self.assertEqual(worlds['world/xx/properties.txt'],'Palette: 9100\nClouds: 0.4\n')
+        self.assertFalse(self.installed.exists())
+
+    def test_v2_package_extra_room_roundtrip_preserves_indirect_connection(self):
+        extra = self.external / 'world/yy-rooms/XX_MIDDLE'
+        self.render(extra, 'XX_MIDDLE', color='green')
+        self.palette(self.external / 'palettes/palette9100.png', 'red')
+        self.catalogue['regions'] = [dict(name='XX', rooms=[dict(name='XX_MIDDLE', region='XX',
+            connections=['XX_AI', 'XX_ENTRY'], conditional=False, geometryPath=str(extra.with_suffix('.txt')))])]
+        self.project['roomBinding'].update(aiNode=0, entryNode=1)
+        self.project['roomConnections'] = dict(version=2, ownedRegions=['XX'], rows=[
+            dict(name='XX_AI', region='XX', connections=['XX_MIDDLE', 'DISCONNECTED'], tags='', owned=True, kind='ai'),
+            dict(name='XX_ENTRY', region='XX', connections=['DISCONNECTED', 'XX_MIDDLE'], tags='SHELTER', owned=True, kind='entry'),
+            dict(name='XX_MIDDLE', region='XX', connections=['XX_AI', 'XX_ENTRY'], tags='', owned=False)])
+        self.project_file.write_text(json.dumps(self.project), 'utf-8')
+        payload = self.payload(['XX_MIDDLE'])
+        files = self.unpack(payload)
+        self.target()
+        self.catalogue['regions'] = []
+        imported = packages.import_package(payload, self.server)['project']
+        self.assertEqual(imported['roomConnections'], self.project['roomConnections'])
+        binding = imported['roomBinding']
+        record = dict(projectId='selected', ownerMod='moreiterators.local', roomBinding=binding,
+                      ai=binding['ai'], entry=binding['entry'], oracleId=binding['oracleId'])
+        worlds = room_bindings.compile_worlds([record])
+        rows = {row['name']: row['connections'] for row in room_bindings.parse_world(worlds['world/xx/world_xx.txt'], 'XX')}
+        self.assertEqual(rows, {'XX_AI': ['XX_MIDDLE', 'DISCONNECTED'],
+                                'XX_ENTRY': ['DISCONNECTED', 'XX_MIDDLE'], 'XX_MIDDLE': ['XX_AI', 'XX_ENTRY']})
+        self.assertNotIn('modify/world/xx/world_xx.txt', worlds)
+        restored = storage.project_file('selected').parent / 'rooms/rendered/XX_MIDDLE_1.png'
+        self.assertEqual(restored.read_bytes(), files['rooms/XX_MIDDLE/rendered/XX_MIDDLE_1.png'])
+        prepared = packages.before_deploy(imported, self.server)
+        self.assertEqual(prepared['worldFiles']['world/xx/world_xx.txt'], worlds['world/xx/world_xx.txt'])
+        self.assertEqual(prepared['files']['world/xx-rooms/XX_MIDDLE_1.png'], restored.read_bytes())
+        exported = self.unpack(self.payload(['XX_MIDDLE']))
+        self.assertEqual(json.loads(exported['project.json'])['roomConnections'], imported['roomConnections'])
+        self.assertEqual(exported['rooms/XX_MIDDLE/rendered/XX_MIDDLE_1.png'], restored.read_bytes())
+
+    def test_v2_package_rejects_an_existing_foreign_region_without_overwriting(self):
+        self.project['roomConnections'] = dict(version=2, ownedRegions=['XX'], rows=[
+            dict(name='XX_AI', region='XX', connections=['XX_ENTRY', 'DISCONNECTED'], tags='', owned=True, kind='ai'),
+            dict(name='XX_ENTRY', region='XX', connections=['DISCONNECTED', 'XX_AI'], tags='SHELTER', owned=True, kind='entry')])
+        self.project_file.write_text(json.dumps(self.project), 'utf-8')
+        payload = self.payload()
+        self.target()
+        foreign = self.external / 'world/xx/world_xx.txt'
+        foreign.parent.mkdir(parents=True)
+        original = b'ROOMS\nXX_NATIVE : DISCONNECTED\nEND ROOMS\n'
+        foreign.write_bytes(original)
+        self.catalogue['regions'] = [dict(name='XX', rooms=[dict(name='XX_NATIVE', region='XX', connections=['DISCONNECTED'], conditional=False)])]
+        before = {path.relative_to(storage.DATA).as_posix(): path.read_bytes() for path in storage.DATA.rglob('*') if path.is_file()}
+        with self.assertRaises(room_bindings.RoomBindingError) as failure:
+            packages.import_package(payload, self.server)
+        self.assertEqual(failure.exception.code, 'rooms.error.regionTaken')
+        self.assertEqual(foreign.read_bytes(), original)
+        self.assertEqual({path.relative_to(storage.DATA).as_posix(): path.read_bytes() for path in storage.DATA.rglob('*') if path.is_file()}, before)
+
+    def test_v2_package_rejects_another_projects_oracle_id_without_overwriting(self):
+        self.project['roomConnections'] = dict(version=2, ownedRegions=['XX'], rows=[
+            dict(name='XX_AI', region='XX', connections=['XX_ENTRY', 'DISCONNECTED'], tags='', owned=True, kind='ai'),
+            dict(name='XX_ENTRY', region='XX', connections=['DISCONNECTED', 'XX_AI'], tags='SHELTER', owned=True, kind='entry')])
+        self.project_file.write_text(json.dumps(self.project), 'utf-8')
+        payload = self.payload()
+        self.target()
+        existing = copy.deepcopy(self.project)
+        existing.update(projectId='existing', name='Existing project')
+        existing.pop('roomConnections')
+        existing['roomBinding'].update(region='YY', ai='YY_AI', entry='YY_ENTRY')
+        file = storage.project_file('existing')
+        file.parent.mkdir(parents=True)
+        file.write_text(json.dumps(existing), 'utf-8')
+        design = storage.RUNTIME / 'selected_oracle.json'
+        design.parent.mkdir(parents=True)
+        design.write_text(json.dumps(dict(projectId='existing', authored='keep')), 'utf-8')
+        before = {path.relative_to(storage.DATA).as_posix(): path.read_bytes() for path in storage.DATA.rglob('*') if path.is_file()}
+        with self.assertRaises(ValueError):
+            packages.import_package(payload, self.server)
+        self.assertEqual({path.relative_to(storage.DATA).as_posix(): path.read_bytes() for path in storage.DATA.rglob('*') if path.is_file()}, before)
 
     def test_collision_never_overwrites_without_confirmation(self):
         payload = self.payload();before = self.project_file.read_bytes()
@@ -371,11 +466,37 @@ class ProjectPackageTests(unittest.TestCase):
         self.assertNotIn('world/zz-rooms/ZZ_KEEP_1.png', names)
         self.assertIn('world/yy-rooms/YY_ONE_1.png', names)
 
-    def test_unsupported_template_blocks_export_without_modifying_settings(self):
+    def test_shared_palette_conflict_checks_all_owners_in_both_orders(self):
+        project,_=self.deployed_extra()
+        marker=self.local/packages.OUTPUT_MANIFEST
+        original=packages.output_manifest(self.local)
+        relative='palettes/palette9100.png'
+        source=storage.project_file('selected').parent/'rooms'/relative
+        self.palette(source,'blue')
+        future=max(file.stat().st_mtime_ns for file in self.root.rglob('*') if file.is_file())+2_000_000_000
+        for file in source.parent.parent.rglob('*.txt'):os.utime(file,ns=(future,future))
+        for order in (('selected','other'),('other','selected')):
+            with self.subTest(order=order):
+                value=copy.deepcopy(original)
+                value['projects']={owner:(original['projects']['selected'] if owner=='selected' else [relative]) for owner in order}
+                marker.write_text(json.dumps(value),'utf-8')
+                before={str(file):file.read_bytes() for file in self.root.rglob('*') if file.is_file()}
+                with self.assertRaises(room_bindings.RoomBindingError) as raised:packages.before_deploy(project,self.server)
+                self.assertEqual(raised.exception.code,'rooms.error.migrationSharedFile')
+                self.assertEqual(raised.exception.params,dict(file=relative))
+                self.assertEqual({str(file):file.read_bytes() for file in self.root.rglob('*') if file.is_file()},before)
+        source.write_bytes((self.local/relative).read_bytes())
+        prepared=packages.before_deploy(project,self.server)
+        packages.write_deploy_assets(prepared)
+        self.assertIn(relative,packages.output_manifest(self.local)['projects']['other'])
+        self.assertEqual(source.read_bytes(),(self.local/relative).read_bytes())
+
+    def test_unregistered_template_preserves_native_ancestor_fallback(self):
         file = self.local / 'world/xx-rooms/XX_AI_settings.txt'
         text = 'Template: xx_settingsTemplate_custom\nPalette: 9100\n';file.write_text(text, 'utf-8')
         before = file.read_bytes()
-        with self.assertRaisesRegex(ValueError, '模板依赖'):self.payload()
+        files = self.unpack(self.payload())
+        self.assertEqual(files['rooms/XX_AI/rendered/XX_AI_settings.txt'], before)
         self.assertEqual(file.read_bytes(), before)
 
     def test_reapply_reduced_package_removes_installed_old_extra_only(self):

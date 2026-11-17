@@ -101,6 +101,23 @@ class WaitingRoomTests(unittest.TestCase):
         self.assertEqual(standalone.room_source(self.project, self.entry, 'entry', server), waiting_room.ROOT / 'entry')
         self.assertEqual(standalone.room_connections(self.project, self.ai, self.entry, server)[self.entry], [self.ai])
 
+    def test_copy_shared_camera_keeps_other_cameras_and_room_text_processing(self):
+        source=server.ASSETS/'world/ss-rooms/ss_ai'
+        geometry=source.with_suffix('.txt')
+        geometry.write_text(geometry.read_text().replace('\n0,0\n','\n0,0|100,0\n'),'utf-8')
+        Path(str(source)+'_2.png').write_bytes(b'second camera')
+        target=self.root/'copied/TEST_COPY';target.parent.mkdir()
+        shared=Path(str(target)+'_1.png');shared.hardlink_to(Path(str(source)+'_1.png'))
+        before=(shared.read_bytes(),shared.stat().st_mtime_ns)
+        Path(str(target)+'_2.png').write_bytes(b'older camera')
+        server.copy_room(source,target.parent,target.name,palette=12,replace=True)
+        self.assertEqual((shared.read_bytes(),shared.stat().st_mtime_ns),before)
+        self.assertEqual(Path(str(target)+'_2.png').read_bytes(),b'second camera')
+        self.assertEqual(target.with_suffix('.txt').read_text().splitlines()[0],'TEST_COPY')
+        self.assertEqual(Path(str(target)+'_settings.txt').read_text(),'Palette: 12\n')
+        self.assertEqual(geometry.read_text().splitlines()[0],'SS_AI')
+        self.assertEqual(Path(str(source)+'_settings.txt').read_text(),'Palette: 26\n')
+
     def test_old_default_and_old_cached_default_both_upgrade(self):
         self.legacy(cached=True)
         result = server.deploy(copy.deepcopy(self.project)); self.assert_new(result)
@@ -123,6 +140,39 @@ class WaitingRoomTests(unittest.TestCase):
         plan = json.loads((storage.project_file(project['projectId']).parent / 'room-binding-plan.json').read_text())
         self.assertEqual(plan['binding']['entryNode'], 0)
         self.assert_new(server.deploy(copy.deepcopy(self.project)))
+
+    def test_legacy_preview_validates_new_plan_without_mutating_old_outputs(self):
+        self.legacy(cached=True)
+        project=storage.load_project(self.project['projectId']);project['roomBinding']=room_bindings.binding(project)
+        server.atomic(storage.project_file(project['projectId']),project)
+        before={file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()}
+        preview,plan=waiting_room.prepare(project,_preview=True)
+        self.assertEqual(project['roomBinding']['entryNode'],1)
+        self.assertEqual(preview['roomBinding']['entryNode'],0)
+        entry=next(row for row in plan['roomCopies'] if row['kind']=='entry')
+        self.assertEqual(Path(entry['source']),waiting_room.rendered())
+        record=storage.registry_record(preview,*server.roomnames(preview))
+        worlds=room_bindings.compile_worlds([record],{project['projectId']:plan})
+        self.assertIn(self.entry+' : '+self.ai+'\n',worlds['world/test/world_test.txt'])
+        self.assertEqual({file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()},before)
+
+    def test_failed_other_project_preflight_does_not_commit_legacy_migration(self):
+        self.legacy(cached=True)
+        project=storage.load_project(self.project['projectId']);project['roomBinding']=room_bindings.binding(project)
+        server.atomic(storage.project_file(project['projectId']),project)
+        server.atomic(storage.RUNTIME/'creator/registry.json',[dict(projectId='other',ownerMod='moreiterators.local',ai='ZZ_AI',entry='ZZ_ENTRY',oracleId='other')])
+        before={file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()}
+        with self.assertRaisesRegex(ValueError,'缺少已验证的连接计划'):server.deploy(copy.deepcopy(project))
+        self.assertEqual({file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()},before)
+
+    def test_custom_old_default_without_plan_is_rejected_without_migration(self):
+        bases=self.legacy(cached=True)
+        project=storage.load_project(self.project['projectId']);project['roomBinding']=room_bindings.binding(project)
+        server.atomic(storage.project_file(project['projectId']),project)
+        camera=Path(str(bases[0])+'_1.png');camera.write_bytes(camera.read_bytes()+b'custom')
+        before={file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()}
+        with self.assertRaisesRegex(ValueError,'缺少已验证的连接计划'):server.deploy(copy.deepcopy(project))
+        self.assertEqual({file.relative_to(self.root):(file.read_bytes(),file.stat().st_mtime_ns) for file in self.root.rglob('*') if file.is_file()},before)
 
     def test_any_custom_geometry_settings_or_camera_prevents_migration(self):
         bases = self.legacy(cached=True)

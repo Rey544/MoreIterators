@@ -409,7 +409,7 @@ def chamber_mask(rows):
 def room_palette(project,source,camera=0):
     settings=Path(str(source)+'_settings.txt')
     text=settings.read_text('utf-8-sig') if settings.is_file() else ''
-    match=re.search(r'(?m)^Palette:\s*(\d+)',text)
+    match=re.search(r'(?m)^Palette:[ \t]*(\d+)',text)
     index=int(match[1]) if match else int(project.get('design',{}).get('roomPalette',26))
     native=room_controls.effective_palette_settings(project,source) if room_controls.room_palette(project) else None
     if native is not None:index=native['palette'];text=native['text']
@@ -431,7 +431,7 @@ def room_palette(project,source,camera=0):
         raise ValueError('房间调色板不存在：palette'+str(number)+'.png')
     palette=load(index)
     if room_controls.room_palette(project):
-        fade=re.search(r'(?m)^FadePalette:\s*([^\r\n]+)',text)
+        fade=re.search(r'(?m)^FadePalette:[ \t]*([^ \t\r\n][^\r\n]*)',text)
         if fade:
             values=[part.strip() for part in fade[1].split(',')]
             if len(values)>camera+1:palette=Image.blend(palette,load(int(values[0])),max(0,min(1,float(values[camera+1]))))

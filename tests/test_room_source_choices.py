@@ -37,6 +37,14 @@ class RoomSourceChoiceTests(unittest.TestCase):
         self.output = self.local / 'world/xx-rooms/XX_AI'
         self.live = self.installed / 'world/xx-rooms/XX_AI'
         self.render(self.cache)
+        self.existing = self.root / 'foreign/world/yy-rooms/YY_EXISTING'
+        self.render(self.existing, name='YY_EXISTING', settings='Effects: \n')
+        def resolve(name):
+            if name == 'YY_EXISTING':return self.existing
+            raise ValueError('unavailable')
+        context = patch.object(choices.room_bindings, 'resolve_room_source', side_effect=resolve)
+        context.start()
+        self.addCleanup(context.stop)
 
     def render(self, base, name='XX_AI', cameras=2, color='white', settings='Palette: 9100\n'):
         base.parent.mkdir(parents=True, exist_ok=True)
@@ -72,13 +80,14 @@ class RoomSourceChoiceTests(unittest.TestCase):
     def snapshot(self):
         return {str(path.relative_to(self.root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in self.root.rglob('*') if path.is_file()}
 
-    def test_unflagged_projects_keep_old_behavior_without_scanning(self):
+    def test_unflagged_projects_scan_rooms_without_changing_saved_modes(self):
         self.project['editor']['externalRoomTools'] = False
-        with patch.object(choices, '_candidate', side_effect=AssertionError('scanned')):
-            report = self.report()
-            self.assertEqual(report['rooms'], [])
-            self.assertFalse(report['requiresChoices'])
-            self.assertIsNone(self.enter())
+        before = copy.deepcopy(self.project)
+        report = self.report()
+        self.assertEqual([row['room'] for row in report['rooms']], ['XX_AI', 'YY_EXISTING'])
+        self.assertFalse(report['requiresChoices'])
+        self.assertEqual(self.enter(), self.cache)
+        self.assertEqual(self.project, before)
 
     def test_single_complete_version_selects_without_payload_and_does_not_write(self):
         before = self.snapshot()
@@ -213,15 +222,15 @@ class RoomSourceChoiceTests(unittest.TestCase):
         path.write_text(json.dumps(manifest), 'utf-8')
         self.assertFalse(self.report()['rooms'][0]['renderVersions'][0]['pairedSource'])
 
-    def test_imported_extra_room_only_scanned_with_manifest_evidence(self):
+    def test_extra_rooms_are_scanned_without_manifest_evidence(self):
         extra = self.cache.with_name('XX_EXTRA')
         self.render(extra, name='XX_EXTRA')
         report = choices.preflight([self.project], extraRooms=['XX_EXTRA', 'ZZ_FOREIGN'])
-        self.assertEqual(len(report['rooms']), 1)
+        self.assertEqual([row['room'] for row in report['rooms']], ['XX_AI', 'XX_EXTRA', 'YY_EXISTING', 'ZZ_FOREIGN'])
         manifest = dict(schema=choices.LOCAL_SCHEMA, projectId='selected', rooms=[dict(name='XX_EXTRA', sourceAvailable=False)], files=[])
         (storage.project_file('selected').parent / 'room-package.json').write_text(json.dumps(manifest), 'utf-8')
         report = choices.preflight([self.project], extraRooms=['XX_EXTRA', 'ZZ_FOREIGN'])
-        self.assertEqual([row['room'] for row in report['rooms']], ['XX_AI', 'XX_EXTRA'])
+        self.assertEqual([row['room'] for row in report['rooms']], ['XX_AI', 'XX_EXTRA', 'YY_EXISTING', 'ZZ_FOREIGN'])
 
     def test_unknown_choices_and_missing_tokens_are_rejected(self):
         report = self.report()
@@ -379,12 +388,14 @@ class RoomSourceChoiceTests(unittest.TestCase):
         self.assertEqual(version['origin'],'game')
         self.assertEqual(version['providers'],[])
 
-    def test_palette_control_conflict_requires_an_explicit_export_policy(self):
+    def test_saved_palette_mode_does_not_require_another_export_policy(self):
         self.project['design']['roomPaletteMode']='mi'
-        report=self.report();conflict=report['parameterConflicts'][0]
+        report=self.report();conflict=report['parameterModes'][0]
+        self.assertEqual(report['parameterConflicts'],[])
+        self.assertFalse(report['requiresChoices'])
         self.assertEqual((conflict['projectId'],conflict['room'],conflict['kind'],conflict['sourceMode'],conflict['certainty']),('selected','XX_AI','palette','mi','potential'))
         payload=self.pick(report)
-        self.assertCode('room_choices_required',lambda:self.enter(payload))
+        self.assertEqual(self.enter(payload),self.cache)
         payload['policies']={'selected':{'palette':'project'}}
         self.assertEqual(self.enter(payload),self.cache)
         payload['policies']['selected']['palette']='room'
@@ -393,11 +404,12 @@ class RoomSourceChoiceTests(unittest.TestCase):
             self.assertEqual(choices.export_project(self.project)['design']['roomPaletteMode'],'room')
         self.assertEqual(self.project,before)
 
-    def test_only_the_selected_settings_version_requires_a_policy(self):
+    def test_selected_settings_keeps_saved_policy_without_another_prompt(self):
         self.project['design']['roomPaletteMode']='mi'
         self.render(self.output,settings='Template: NONE\n')
         report=self.report()
-        conflict=report['parameterConflicts'][0]
+        self.assertEqual(report['parameterConflicts'],[])
+        conflict=report['parameterModes'][0]
         safe=next(value for value in report['rooms'][0]['settingsVersions'] if value['origin']=='local')
         self.assertNotIn(safe['id'],conflict['settingsVersionIds'])
         payload=self.pick(report,'project','local')
@@ -410,7 +422,8 @@ class RoomSourceChoiceTests(unittest.TestCase):
         folder=self.local/'world/xx';folder.mkdir(parents=True)
         (folder/'xx_settingstemplate_storm.txt').write_text('Palette: 9100\n','utf-8')
         report=self.report()
-        self.assertEqual({value['kind'] for value in report['parameterConflicts']},{'palette','gravity'})
+        self.assertEqual(report['parameterConflicts'],[])
+        self.assertEqual({value['kind'] for value in report['parameterModes']},{'palette','gravity'})
         payload=self.pick(report);payload['policies']={'selected':{'palette':'room','gravity':'project'}}
         self.enter(payload)
         (folder/'xx_settingstemplate_storm.txt').write_text('Palette: 9200\n','utf-8')
@@ -422,14 +435,16 @@ class RoomSourceChoiceTests(unittest.TestCase):
         folder=self.cache.parent.parent/'regions/XX';folder.mkdir(parents=True)
         (folder/'properties.txt').write_text('Palette: 9100\nRoom Setting Templates: Storm\n','utf-8')
         (folder/'xx_settingstemplate_storm.txt').write_text('Effects: ZeroG-1-0-0,\n','utf-8')
-        self.assertEqual({value['kind'] for value in self.report()['parameterConflicts']},{'palette','gravity'})
+        self.assertEqual(self.report()['parameterConflicts'],[])
+        self.assertEqual({value['kind'] for value in self.report()['parameterModes']},{'palette','gravity'})
 
     def test_entry_palette_and_unrelated_project_colors_do_not_conflict(self):
         self.project['design'].update(roomPaletteMode='mi',entryGravityMode='zero',roomWorkColor='#ff0000')
         self.cache.with_name('XX_AI_settings.txt').write_text('Template: NONE\n','utf-8')
         binding=self.project['roomBinding'];binding.update(entry='XX_ENTRY',entryMode='copy')
         self.render(self.cache.with_name('XX_ENTRY'),name='XX_ENTRY',settings='Palette: 9100\nEffects: ZeroG-1-0-0,\n')
-        conflicts=self.report()['parameterConflicts']
+        self.assertEqual(self.report()['parameterConflicts'],[])
+        conflicts=self.report()['parameterModes']
         self.assertEqual([(value['room'],value['kind'],value['sourceMode']) for value in conflicts],[('XX_ENTRY','gravity','zero')])
         self.project['design']['entryGravityMode']='room'
         second=copy.deepcopy(self.project);second['projectId']='second';second['design']['roomWorkColor']='#00ff00'

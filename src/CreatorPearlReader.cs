@@ -83,16 +83,17 @@ public sealed class CreatorPearlReader {
  public bool Active{get{return current!=null||greeting;}}
  public bool Receiving{get{return Active||pendingGreeting;}}
  public CreatorPearlReader(Oracle o){oracle=o;speech=new CreatorSpeech(o);restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=IteratorDesign.ForRoom(o.room).dialogueJson;state.BeforeAction=delegate(CreatorGroupAction action,Action<bool> finished,Action<int> steps){CreatorDialogueActions.For(oracle).Schedule(action,listener,finished,steps);};state.LineCompleted=delegate(CreatorDialogueLine line){var action=CreatorDialogueActions.For(oracle).Completed(line.action,listener);if(action!=null)action();};}
- public void Cancel(){
+ public void Cancel(){Cancel(true,true);}
+ public void Cancel(bool ownsState,bool clearHud){
   bool active=Active||state.Pending;
   if(active){
-   CreatorDialogueActions.For(oracle).Cancel();
-   if(oracle.room!=null&&oracle.room.game!=null&&oracle.room.game.cameras!=null&&oracle.room.game.cameras.Length>0&&oracle.room.game.cameras[0]!=null)ClearHUD();
-   Release();
+   if(ownsState)CreatorDialogueActions.For(oracle).Cancel();
+   speech.Clear(ownsState&&clearHud);
+   Release(ownsState);
   }
-  pendingGreeting=false;visits.DiscardEntry();CreatorPearlOffers.Clear(oracle,"reader cancelled");
+  pendingGreeting=false;visits.DiscardEntry();if(ownsState)CreatorPearlOffers.Clear(oracle,"reader cancelled");
  }
- public void ObservePresence(Player player){visits.Observe(player!=null&&!player.dead&&player.room==oracle.room,oracle.room.game.clock);}
+ public void ObservePresence(Player player){var room=oracle.room;if(room==null||room.game==null){visits.DiscardEntry();pendingGreeting=false;return;}visits.Observe(player!=null&&!player.dead&&!player.slatedForDeletetion&&player.room==room,room.game.clock);}
  void BeginPresentation(){CreatorReadingPresentation.Begin(oracle,selectedProfile==null?null:selectedProfile.presentation,CreatorDialogueProfile.For(IteratorDesign.ForRoom(oracle.room)).pearlReading.presentation,profile==null?null:profile.presentation);}
  int Cycle{get{return oracle.room.game.IsStorySession?oracle.room.game.GetStorySession.saveState.cycleNumber:0;}}
  PearlVariant Pick(string key,PearlVariant[] pool){
@@ -103,7 +104,7 @@ public sealed class CreatorPearlReader {
  void Depart(PearlVariant group){state.Depart(group.lines,CreatorDialogueActions.For(oracle).Completed(group.action,listener));}
  void Return(PearlVariant group){state.Return(group.lines,CreatorDialogueActions.For(oracle).Completed(group.action,listener));}
  void ClearHUD(){speech.Clear();}
- void Release(){CreatorReadingPresentation.Clear(oracle);speech.Finish();if(current!=null){var custom=current as CreatorDataPearl;if(custom!=null)custom.hover=null;}current=null;currentGiver=null;project=null;profile=null;selectedProfile=null;body=new CreatorDialogueLine[0];bodyAction=null;state.Clear();departed=false;walkedIn=false;greeting=false;responseKey="";cooldown=45;}
+ void Release(bool ownsState=true){if(ownsState)CreatorReadingPresentation.Clear(oracle);speech.Finish();if(current!=null){var custom=current as CreatorDataPearl;if(custom!=null&&(ownsState||current.room!=oracle.room))custom.hover=null;}current=null;currentGiver=null;project=null;profile=null;selectedProfile=null;body=new CreatorDialogueLine[0];bodyAction=null;state.Clear();departed=false;walkedIn=false;greeting=false;responseKey="";cooldown=45;}
  bool Mark(){return IteratorBehavior.HasCommunicationMark(oracle);}
  bool Speak(){var hud=oracle.room.game.cameras[0].hud;if(hud==null)return true;if(state.CurrentPresented){if(speech.Showing)return true;state.Finish();}if(CreatorDialogueActions.For(oracle).Active)return true;if(state.Current==null)state.Next();var line=state.Prepare();if(line!=null){if(CreatorDialogueLine.HasText(line)){speech.Say(line);Debug.Log("[More Iterators pearl] "+line.text);}else state.Finish();}return state.Pending||CreatorDialogueActions.For(oracle).Active;}
  public void Respond(PearlVariant[] pool,string key,Player player){TryRespond(pool,key,player);}
@@ -116,6 +117,7 @@ public sealed class CreatorPearlReader {
  }
  void Complete(CreatorPearlProgress memory,IteratorDesign design){pendingGreeting=false;if(readBody&&body.Length>0){memory.Complete(readKey,Cycle);Save(oracle,design.oracleId,memory);}Release();}
  public bool Update(Player player,IteratorDesign d,bool canStart,bool initialStoryComplete=true){
+  if(oracle.slatedForDeletetion||oracle.room==null||oracle.room.game==null){Cancel();return false;}
   speech.Tick();ObservePresence(player);
   if(restart!=CreatorEncounter.Restart||mode!=CreatorRuntime.Mode||config!=d.dialogueJson){bool replay=restart!=CreatorEncounter.Restart;restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=d.dialogueJson;if(replay)ResetForReplay(oracle,d.oracleId);CreatorPearlOffers.Clear(oracle,"configuration/replay changed");observed.Clear();if(Active)ClearHUD();Release();if(replay){visits=new CreatorPearlVisits();ObservePresence(player);extractionRequests.Clear();}pendingGreeting=false;}
   if(!initialStoryComplete&&CreatorRuntime.Mode=="story")awaitingInitialStory=true;

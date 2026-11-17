@@ -10,7 +10,7 @@ import storage
 import project_packages
 
 MANIFEST = '.mi-room-bindings.json'
-WORLD_PATH = re.compile(r'(?:modify/)?world/[a-z0-9]+/(?:world_[a-z0-9]+|map_[a-z0-9]+|properties|displayname)\.txt|modify/world/regions\.txt')
+WORLD_PATH = re.compile(r'(?:modify/)?world/[a-z0-9]+/(?:world_[a-z0-9]+|map_[a-z0-9]+|[a-z0-9]+_settingstemplate_[a-z0-9-]+|properties|displayname)\.txt|modify/world/regions\.txt')
 ROOM_PATH = re.compile(r'world/[a-z0-9]+-rooms/([A-Z][A-Z0-9]{1,7}_[A-Z0-9_]{1,64})(?:\.txt|_settings\.txt|_[1-9][0-9]*\.png)')
 ASSET_PATH = project_packages.OUTPUT_PATH
 

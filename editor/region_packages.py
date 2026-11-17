@@ -14,6 +14,7 @@ import standalone
 import storage
 import room_asset_dependencies
 import room_source_choices
+import palette_export_sources
 
 SCHEMA='moreiterators.region-package.v1'
 MAX_FILES=12000
@@ -43,6 +44,7 @@ class Collector:
         self.assets=(storage.require_game_root()/'RainWorld_Data/StreamingAssets').resolve()
         self.files={};self.generated={};self.dependencies={};self.providers={};self.game_assets=set();self.directories={};self.lookups={};self.total=0
         self.project_ids=[]
+        self.region=None;self.palette_review=False
         for root in self.roots:
             owner=root.parent if root.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',root.name) else root
             info=owner/'modinfo.json'
@@ -105,10 +107,14 @@ class Collector:
     def add(self,relative,source=None,choice=None):
         relative=_relative(relative)
         if relative in self.files:return self.files[relative]
+        palette=palette_export_sources.REFERENCE.fullmatch(relative)
+        if source is None and palette:
+            source=palette_export_sources.choose(int(palette[1]),self.roots,self.resolve(relative,False),self.palette_review)
         source=source or self.resolve(relative)
+        saved_palette=bool(palette and palette_export_sources.is_saved_palette(source,int(palette[1]),self.roots))
         if choice is None:
             if not room_bindings.is_enabled_asset(source,self.roots):raise ValueError('区域素材来自未启用模组：'+relative)
-            self.provenance(relative)
+            if not saved_palette:self.provenance(relative)
         else:
             pid,name=choice
             if name is None:expected=room_source_choices.selected_asset(pid,relative)
@@ -121,7 +127,7 @@ class Collector:
                 expected=project_packages._sibling(base,suffix) if base is not None and valid else None
             if expected is None or Path(source).resolve()!=Path(expected).resolve():raise ValueError('所选区域素材版本无法确认：'+relative)
             owners=[root for root in self.roots if Path(source).resolve().is_relative_to(root)]
-            if owners:
+            if owners and not saved_palette:
                 owner=max(owners,key=lambda root:len(root.parts))
                 if owner in self.providers:self.dependency(self.providers[owner][0])
                 elif owner==self.assets:self.game_assets.add(relative)
@@ -137,7 +143,9 @@ class Collector:
         return source
 
     def selected_asset(self,relative):
-        for pid in self.project_ids:
+        keys=list(self.project_ids)
+        if self.region is not None:keys.append(room_source_choices.region_palette_key(self.region))
+        for pid in keys:
             source=room_source_choices.selected_asset(pid,relative)
             if source is not None:return source,pid
         return None,None
@@ -148,7 +156,10 @@ class Collector:
 
     def asset_available(self,relative):
         source,_=self.selected_asset(relative)
-        return source if source is not None else self.resolve(relative,False)
+        if source is not None:return source
+        palette=palette_export_sources.REFERENCE.fullmatch(relative)
+        if palette:return palette_export_sources.choose(int(palette[1]),self.roots,self.resolve(relative,False),self.palette_review)
+        return self.resolve(relative,False)
 
     def names(self,relative):
         result={}
@@ -213,15 +224,31 @@ def choices(project_ids=()):
         name=region.get('name');rows=region.get('rooms',[])
         if not isinstance(name,str) or not room_bindings.REGION_RE.fullmatch(name):continue
         private=sorted({owned[row['name']] for row in rows if row.get('name') in owned and owned[row['name']] not in selected})
-        reason='TEST 是共享测试区域' if name=='TEST' else '区域包含未选择的本地作品' if private else ''
-        items.append(dict(name=name,roomCount=len({row.get('name') for row in rows}),available=not reason,reason=reason,projectIds=private))
+        included=sorted({owned[row['name']] for row in rows if row.get('name') in owned})
+        reason='TEST 是共享测试区域' if name=='TEST' else ''
+        projects=[dict(projectId=pid,name=storage.load_project(pid).get('name',pid)) for pid in included]
+        items.append(dict(name=name,roomCount=len({row.get('name') for row in rows}),available=not reason,reason=reason,projectIds=included,includedProjects=projects))
     return dict(regions=items)
 
 
-def _collect(region,project_ids):
+def included_projects(region):
+    region=_region(region)
+    item=next((row for row in choices()['regions'] if row['name']==region),None)
+    if item is None:raise ValueError('区域不在当前启用目录中：'+region)
+    return item['includedProjects']
+
+
+def validate_projects(region,project_ids):
+    included=included_projects(region);expected={row['projectId'] for row in included}
+    if not isinstance(project_ids,(list,tuple)) or any(not isinstance(pid,str) for pid in project_ids) or len(set(project_ids))!=len(project_ids) or set(project_ids)!=expected:
+        raise ValueError('区域内的作品已变化，请刷新区域后重新导出')
+    return included
+
+
+def _collect(region,project_ids,include_dependencies=True,review=False):
     region=_region(region);catalog=room_bindings.catalog()
     if not any(value.get('name')==region for value in catalog.get('regions',[])):raise ValueError('区域不在当前启用目录中：'+region)
-    selected,owned=_owned_rooms(project_ids);collector=Collector();collector.project_ids=sorted(selected);folder='world/'+region.lower()
+    selected,owned=_owned_rooms(project_ids);collector=Collector();collector.project_ids=sorted(selected);collector.region=region;collector.palette_review=review;folder='world/'+region.lower()
     world=collector.add(folder+'/world_'+region.lower()+'.txt');world_text=world.read_text('utf-8-sig');rows=room_bindings.parse_world(world_text,region)
     if not rows:raise ValueError('区域世界文件没有可识别的房间')
     in_rooms=False;raw_count=0
@@ -289,12 +316,13 @@ def _collect(region,project_ids):
                 relative=directory+'/'+filename;collector.add(relative);settings.append(relative);room_files[name].append(relative)
     for relative in settings:
         text=collector.files[relative].read_text('utf-8-sig')
-        template=re.search(r'(?m)^Template:\s*([^\r\n]+)',text)
+        template=re.search(r'(?m)^Template:[ \t]*([^ \t\r\n][^\r\n]*)',text)
         if template and template.group(1).strip().upper()!='NONE':
             parts=template.group(1).strip().lower().split('_')
             if len(parts)!=3 or parts[1]!='settingstemplate' or parts[2] not in template_names:raise ValueError('区域缺少房间引用的模板注册：'+template.group(1))
-    for relative in list(collector.files):
-        if relative.endswith('.txt'):collector.settings_dependencies(relative)
+    if include_dependencies:
+        for relative in list(collector.files):
+            if relative.endswith('.txt'):collector.settings_dependencies(relative)
     gate_names={row['name'] for row in rows if 'GATE' in row.get('tags','').upper().split(' : ')}
     if gate_names:
         locks=collector.resolve('world/gates/locks.txt');collector.provenance('world/gates/locks.txt')
@@ -313,17 +341,30 @@ def _digest(path):
     return digest.hexdigest()
 
 
+def palette_references(region,project_ids=()):
+    collector,_,_=_collect(region,project_ids,include_dependencies=False)
+    indices=set();paths=[]
+    for relative,path in collector.files.items():
+        if not relative.endswith('.txt'):continue
+        found=standalone.room_palette_ids(path.read_text('utf-8-sig'))
+        if found:indices.update(found);paths.append(path)
+    standard={index:collector.resolve('palettes/palette'+str(index)+'.png',False) for index in indices}
+    return indices,paths,standard
+
+
 def inspect(region,project_ids=()):
     try:
-        collector,rooms,room_files=_collect(region,project_ids)
+        projects=included_projects(region);ids=[row['projectId'] for row in projects]
+        collector,rooms,room_files=_collect(region,ids,review=True)
         return dict(ok=True,region=region,kind='region-files',rooms=rooms,roomFiles=room_files,
                     fileCount=len(collector.files)+len(collector.generated),bytes=sum(file.stat().st_size for file in collector.files.values())+sum(map(len,collector.generated.values())),
-                    dependencies=sorted(collector.dependencies.values(),key=lambda item:item['id']),gameDependency=True,blockers=[])
+                    dependencies=sorted(collector.dependencies.values(),key=lambda item:item['id']),gameDependency=True,blockers=[],projectIds=ids,includedProjects=projects)
     except (OSError,ValueError,KeyError,TypeError) as error:
         return dict(ok=False,region=region,kind='region-files',rooms=[],roomFiles={},dependencies=[],gameDependency=True,blockers=[str(error)])
 
 
 def build(region,metadata=None,project_ids=()):
+    validate_projects(region,project_ids)
     metadata={} if metadata is None else metadata
     if not isinstance(metadata,dict):raise ValueError('区域说明无效')
     meta={}

@@ -74,7 +74,10 @@ class ChamberWorkflowTests(presets.ChamberPresetTests):
                 ai_row=next(row for row in metadata['rooms'] if row['name']==room)
                 self.assertEqual(ai_row['connections'],[entry]);self.assertGreater(ai_row['updatedAtNs'],world.stat().st_mtime_ns)
                 self.assertEqual(world.read_bytes(),old_world)
-                if kind=='none':self.assertEqual([row['name'] for row in metadata['rooms']],[room])
+                if kind=='none':
+                    self.assertEqual([row['name'] for row in metadata['rooms']],[room,entry])
+                    waiting=next(row for row in metadata['rooms'] if row['name']==entry)
+                    self.assertEqual(waiting.get('updatedAtNs'),0)
                 else:
                     self.assertEqual(metadata['importedAtNs'],1_000_000_000)
                     waiting=next(row for row in metadata['rooms'] if row['name']==entry)

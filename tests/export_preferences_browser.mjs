@@ -44,12 +44,12 @@ const server=http.createServer(async(req,res)=>{try{
 }catch(error){errors.push(error.stack);res.writeHead(500);res.end(error.message);}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
 const browser=spawn(process.env.MI_TEST_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless','--disable-gpu','--no-first-run','--disable-background-networking','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--user-data-dir='+profile,'about:blank'],{windowsHide:true,stdio:'ignore'});
-let socket;
+let socket,closeBrowser;
 try{
  const portFile=path.join(profile,'DevToolsActivePort');for(let index=0;index<200&&!fs.existsSync(portFile);index++)await sleep(30);
  const port=fs.readFileSync(portFile,'utf8').split(/\r?\n/)[0],tabs=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();socket=new WebSocket(tabs.find(tab=>tab.type==='page').webSocketDebuggerUrl);await new Promise(resolve=>socket.onopen=resolve);
  let id=0;const pending=new Map();socket.onmessage=event=>{const value=JSON.parse(event.data);if(value.id){const task=pending.get(value.id);pending.delete(value.id);value.error?task.reject(Error(JSON.stringify(value.error))):task.resolve(value.result)}else if(value.method==='Runtime.exceptionThrown')errors.push(value.params.exceptionDetails.exception?.description||value.params.exceptionDetails.text);};
- const call=(method,params={})=>new Promise((resolve,reject)=>{const serial=++id;pending.set(serial,{resolve,reject});socket.send(JSON.stringify({id:serial,method,params}));});
+ const call=(method,params={})=>new Promise((resolve,reject)=>{const serial=++id;pending.set(serial,{resolve,reject});socket.send(JSON.stringify({id:serial,method,params}));});closeBrowser=()=>call('Browser.close');
  const evaluate=async expression=>{const result=await call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(result.exceptionDetails)throw Error(result.exceptionDetails.exception?.description||result.exceptionDetails.text);return result.result.value;};
  const until=async expression=>{for(let index=0;index<200;index++){if(await evaluate(expression))return;await sleep(20)}throw Error('Timed out: '+expression);};
  const click=selector=>evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
@@ -59,18 +59,18 @@ try{
  const open=async()=>{await click('#export');await until(`document.getElementById('exportDialog').open&&!document.getElementById('exportDialog').inert`);};
  const close=async()=>{await click('[data-export-close]');await until(`!document.getElementById('exportDialog').open`);};
  const state=()=>evaluate(`(()=>{const element=id=>document.getElementById(id);return {...Object.fromEntries(['id','name','authors','description','version'].map(key=>[key,element('pack-'+key).value])),...Object.fromEntries(['dialogue','pearls','broadcasts','workPearls','projections'].map(key=>[key,element('pack-'+key).checked])),scope:document.querySelector('[name=exportScope]:checked').value,format:document.querySelector('[name=exportFormat]:checked').value,parts:[...document.querySelectorAll('[name=part]:checked')].map(input=>input.value),projects:[...element('pack-projects').querySelectorAll('input:checked')].map(input=>input.value),extraRooms:[...element('export-roomChoices').querySelectorAll('input:checked')].map(input=>input.value),region:element('export-region').value,startRoom:element('export-startRoom').value,pearlCollectionId:element('pack-pearlCollection').value}})()`);
- const original=structuredClone(preferences);
+ const original={...structuredClone(preferences),packageName:'First project',packageVersion:'0.1.0',externalMods:[]};
  await open();const restored=await state();for(const [key,value]of Object.entries(restored))assert.deepEqual(value,original[key],key);
  await close();await sleep(500);assert.equal(preferenceWrites.length,0,'Opening and closing wrote preferences');
  await open();await input('#pack-description','Metadata edit only','input');await close();
  assert.deepEqual(preferenceWrites.at(-1),{...original,description:'Metadata edit only',settingsProject:'fixture'});
  await open();await click('[name=exportScope][value=project]');await click('[name=exportFormat][value=project]');await close();
- const retained=structuredClone(preferences);await open();assert.equal((await state()).scope,'project');assert.equal((await state()).format,'project');assert.equal(await evaluate(`document.getElementById('pack-build').disabled`),true);assert.deepEqual((await state()).parts,original.parts);assert.deepEqual((await state()).extraRooms,original.extraRooms);
+ const retained=structuredClone(preferences);await open();assert.equal((await state()).scope,'project');assert.equal((await state()).format,'project');assert.equal(await evaluate(`document.getElementById('pack-build').disabled`),false);await click('#pack-build');await until(`!document.getElementById('pack-build').disabled`);assert.equal(await evaluate(`document.getElementById('export-roomVersions').hidden`),false);assert.deepEqual(exports,[]);assert.deepEqual((await state()).parts,original.parts);assert.deepEqual((await state()).extraRooms,original.extraRooms);
  await input('#pack-description','Blocked format metadata','input');await close();assert.deepEqual(preferences,{...retained,description:'Blocked format metadata'});
  await open();await input('#export-startRoom','XX_ENTRY');await close();await open();assert.equal((await state()).startRoom,'XX_ENTRY');
  await click('#export-roomChoices input[value=XX_SIDE]');await close();await open();assert.deepEqual((await state()).extraRooms,[]);await close();
  preferences={...original,projects:['missing-project'],extraRooms:['XX_GONE'],region:'ZZ',startRoom:'XX_REMOVED',pearlCollectionId:'missing-collection',parts:[],format:'assets',scope:'project'};
- const missing=structuredClone(preferences);await open();const unavailable=await state();for(const key of ['projects','extraRooms','region','startRoom','pearlCollectionId','parts','format','scope'])assert.deepEqual(unavailable[key],missing[key],key);assert.equal(await evaluate(`document.getElementById('pack-build').disabled`),true);
+ const missing=structuredClone(preferences);await open();const unavailable=await state();for(const key of ['projects','extraRooms','region','startRoom','pearlCollectionId','parts','format','scope'])assert.deepEqual(unavailable[key],missing[key],key);assert.equal(await evaluate(`document.getElementById('pack-build').disabled`),false);const invalidWrites=preferenceWrites.length;await click('#pack-build');assert.match(await evaluate(`document.getElementById('pack-status').textContent`),/missing-project/);assert.equal(await evaluate(`document.activeElement.value`),'missing-project');assert.equal(preferenceWrites.length,invalidWrites);assert.deepEqual(exports,[]);
  await input('#pack-description','Missing references metadata','input');await close();assert.deepEqual(preferences,{...missing,description:'Missing references metadata',settingsProject:'fixture'});
  const writesBeforeSwitch=preferenceWrites.length;
  await evaluate(`window.preferenceFetch=fetch;window.preferenceGate=new Promise(resolve=>window.releasePreference=resolve);window.preferenceRequested=false;window.fetch=async(...args)=>{if(String(args[0]).includes('/api/export-settings?id=')){window.preferenceRequested=true;await preferenceGate;}return preferenceFetch(...args)};window.openingExport=document.getElementById('export').onclick();void 0`);
@@ -84,8 +84,8 @@ try{
  await until('window.preferenceRequested');await evaluate('window.MIStudioPage={isBusy:()=>true};releasePreference();openingExport');
  assert.equal(await evaluate(`document.getElementById('exportDialog').open`),false,'A delayed export opened during a pending project switch');
  await evaluate('delete window.MIStudioPage;window.fetch=preferenceFetch');
- assert.deepEqual(errors,[]);assert.deepEqual(await evaluate('window.fixtureErrors'),[]);assert.deepEqual(exports,[]);console.log('Export preferences browser: stored fields and unavailable references preserved; delayed openings cannot cross completed or pending project switches.');
+ assert.deepEqual(errors,[]);assert.deepEqual(await evaluate('window.fixtureErrors'),[]);assert.deepEqual(exports,[]);const output=path.resolve(editor,'../../evidence/export-ui');fs.mkdirSync(output,{recursive:true});fs.writeFileSync(path.join(output,'export-preferences-results.json'),JSON.stringify({ok:true,storedFieldsPreserved:true,unavailableReferencesPreserved:true,untouchedScenePreserved:true,invalidClickDoesNotWrite:true,delayedProjectSwitchesGuarded:true},null,2));console.log('Export preferences browser: stored fields and unavailable references preserved; delayed openings cannot cross completed or pending project switches.');
 }finally{
- socket?.close();browser.kill();await new Promise(resolve=>server.close(resolve));await sleep(300);
- const resolved=path.resolve(temporary);if(path.dirname(resolved)!==path.resolve(os.tmpdir())||!path.basename(resolved).startsWith('mi-hierarchy-'))throw Error('Unexpected temporary path');fs.rmSync(resolved,{recursive:true,force:true,maxRetries:5,retryDelay:200});
+ if(closeBrowser)await Promise.race([closeBrowser().catch(()=>{}),sleep(2000)]);await sleep(1000);socket?.close();if(browser.exitCode===null)browser.kill();await new Promise(resolve=>server.close(resolve));
+ const resolved=path.resolve(temporary);if(path.dirname(resolved)!==path.resolve(os.tmpdir())||!path.basename(resolved).startsWith('mi-hierarchy-'))throw Error('Unexpected temporary path');fs.rmSync(resolved,{recursive:true,force:true,maxRetries:10,retryDelay:300});
 }

@@ -11,6 +11,8 @@ import region_packages
 import room_asset_dependencies as assets
 import room_bindings
 import standalone
+import room_source_choices
+import storage
 
 
 SOUNDS=('AM_IND-SuperStructure.ogg','AM_WIN-StrongWnd2.ogg','SO_SFX-DataTrans2.ogg')
@@ -61,6 +63,33 @@ class NativeAmbientTests(unittest.TestCase):
         manifest.write_text(original,'utf-8');bundle.write_bytes(b'not a bundle'+bytes(64))
         self.assertFalse(assets.native_ambient_reference(relative))
         bundle.unlink();self.assertFalse(assets.native_ambient_reference(relative))
+
+    def test_export_review_recognizes_verified_native_audio(self):
+        f=self.fixture('project');self.native(f)
+        relative='loadedsoundeffects/ambient/'+SOUNDS[0].lower()
+        versions,_=room_source_choices._asset_versions('selected',relative,[f.assets])
+        valid=[row for row in versions if row['meta']['complete']]
+        self.assertEqual(len(valid),1)
+        self.assertTrue(valid[0]['meta']['builtin'])
+        self.assertEqual(valid[0]['meta']['origin'],'game')
+        self.assertEqual(valid[0]['meta']['issues'],[])
+
+    def test_export_review_does_not_relabel_custom_empty_audio_as_builtin(self):
+        f=self.fixture('project');self.native(f)
+        relative='loadedsoundeffects/ambient/'+SOUNDS[0].lower()
+        local=f.local/relative;local.parent.mkdir(parents=True);local.touch()
+        versions,_=room_source_choices._asset_versions('selected',relative,[f.assets])
+        local_versions=[row for row in versions if 'local' in row['meta']['origins']]
+        self.assertEqual(len(local_versions),1)
+        self.assertFalse(local_versions[0]['meta']['complete'])
+        self.assertFalse(local_versions[0]['meta']['builtin'])
+        self.assertTrue(any(row['meta']['complete'] and row['meta']['builtin'] for row in versions))
+
+    def test_export_review_needs_native_manifest_proof(self):
+        f=self.fixture('project');manifest,_=self.native(f);manifest.unlink()
+        relative='loadedsoundeffects/ambient/'+SOUNDS[0].lower()
+        versions,_=room_source_choices._asset_versions('selected',relative,[f.assets])
+        self.assertFalse(any(row['meta']['complete'] or row['meta']['builtin'] for row in versions))
 
     def test_external_same_named_empty_file_never_gets_native_exception(self):
         f=self.fixture();self.native(f)

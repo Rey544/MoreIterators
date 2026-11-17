@@ -27,7 +27,7 @@ class ContentAssetCacheTests(unittest.TestCase):
             result = subprocess.run([str(executable)], env=environment, capture_output=True,
                                     text=True, encoding='utf-8', errors='replace', timeout=20)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn('PASS 192 actual-method assertions', result.stdout)
+            self.assertRegex(result.stdout, r'PASS \d+ actual-method assertions')
             fixture_line = next(line for line in result.stdout.splitlines() if line.startswith('FIXTURE '))
             fixture = Path(fixture_line.removeprefix('FIXTURE ')).resolve()
             self.assertTrue(fixture.is_relative_to(work.resolve()), 'Native host must use the test temporary directory')

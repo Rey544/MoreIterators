@@ -23,6 +23,7 @@ def _root(pid, scope, required=True):
         if base is None:return None
     elif scope == 'local':base = storage.DATA / 'local-mod'
     elif scope == 'rendered':base = storage.project_file(pid).parent / 'rooms/rendered'
+    elif scope == 'source':base = storage.project_file(pid).parent / 'rooms'
     else:raise ValueError('旧房间记录的输出位置无效')
     absolute = base.absolute()
     resolved = absolute.resolve()
@@ -34,8 +35,9 @@ def _root(pid, scope, required=True):
 def _resolve(pid, name, item, required=True):
     root = _root(pid, item.get('scope'), required=required)
     relative = item.get('path')
-    prefix = '' if item['scope'] == 'rendered' else 'world/' + name.split('_')[0].lower() + '-rooms/'
-    pattern = re.escape(prefix + name) + r'(?:\.txt|_settings\.txt|_[1-9][0-9]*\.png)'
+    prefix = '' if item['scope'] in ('rendered','source') else 'world/' + name.split('_')[0].lower() + '-rooms/'
+    suffix = r'(?:\.txt|\.png)' if item['scope']=='source' else r'(?:\.txt|_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_mi_background\.json|_[1-9][0-9]*\.png|\.source\.json)'
+    pattern = re.escape(prefix + name) + suffix
     if not isinstance(relative, str) or not re.fullmatch(pattern, relative):
         raise ValueError('旧房间记录包含不属于该房间的路径：' + str(relative))
     if root is None:return None
@@ -90,7 +92,7 @@ def record_migration(transaction, pid, old, new, written):
     for kind, name in new_owned.items():
         files = []
         for scope, relative in written:
-            if not re.fullmatch(re.escape(name) + r'(?:\.txt|_settings\.txt|_[1-9][0-9]*\.png)', Path(relative).name):
+            if not re.fullmatch(re.escape(name) + r'(?:\.txt|_settings\.txt|_mi_background\.json|_[1-9][0-9]*\.png)', Path(relative).name):
                 continue
             item = dict(scope=scope, path=relative)
             file = _resolve(pid, name, item)
@@ -101,6 +103,94 @@ def record_migration(transaction, pid, old, new, written):
         rooms[name] = dict(name=name, kind=kind, retired=False, files=files)
     value.update(generation=uuid.uuid4().hex, rooms=sorted(rooms.values(), key=lambda item: item['name']))
     transaction.json(_file(pid), value)
+
+
+def prepare_migration(pid, old, new, records, managed):
+    if storage.binding(pid):raise room_bindings.RoomBindingError('migrationForeignOwner',room=old['ai'])
+    old_names={old['ai']}
+    if old['entryMode']=='copy':old_names.add(old['entry'])
+    current_names={new['ai'],new['entry']}
+    retired=old_names-current_names
+    if not retired:return dict(names=[],files=[],backup=None)
+    for project in room_bindings._projects():
+        if project['projectId']==pid:continue
+        binding=room_bindings.binding(project)
+        referenced=retired.intersection((binding['ai'],binding['entry']))
+        if referenced:
+            raise room_bindings.RoomBindingError('migrationProjectReference',room=sorted(referenced)[0],name=str(project.get('name',project['projectId'])))
+    for record in records:
+        referenced=retired.intersection((record.get('ai'),record.get('entry')))
+        if record.get('projectId')!=pid and referenced:
+            raise room_bindings.RoomBindingError('migrationRegistryReference',room=sorted(referenced)[0],project=str(record.get('projectId','')))
+    ledger=_read(pid);known={item['name']:item for item in ledger['rooms']}
+    registered=any(record.get('projectId')==pid and record.get('ownerMod')=='moreiterators.local' and record.get('ai')==old['ai'] and record.get('entry')==old['entry'] for record in records)
+    root=storage.project_file(pid).parent
+    files=[]
+    for name in sorted(retired):
+        rendered=_root(pid,'rendered')/(name+'.txt')
+        source=_root(pid,'source')/(name+'.txt')
+        project_evidence=rendered.is_file() or source.is_file()
+        world_evidence=False
+        for relative in managed:
+            if not re.fullmatch(r'(?:modify/)?world/[a-z0-9]+/world_[a-z0-9]+\.txt',relative):continue
+            world=_root(pid,'local')/relative
+            if world.is_file() and any(row['name']==name for row in room_bindings.parse_world(world.read_text('utf-8-sig'),name.split('_')[0])):world_evidence=True
+        shared_evidence=registered or bool(known.get(name,{}).get('files')) or project_evidence and world_evidence
+        for scope in ('source','rendered','local','installed'):
+            base=_root(pid,scope)
+            directory=base if scope in ('source','rendered') else base/'world'/(name.split('_')[0].lower()+'-rooms')
+            for file in sorted(directory.glob(name+'*')):
+                suffix=r'(?:\.txt|\.png)' if scope=='source' else r'(?:\.txt|_settings(?:-[A-Za-z0-9_-]+)?\.txt|_properties\.txt|_mi_background\.json|_[1-9][0-9]*\.png|\.source\.json)'
+                if not re.fullmatch(re.escape(name)+suffix,file.name):continue
+                relative=file.relative_to(base).as_posix()
+                resolved=_resolve(pid,name,dict(scope=scope,path=relative))
+                if not resolved.is_file():raise room_bindings.RoomBindingError('migrationPath',file=relative)
+                if scope in ('local','installed') and not shared_evidence:
+                    raise room_bindings.RoomBindingError('migrationOwnership',room=name)
+                files.append(dict(room=name,scope=scope,path=relative,file=resolved,sha256=_hash(resolved),size=resolved.stat().st_size))
+    import project_packages
+    for scope in ('local','installed'):
+        manifest=project_packages.output_manifest(_root(pid,scope))
+        shared={name for owner,paths in manifest['projects'].items() if owner!=pid for name in paths}
+        for item in files:
+            if item['scope']==scope and item['path'] in shared:raise room_bindings.RoomBindingError('migrationSharedFile',file=item['path'])
+    backup=root/'room-backups'/('rename-'+uuid.uuid4().hex)
+    if not backup.resolve().is_relative_to(root.resolve()):raise room_bindings.RoomBindingError('migrationPath',file=str(backup))
+    return dict(names=sorted(retired),files=files,backup=backup)
+
+
+def backup_migration(transaction,pid,prepared,old,new):
+    if not prepared['names']:return
+    backup=prepared['backup'];entries=[]
+    for item in prepared['files']:
+        file=item['file']
+        if not file.is_file() or _hash(file)!=item['sha256']:raise room_bindings.RoomBindingError('migrationFileChanged',room=item['room'],file=item['path'])
+        relative=Path(item['scope'])/item['path']
+        transaction.write(backup/relative,file.read_bytes())
+        entries.append({key:item[key] for key in ('room','scope','path','sha256','size')})
+    root=storage.project_file(pid).parent
+    for name in ('project.json','room-binding-plan.json','room-package.json','room-ownership.json'):
+        file=root/name
+        if file.is_file():transaction.write(backup/'metadata'/name,file.read_bytes())
+    transaction.json(backup/'manifest.json',dict(schema='moreiterators.room-rename-backup.v1',projectId=pid,oldBinding=old,newBinding=new,files=entries))
+
+
+def retire_migration(transaction,pid,prepared):
+    if not prepared['names']:return
+    references=_references(prepared['names'],details=True)
+    for name,reasons in references.items():
+        if reasons:
+            kind,source=reasons[0]
+            key,parameter={'project':('migrationProjectReference','name'),'registry':('migrationRegistryReference','project'),'world':('migrationWorldReference','file')}[kind]
+            raise room_bindings.RoomBindingError(key,room=name,**{parameter:source})
+    for item in prepared['files']:
+        file=item['file']
+        if not file.is_file() or _hash(file)!=item['sha256']:raise room_bindings.RoomBindingError('migrationFileChanged',room=item['room'],file=item['path'])
+        transaction.remove(file)
+    ledger=_read(pid)
+    ledger['rooms']=[room for room in ledger['rooms'] if room['name'] not in prepared['names']]
+    ledger['generation']=uuid.uuid4().hex
+    transaction.json(_file(pid),ledger)
 
 
 def _running_game():
@@ -129,14 +219,15 @@ def _game_blockers():
     return sorted(set(reasons))
 
 
-def _references(names):
+def _references(names,details=False):
     result = {name: [] for name in names}
     if not result: return result
     for project in room_bindings._projects():
         binding = room_bindings.binding(project)
         for name in names:
             if name in (binding['ai'], binding['entry']):
-                result[name].append('项目仍绑定此房间：' + str(project.get('name', project['projectId'])))
+                source=str(project.get('name',project['projectId']))
+                result[name].append(('project',source) if details else '项目仍绑定此房间：'+source)
     registry = storage.RUNTIME / 'creator/registry.json'
     if registry.exists():
         records = json.loads(registry.read_text('utf-8'))
@@ -145,7 +236,8 @@ def _references(names):
         for item in records:
             for name in names:
                 if name in (item.get('ai'), item.get('entry')):
-                    result[name].append('运行目录仍引用此房间：' + str(item.get('projectId', '未知项目')))
+                    source=str(item.get('projectId',''))
+                    result[name].append(('registry',source) if details else '运行目录仍引用此房间：'+source)
     seen = set()
     pattern = re.compile(r'(?<![A-Z0-9_])(?:' + '|'.join(re.escape(n) for n in names) + r')(?![A-Z0-9_])', re.I)
     for root in room_bindings._asset_roots():
@@ -155,9 +247,11 @@ def _references(names):
                 if file in seen: continue
                 seen.add(file)
                 try: content = '\n'.join(line.split('//', 1)[0] for line in file.read_text('utf-8-sig').splitlines())
-                except (OSError, UnicodeError): raise ValueError('世界连接无法读取，暂不能清理：' + str(file))
+                except (OSError, UnicodeError):
+                    if details:raise room_bindings.RoomBindingError('migrationPath',file=str(file))
+                    raise ValueError('世界连接无法读取，暂不能清理：' + str(file))
                 for match in pattern.finditer(content):
-                    result[match.group().upper()].append('世界连接仍引用此房间：' + str(file))
+                    result[match.group().upper()].append(('world',str(file)) if details else '世界连接仍引用此房间：'+str(file))
     return {name: sorted(set(reasons)) for name, reasons in result.items()}
 
 

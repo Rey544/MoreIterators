@@ -8,6 +8,7 @@ from pathlib import Path
 import base64,copy,datetime,hashlib,io,json,os,re,shutil,subprocess,tempfile,zipfile,math
 from PIL import Image
 import storage,dialogue,pearls,pearl_projects,broadcasts,native_projects,playback_adapters,room_editor,room_bindings,projections,overseers,audio_assets
+import palette_export_sources
 
 ATOMIC_ACTION={'type':str,'delay':float,'duration':float,'exitNode':int,**dict.fromkeys(('offsetX','offsetY','radius','endAngle'),float)}
 ACTION={**ATOMIC_ACTION,'actions':[ATOMIC_ACTION]}
@@ -131,12 +132,16 @@ def cover_bytes(value):
 def preferences(pid=''):
     if pid:
         pid=storage.valid_id(pid);f=storage.project_file(pid).parent/'export-settings.json'
-        if f.exists():return json.loads(f.read_text('utf-8'))
+        if f.exists():
+            value=json.loads(f.read_text('utf-8'));value.setdefault('externalMods',[])
+            value.setdefault('packageName',storage.load_project(pid)['name']);value.setdefault('packageVersion','0.1.0')
+            return value
         p=storage.load_project(pid)
-        return dict(id='author.'+pid.replace('oc-','iterator-'),name=p['name'],authors='',description='',version='0.1.0',cover='',projects=[pid],dialogue=False,pearls=False,broadcasts=False,workPearls=False)
+        return dict(id='author.'+pid.replace('oc-','iterator-'),name=p['name'],authors='',description='',version='0.1.0',packageName=p['name'],packageVersion='0.1.0',cover='',projects=[pid],externalMods=[],dialogue=False,pearls=False,broadcasts=False,workPearls=False)
     f=storage.DATA/'export-settings.json'
     value=json.loads(f.read_text('utf-8')) if f.exists() else dict(id='author.iterator',name='',authors='',description='',version='0.1.0',cover='',dialogue=False,pearls=False,broadcasts=False,workPearls=False)
     value['projects']=[pid] if pid else []
+    value.setdefault('externalMods',[])
     return value
 
 SOURCE_MANIFEST='templates/standalone/sources.json'
@@ -235,7 +240,9 @@ def room_source(p,name,kind,server):
     if kind not in ('ai','entry'):raise ValueError('房间类型无效')
     current=p.get('roomBinding')
     if current and name!=current[kind]:raise ValueError('只能导出此项目当前绑定的房间：'+current[kind])
-    if kind=='entry' and p.get('roomBinding',{}).get('entryMode')=='existing':return room_bindings.resolve_room_source(name)
+    if kind=='entry' and p.get('roomBinding',{}).get('entryMode')=='existing':
+        import room_source_choices
+        return room_source_choices.selected_source(p['projectId'],name) or room_bindings.resolve_room_source(name)
     if native_projects.binding(p['projectId']):return server.ASSETS/('mods/moreslugcats/world/'+name.split('_')[0].lower()+'-rooms')/name.lower()
     import room_source_choices
     selected=room_source_choices.selected_source(p['projectId'],name)
@@ -253,6 +260,26 @@ def room_source(p,name,kind,server):
     return server.ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else server.entry_room_template()
 
 def room_connections(p,ai,entry,server):
+    if not storage.binding(p['projectId']):
+        import project_packages
+        import room_connection_checks
+        result={}
+        for name,kind in ((ai,'ai'),(entry,'entry')):
+            source=room_source(p,name,kind,server)
+            check=project_packages.connection_snapshot(p,name,rows={},source=source)
+            room_connection_checks.require(check)
+            result[name]=check['connections']
+        return result
+    if p.get('roomConnections'):
+        import project_packages
+        rows=project_packages.saved_connection_rows(p);result={}
+        for name,kind in ((ai,'ai'),(entry,'entry')):
+            if name not in rows:raise room_bindings.RoomBindingError('workflowMissingConnections',room=name)
+            links=list(rows[name]['connections'])
+            if len(links)!=room_bindings.geometry(room_source(p,name,kind,server).with_suffix('.txt'))['exitCount']:
+                raise room_bindings.RoomBindingError('workflowGeometry',room=name)
+            result[name]=links
+        return result
     if p.get('roomBinding'):
         binding=p['roomBinding'];ai_links=['DISCONNECTED']*room_bindings.geometry(room_source(p,ai,'ai',server).with_suffix('.txt'))['exitCount']
         entry_links=['DISCONNECTED']*room_bindings.geometry(room_source(p,entry,'entry',server).with_suffix('.txt'))['exitCount']
@@ -302,7 +329,7 @@ def _owner_asset_roots(root):
     candidates=([root/version] if re.fullmatch(r'v\d+(?:\.\d+)+',version) else [])+[root/'newest',root]
     return [candidate.resolve() for candidate in candidates if candidate.is_dir() and candidate.resolve().is_relative_to(root)]
 
-def room_palette_source(project,source,index):
+def room_palette_source(project,source,index,include_saved=True):
     """Resolve the selected room's owning asset root before base-game palettes.
 
     External geometry is already restricted to game/workshop roots by room_source.
@@ -314,10 +341,10 @@ def room_palette_source(project,source,index):
     if selected is not None:return selected
     source=Path(source).resolve()
     project_root=storage.project_file(project['projectId']).parent.resolve()
+    bundled=None
     if source.is_relative_to(project_root/'rooms'):
         import project_packages
         bundled=project_packages.palette_source(project['projectId'],index)
-        if bundled is not None:return bundled
     base=(storage.GAME/'RainWorld_Data/StreamingAssets').resolve()
     target=storage.target_mod(project['projectId']).resolve()
     roots={Path(root).resolve() for root in room_bindings._asset_roots()};roots.add(target)
@@ -325,8 +352,9 @@ def room_palette_source(project,source,index):
     owner=max(matches,key=lambda root:len(root.parts)) if matches else target
     if (owner.name=='newest' or re.fullmatch(r'v\d+(?:\.\d+)+',owner.name)) and owner.parent in roots:
         owner=owner.parent
-    asset=next((value for root in _owner_asset_roots(owner) if (value:=_palette_file(root,index)) is not None),None)
+    asset=bundled or next((value for root in _owner_asset_roots(owner) if (value:=_palette_file(root,index)) is not None),None)
     if asset is None:asset=_palette_file(base,index)
+    if include_saved:asset=palette_export_sources.choose(index,room_bindings.enabled_asset_roots(),asset)
     if asset is None:
         raise ValueError('所选房间引用的调色板来源无法确定：palette'+str(index)+'；请把依赖放在该房间所属模组的 palettes 目录后再导出。')
     return asset
@@ -620,7 +648,9 @@ def extra_room_plan(request,projects,room_names,server):
             if catalog is None:catalog=room_bindings.catalog()
             rows=[r for region in catalog.get('regions',[]) for r in region.get('rooms',[]) if r.get('name')==name]
             if len(rows)!=1:raise ValueError('额外房间不在当前启用目录中，或编号重复：'+name)
-            row=rows[0];source=room_bindings.resolve_room_source(name);project=projects[0]
+            row=rows[0];project=projects[0]
+            import room_source_choices
+            source=room_source_choices.selected_source(project['projectId'],name) or room_bindings.resolve_room_source(name)
             origin='enabled';dependency=_extra_room_owner(source);target=default_region+'_'+name
         row=_extra_room_row(row,name)
         if origin=='project':
@@ -628,7 +658,9 @@ def extra_room_plan(request,projects,room_names,server):
             row=_extra_room_row(dict(name=name,connections=links,tags=tags),name)
         if not room_bindings.ROOM_RE.fullmatch(target):raise ValueError('额外房间导出编号过长：'+target)
         if target in exported:raise ValueError('导出房间编号重复：'+target+'；不会覆盖或自动改名。')
-        if len(row['connections'])!=room_bindings.geometry(source.with_suffix('.txt'))['exitCount']:
+        import room_source_choices
+        geometry_file=room_source_choices.selected_render_files(name,source).get(name+'.txt',source.with_suffix('.txt'))
+        if len(row['connections'])!=room_bindings.geometry(geometry_file)['exitCount']:
             raise ValueError('额外房间连接数量与地形出口不一致：'+name)
         exported.add(target)
         result.append(dict(sourceRoom=name,name=target,source=origin,project=project,sourcePath=source,
@@ -650,13 +682,27 @@ def _world_row(name,links,tags,room_map):
     row=name+' : '+', '.join(room_map.get(target,'DISCONNECTED') for target in links)
     return row+(' : '+tags if tags else '')
 
+def _route_exit(start,end,rows,selected):
+    queue=[(start,None)];seen={start}
+    for room,first in queue:
+        for node,target in enumerate(rows.get(room,[])):
+            if target not in selected or target in seen:continue
+            step=node if first is None else first
+            if target==end:return step
+            seen.add(target);queue.append((target,step))
+    missing=sorted({target for room in seen for target in rows.get(room,[])
+                    if target!='DISCONNECTED' and target not in selected})
+    if missing:raise room_bindings.RoomBindingError('workflowMissingExportRooms',rooms=', '.join(missing))
+    raise room_bindings.RoomBindingError('workflowExportDisconnected')
+
 def _room_files(stage,name):
     prefix='world/'+name.split('_')[0].lower()+'-rooms/'+name
     rows=(stage/(prefix+'.txt')).read_text('utf-8-sig').splitlines()
     cameras=[x for x in rows[3].split('|') if x.strip()] if len(rows)>3 else []
     variants=sorted(path.relative_to(stage).as_posix() for path in (stage/prefix).parent.iterdir()
                     if re.fullmatch(re.escape(name)+r'(?:_settings-[A-Za-z0-9_-]+|_properties)\.txt',path.name) and path.is_file())
-    return [prefix+'.txt',prefix+'_settings.txt']+[prefix+'_'+str(i)+'.png' for i in range(1,len(cameras)+1)]+variants
+    background=[prefix+'_mi_background.json'] if (stage/(prefix+'_mi_background.json')).is_file() else []
+    return [prefix+'.txt',prefix+'_settings.txt']+[prefix+'_'+str(i)+'.png' for i in range(1,len(cameras)+1)]+variants+background
 
 def _room_region_file(project,source,name,filename):
     import project_packages
@@ -673,37 +719,81 @@ def _room_region_file(project,source,name,filename):
         if candidate.is_file():return candidate
     return project_packages.region_file(project['projectId'],region,filename)
 
-def _check_room_template(project,name,source,text):
-    template=re.search(r'(?m)^Template:\s*([^\r\n]+)',text)
-    if template and template.group(1).strip().upper()=='NONE':return
-    properties=_room_region_file(project,source,name,'properties.txt')
-    implicit=properties and re.search(r'(?m)^Room Setting Templates:\s*([^\r\n]+)',properties.read_text('utf-8-sig'))
-    if template or implicit:
-        raise ValueError('房间 '+name+' 使用尚未支持完整导出的模板依赖：'+(template.group(1).strip() if template else implicit.group(1).strip())+'；不会修改为 NONE 或生成缺少模板的包。')
+def _remap_room_template(text,old_region,new_region):
+    return re.sub(r'(?mi)^(Template:[ \t]*)'+re.escape(old_region)+r'(_settingstemplate_[A-Za-z0-9-]+)[ \t]*$',
+                  lambda match:match[1]+new_region+match[2],text)
 
-def copy_selected_room(project,source,old,new,directory,server):
-    
+def _copy_room_region_assets(project,files,paths,old,new,directory,core):
+    old_region=old.split('_')[0];new_region=new.split('_')[0];stage=directory.parent.parent
+    world=stage/'world'/new_region.lower();world.mkdir(parents=True,exist_ok=True)
+    original=files.get('properties.txt',b'').decode('utf-8-sig')
+    properties=world/'properties.txt';existing=properties.read_bytes().decode('utf-8-sig') if properties.is_file() else None
+    names=region_template_names(original);current=region_template_names(existing or '')
+    if core and 'properties.txt' in files:
+        if existing is not None and existing!=original:raise ValueError('房间引用的区域设置不一致：'+new_region+'/properties.txt')
+        properties.write_bytes(original.encode('utf-8'))
+        copy_room_palettes(project,paths['properties.txt'],properties,stage)
+    elif names:
+        combined=current+[name for name in names if name not in current]
+        text=existing if existing is not None else 'Palette: 26\noverseersSpawnChance: 0\noverseersMin: 0\noverseersMax: 0\n'
+        text=re.sub(r'(?m)^Room Setting Templates:[^\r\n]*(?:\r?\n|$)','',text)
+        properties.write_bytes((text.rstrip('\r\n')+'\nRoom Setting Templates: '+', '.join(combined)+'\n').encode('utf-8'))
+    for filename,content in files.items():
+        if '_settingstemplate_' not in filename:continue
+        renamed=new_region.lower()+filename[len(old_region):]
+        destination=world/renamed;text=_remap_room_template(content.decode('utf-8-sig').replace('\r\n','\n'),old_region,new_region)
+        if destination.is_file() and destination.read_bytes().decode('utf-8-sig')!=text:raise ValueError('房间模板名称冲突：'+renamed)
+        destination.write_bytes(text.encode('utf-8'));copy_room_palettes(project,paths[filename],destination,stage)
+    map_name='map_'+old_region.lower()+'.txt'
+    if map_name in files:
+        destination=world/('map_'+new_region.lower()+'.txt')
+        lines=destination.read_text('utf-8-sig').splitlines() if destination.is_file() else []
+        entries={line.split(':',1)[0].strip():line for line in lines}
+        for line in files[map_name].decode('utf-8-sig').splitlines():
+            name,separator,value=line.partition(':')
+            if name.strip().upper()!=old:continue
+            value=new+separator+value
+            if new in entries and entries[new]!=value:raise ValueError('房间地图坐标冲突：'+new)
+            entries[new]=value
+        destination.write_text('\n'.join(entries[name] for name in sorted(entries))+'\n','utf-8')
+
+def copy_selected_room(project,source,old,new,directory,server,core=True):
     import project_packages
-    import room_controls
+    import room_package_dependencies
     settings=project_packages.selected_room_settings(project,old,source)
     setting_files=project_packages.room_settings_files(project,old,settings)
-    text=settings.read_text('utf-8-sig');_check_room_template(project,old,source,text)
-    room_controls.require_portable_subset(text,old)
-    for filename,path in setting_files.items():
-        variant=path.read_text('utf-8-sig')
-        _check_room_template(project,old,source,variant);room_controls.require_portable_subset(variant,filename)
+    rendered=project_packages._collect_render(source,settings,old,setting_files)
+    files,paths=project_packages._collect_region(project,old.split('_')[0],source,{old})
+    region_texts={filename:content.decode('utf-8-sig') for filename,content in files.items()}
+    sky=room_package_dependencies.validate_room(old.split('_')[0],old,
+        {filename:rendered[filename].decode('utf-8-sig') for filename in setting_files},region_texts,
+        lambda filename:project_packages._dependency_origin(project,setting_files[filename]))
+    if sky:
+        if old.startswith('OE_') and not new.startswith('OE_'):raise ValueError('房间 '+old+' 的 OE 天空远景暂不支持跨区域导出')
+        context=project_packages._background_context(project,old,source,rendered[old+'.txt'],project_packages._catalog_rows())
+        context=copy.deepcopy(context);context['room']=new
+        rendered[old+'_mi_background.json']=project_packages._json(context)
+    text=settings.read_text('utf-8-sig')
     if old.split('_')[0]!=new.split('_')[0] and not re.search(r'(?m)^Palette:',text):
         properties=_room_region_file(project,source,old,'properties.txt')
-        inherited=re.search(r'(?m)^Palette:\s*(\d+)\b',properties.read_text('utf-8-sig')) if properties else None
+        inherited=re.search(r'(?m)^Palette:[ \t]*(\d+)\b',properties.read_text('utf-8-sig')) if properties else None
         if inherited:text=text.rstrip('\r\n')+'\nPalette: '+inherited.group(1)+'\n'
-    rendered=project_packages._collect_render(source,settings,old,setting_files)
+    rendered[old+'_settings.txt']=text.encode('utf-8')
     directory.mkdir(parents=True,exist_ok=True)
     for filename,content in rendered.items():
         suffix=filename[len(old):]
         if suffix=='.txt':
             rows=content.decode('utf-8-sig').splitlines();rows[0]=new;content=('\n'.join(rows)+'\n').encode('utf-8')
+        elif '_settings' in suffix:
+            text=content.decode('utf-8-sig')
+            if old.split('_')[0]!=new.split('_')[0]:
+                parent=room_package_dependencies.parent_template(old.split('_')[0],text,region_texts.get('properties.txt',''))
+                actual=new.split('_')[0]+parent[len(old.split('_')[0]):-4] if parent else 'NONE'
+                if re.search(r'(?m)^Template:',text):text=re.sub(r'(?m)^Template:[^\r\n]*','Template: '+actual,text)
+                else:text=text.rstrip('\r\n')+'\nTemplate: '+actual+'\n'
+            content=_remap_room_template(text,old.split('_')[0],new.split('_')[0]).encode('utf-8')
         (directory/(new+suffix)).write_bytes(content)
-    (directory/(new+'_settings.txt')).write_text(text,'utf-8')
+    _copy_room_region_assets(project,files,paths,old,new,directory,core)
     return settings
 
 
@@ -713,7 +803,7 @@ def copy_selected_room_palettes(project,settings,old,new,directory,stage):
         copy_room_palettes(project,source,directory/(new+filename[len(old):]),stage)
 
 def region_template_names(text):
-    values=re.findall(r'(?m)^Room Setting Templates:\s*([^\r\n]*)',text)
+    values=re.findall(r'(?m)^Room Setting Templates:[ \t]*([^\r\n]*)',text)
     if len(values)>1:raise ValueError('区域房间模板注册重复')
     names=[name.strip().lower() for name in values[0].split(',') if name.strip()] if values else []
     if len(set(names))!=len(names) or any(not re.fullmatch(r'[a-z0-9-]+',name) for name in names):
@@ -756,11 +846,11 @@ def build(request,server,save_preferences=True,finalize=None,verify=None,region_
     if region_context and extra_plan:raise ValueError('完整区域不能同时使用局部房间编号映射')
     regions=sorted({names[0].split('_')[0] for names in room_names.values()})
     registry=[];mapping={};room_map={name:name for name in region_context.rooms} if region_context else {};connections={region:[] for region in regions};design_schema=runtime_design_schema()
+    for project in projects:
+        for old,new in zip(server.roomnames(project)[:2],room_names[project['projectId']]):
+            if old in room_map and room_map[old]!=new:raise ValueError('额外房间无法确认重复来源房间的连接：'+old)
+            room_map[old]=new
     if extra_plan:
-        for project in projects:
-            for old,new in zip(server.roomnames(project)[:2],room_names[project['projectId']]):
-                if old in room_map and room_map[old]!=new:raise ValueError('额外房间无法确认重复来源房间的连接：'+old)
-                room_map[old]=new
         room_map.update({item['sourceRoom']:item['name'] for item in extra_plan})
     extra_manifest=[];room_templates=list(region_context.templates) if region_context else []
     with tempfile.TemporaryDirectory(prefix='mi-content-') as temp:
@@ -784,11 +874,19 @@ def build(request,server,save_preferences=True,finalize=None,verify=None,region_
             if not components['workPearls']:d['pearlCount']=d['pearlFixedCount']=0
             dump(stage/'designs'/(oid+'.json'),d)
             exits=room_connections(p,ai,entry,server)
-            record=dict(projectId=pid,name=p['name'],ai=new_ai,entry=new_entry,oracleId=oid,design='designs/'+oid+'.json',ownerMod=meta['id'],exitNode=exits[ai].index(entry),entryNode=exits[entry].index(ai))
+            if p.get('roomConnections'):
+                import project_packages
+                graph={name:list(row['connections']) for name,row in project_packages.saved_connection_rows(p).items()}
+                graph.update({item['sourceRoom']:item['connections'] for item in extra_plan})
+                selected=set(room_map)|{ai,entry}
+                ai_node=_route_exit(ai,entry,graph,selected);entry_node=_route_exit(entry,ai,graph,selected)
+            else:ai_node=exits[ai].index(entry);entry_node=exits[entry].index(ai)
+            record=dict(projectId=pid,name=p['name'],ai=new_ai,entry=new_entry,oracleId=oid,design='designs/'+oid+'.json',ownerMod=meta['id'],exitNode=ai_node,entryNode=entry_node)
+            if p.get('roomConnections'):record['connectionVersion']=2
             if native:record['timeline']=native.get('timeline','')
             registry.append(record);mapping[pid]=record;room_map.update({ai:new_ai,entry:new_entry})
             for old,new,other,new_other in [(ai,new_ai,entry,new_entry),(entry,new_entry,ai,new_ai)]:
-                if extra_plan:
+                if extra_plan or p.get('roomConnections') or region_context:
                     links,tags=_selected_room_links(p,old,exits[old]);connections[region].append(_world_row(new,links,tags,room_map))
                 else:connections[region].append(new+' : '+', '.join(new_other if target==other else 'DISCONNECTED' for target in exits[old]))
             rooms=stage/('world/'+region.lower()+'-rooms')
@@ -802,7 +900,7 @@ def build(request,server,save_preferences=True,finalize=None,verify=None,region_
                 copy_selected_room_palettes(p,settings_source,old,new,rooms,stage)
         for item in extra_plan:
             name=item['name'];region=name.split('_')[0];directory=stage/('world/'+region.lower()+'-rooms')
-            settings_source=copy_selected_room(item['project'],item['sourcePath'],item['sourceRoom'],name,directory,server)
+            settings_source=copy_selected_room(item['project'],item['sourcePath'],item['sourceRoom'],name,directory,server,core=False)
             copy_selected_room_palettes(item['project'],settings_source,item['sourceRoom'],name,directory,stage)
             links=[room_map.get(target,'DISCONNECTED') for target in item['connections']]
             connections[region].append(_world_row(name,item['connections'],item['tags'],room_map))
@@ -830,21 +928,21 @@ def build(request,server,save_preferences=True,finalize=None,verify=None,region_
         dump(stage/'moreiterators/registry.json',registry)
         for region in regions:
             if region_context:continue
-            world=stage/('world/'+region.lower());world.mkdir(parents=True)
+            world=stage/('world/'+region.lower());world.mkdir(parents=True,exist_ok=True)
             rows=['ROOMS']+connections[region]
             (world/('world_'+region.lower()+'.txt')).write_text('\n'.join(rows+['END ROOMS','','CREATURES','END CREATURES'])+'\n','utf-8')
             authored=next((p for p in projects if p.get('roomBinding',{}).get('region')==region and room_names[p['projectId']][0]==p['roomBinding']['ai']),None)
             defaults={'properties.txt':'Palette: 26\noverseersSpawnChance: 0\noverseersMin: 0\noverseersMax: 0\n','displayname.txt':(region if authored else meta['name'])+'\n'}
             for filename,text in defaults.items():
+                if (world/filename).is_file():continue
                 if authored:
                     old_ai=server.roomnames(authored)[0]
                     source=_room_region_file(authored,room_source(authored,old_ai,'ai',server),old_ai,filename)
                     if source is not None:text=source.read_text('utf-8-sig')
                     if filename=='properties.txt':properties_source=source
                 (world/filename).write_text(text,'utf-8')
-            if authored:
-                copy_room_palettes(authored,properties_source or storage.target_mod(authored['projectId'])/'world'/region.lower(),world/'properties.txt',stage)
-                room_templates.extend(copy_region_templates(authored,properties_source,region,stage))
+            room_templates.extend('world/'+region.lower()+'/'+region.lower()+'_settingstemplate_'+name+'.txt'
+                                  for name in region_template_names((world/'properties.txt').read_text('utf-8-sig')))
         if not region_context:
             registration=stage/'modify/world/regions.txt';registration.parent.mkdir(parents=True,exist_ok=True);registration.write_text(''.join('[ADD]'+region+'\n' for region in regions),'utf-8')
         pearl_requirements={}
@@ -1043,6 +1141,14 @@ def audit(stage,ids,extra_rooms=None,region_context=None):
     if region_context:allowed.update(region_context.file_names)
     else:
         for region in regions:allowed.update(('world/'+region.lower()+'/properties.txt','world/'+region.lower()+'/displayname.txt','world/'+region.lower()+'/world_'+region.lower()+'.txt'))
+        for region in regions:
+            relative='world/'+region.lower()+'/map_'+region.lower()+'.txt'
+            if not (stage/relative).is_file():continue
+            import room_package_dependencies
+            text=(stage/relative).read_text('utf-8-sig')
+            names={line.split(':',1)[0].strip().upper() for line in text.splitlines() if line.strip()}
+            if names-set(rooms):reject('房间地图包含未选择的房间',relative)
+            room_package_dependencies.map_positions(text,names);allowed.add(relative)
     suffix=hashlib.sha256(info['id'].encode()).hexdigest()[:12]
     allowed.add('plugins/IteratorContent_'+suffix+'.dll')
     required=allowed-{'thumbnail.png'}
@@ -1069,16 +1175,33 @@ def audit(stage,ids,extra_rooms=None,region_context=None):
         if not terrain.is_file() or not settings.is_file():reject('缺少必需房间文件',room)
         rows=terrain.read_text('utf-8-sig').splitlines()
         if len(rows)<4 or rows[0]!=room:reject('房间地形名称或相机数据无效',room)
+        background=stage/(prefix+'_mi_background.json')
+        if background.is_file():
+            import room_package_dependencies
+            room_package_dependencies.background(json.loads(background.read_text('utf-8-sig')),room,
+                                                  tuple(map(int,rows[1].split('|')[0].split('*'))))
+            allowed.add(prefix+'_mi_background.json');required.add(prefix+'_mi_background.json')
         positions=[x for x in rows[3].split('|') if x.strip()]
         if not positions or any(not re.fullmatch(r'-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?',x.strip()) for x in positions):reject('房间相机数据无效',room)
         for index in range(1,len(positions)+1):cameras.add(prefix+'_'+str(index)+'.png')
         setting_files=[relative for relative in (region_context.room_files[room] if region_context else _room_files(stage,room))
                        if re.fullmatch(re.escape(room)+r'(?:_settings(?:-[A-Za-z0-9_-]+)?|_properties)\.txt',Path(relative).name)]
+        dependency_settings={}
         for relative in setting_files:
             allowed.add(relative);required.add(relative);text=(stage/relative).read_text('utf-8-sig')
+            dependency_settings[Path(relative).name]=text
             for value in room_palette_ids(text):palettes.add('palettes/palette'+str(value)+'.png')
             room_asset_refs.extend(room_asset_dependencies.references(text,relative))
             room_optional_refs.extend(room_asset_dependencies.optional_references(text,relative))
+        if room.startswith('OE_'):
+            import room_package_dependencies
+            folder=stage/'world/oe'
+            regional={file.name:file.read_text('utf-8-sig') for file in folder.glob('*.txt')
+                      if file.name in ('properties.txt','map_oe.txt') or file.name.startswith('oe_settingstemplate_')}
+            if room_package_dependencies.validate_room('OE',room,dependency_settings,regional,lambda name:name):
+                world=folder/'world_oe.txt'
+                available={row['name'] for row in room_bindings.parse_world(world.read_text('utf-8-sig'),'OE')} if world.is_file() else set()
+                room_package_dependencies.require_sky_rooms('OE',room,available,prefix+'_settings.txt')
     for row in extra_manifest:
         expected=_room_files(stage,row['name'])
         if row.get('files')!=expected:reject('额外房间文件白名单不一致',row['name'])
@@ -1154,6 +1277,10 @@ def audit(stage,ids,extra_rooms=None,region_context=None):
         if connections[row['name']]!=row['connections']:reject('额外房间连接与清单不一致',row['name'])
     for record in registry:
         ai,entry=record['ai'],record['entry'];exit_node=record.get('exitNode')
+        if record.get('connectionVersion')==2:
+            if type(exit_node) is not int or exit_node!=_route_exit(ai,entry,connections,rooms):reject('房间出口编号无效')
+            if type(record.get('entryNode')) is not int or record['entryNode']!=_route_exit(entry,ai,connections,rooms):reject('等待房间出口编号无效')
+            continue
         if entry not in connections[ai] or ai not in connections[entry] or not region_context and not extra_manifest and any(x not in (ai,entry,'DISCONNECTED') for room in (ai,entry) for x in connections[room]):reject('房间连接不属于选定房间对')
         if type(exit_node) is not int or not 0<=exit_node<len(connections[ai]) or connections[ai][exit_node]!=entry:reject('房间出口编号无效')
         entry_node=record.get('entryNode',connections[entry].index(ai))

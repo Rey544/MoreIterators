@@ -67,6 +67,10 @@ namespace MoreIterators
         }
         void RemoveHooks()
         {
+#if !PLAYBACK
+            MiDiagnostics.Cleanup("MI-CATALOG-CACHE-STOP","RemoveHooks",LegacyCatalogCache.Shutdown,"Releasing legacy catalogue caches.");
+            IteratorCatalog.Reset();
+#endif
             MiDiagnostics.Cleanup("MI-VOICE-SHUTDOWN","RemoveHooks",CreatorVoice.Shutdown,"Stopping owned speech.");
             MiDiagnostics.Cleanup("MI-AUDIO-SHUTDOWN","RemoveHooks",CreatorAudio.Shutdown,"Cleaning custom music.");
             for(int i=removeHooks.Count-1;i>=0;i--)
@@ -84,8 +88,43 @@ namespace MoreIterators
             MiDiagnostics.Cleanup("MI-HOOK-REMOVE","OnDisable",RemoveHooks,"Removing owned hooks.");
             MiDiagnostics.Shutdown();
         }
+#if !PLAYBACK
+        static void RefreshCatalogCaches()
+        {
+            IteratorCatalog.Reset();
+            try { LegacyCatalogCache.Refresh(); }
+            catch(Exception error) { MiDiagnostics.Report("MI-CATALOG-CACHE-START","RefreshCatalogCaches",error,"Legacy catalogue compatibility."); }
+        }
+        static void CatalogCacheReady(On.RainWorld.orig_PostModsInit orig,RainWorld self)
+        {
+            orig(self);
+            RefreshCatalogCaches();
+        }
+        static void CatalogModsEnabled(On.RainWorld.orig_OnModsEnabled orig,RainWorld self,ModManager.Mod[] mods)
+        {
+            orig(self,mods);
+            RefreshCatalogCaches();
+        }
+        static void CatalogModsDisabled(On.RainWorld.orig_OnModsDisabled orig,RainWorld self,ModManager.Mod[] mods)
+        {
+            orig(self,mods);
+            IteratorCatalog.Reset();
+            LegacyCatalogCache.RemoveDisabled(mods);
+        }
+#endif
         void InstallHooks()
         {
+#if !PLAYBACK
+            On.RainWorld.PostModsInit+=CatalogCacheReady;
+            removeHooks.Add(delegate { On.RainWorld.PostModsInit-=CatalogCacheReady; });
+            On.RainWorld.OnModsEnabled+=CatalogModsEnabled;
+            removeHooks.Add(delegate { On.RainWorld.OnModsEnabled-=CatalogModsEnabled; });
+            On.RainWorld.OnModsDisabled+=CatalogModsDisabled;
+            removeHooks.Add(delegate { On.RainWorld.OnModsDisabled-=CatalogModsDisabled; });
+            if(ModManager.InitializationScreenFinished)RefreshCatalogCaches();
+#endif
+            CreatorChamberMotion.Install(removeHooks);
+            CreatorBackgroundCoordinates.Install(removeHooks);
             // Optional third-party compatibility is installed after mod startup,
             // so the target assembly is present regardless of plugin load order.
             removeHooks.Add(RevivifyCompatibility.Dispose);
@@ -594,10 +633,12 @@ namespace MoreIterators
                     if(CreatorOracleLifecycle.Owns(o))
                     {
                         if(!CreatorOracleLifecycle.EnsureBehavior(o,true))return;
+                        CreatorChamberMotion.Prepare(o);
                         if(o.room.readyForAI)AttachCustomOracle(o);
                     }
                     if(o.room!=null&&IsChamber(o.room.abstractRoom.name)){CreatorProjections.For(o);if(CreatorRuntime.Paused)return;}
                     if(o.room==null||!IsChamber(o.room.abstractRoom.name)||StudioRuntime.Simulating)orig(o,eu);
+                    CreatorChamberMotion.After(o);
                 }
                 catch(Exception error)
                 {
@@ -613,6 +654,9 @@ namespace MoreIterators
             }
             );
             MiDiagnostics.Debug("hook.install","On.Oracle.Update");
+            On.Oracle.OracleArm.hook_BasePos chamberArmPosition=(orig,arm,time)=>CreatorChamberMotion.ArmPosition(arm,orig(arm,time));
+            On.Oracle.OracleArm.BasePos+=chamberArmPosition;
+            removeHooks.Add(delegate {On.Oracle.OracleArm.BasePos-=chamberArmPosition;});
             var registeredHook29=new On.OracleGraphics.hook_Update((orig,g)=>
             {
                 MiDiagnostics.Hit("On.OracleGraphics.Update",CreatorRuntime.CurrentRoom);
@@ -621,6 +665,7 @@ namespace MoreIterators
                     if(g.oracle.room!=null&&IsChamber(g.oracle.room.abstractRoom.name)&&CreatorRuntime.Paused)return;
                     if(!IsCustomOracle(g)||StudioRuntime.Simulating)orig(g);
                     StudioRuntime.UpdatePose(g);
+                    CreatorChamberMotion.Graphics(g);
                     var b=g.oracle.oracleBehavior as IteratorBehavior;
                     if(b!=null&&b.PersonalSpace!=null)b.PersonalSpace.Hands(g);
                     if(g.oracle.room!=null&&CreatorRuntime.IsAI(g.oracle.room.abstractRoom.name))CreatorScarf.Update(g);
@@ -1033,6 +1078,7 @@ namespace MoreIterators
                         constructingCustomOracle=false;
                     }
                     for(int i=0;i<o.bodyChunks.Length;i++)o.bodyChunks[i].HardSetPosition(new Vector2(480,350-i*9));
+                    CreatorChamberMotion.Prepare(o,true);
                     room.AddObject(o);
                     AttachCustomOracle(o);
                     Logger.LogInfo("Iterator spawned in registered chamber");
@@ -1212,7 +1258,7 @@ namespace MoreIterators
                 s.sprites[self.ChinSprite].isVisible=d.layers.head;
                 CreatorSpriteVisibility.ApplyBody(s.sprites,self.firstBodyChunkSprite,self.oracle.bodyChunks.Length,d.layers.body,head.color);
                 var neck=s.sprites[self.neckSprite];
-                neck.color=head.color*.88f;
+                neck.color=new Color(head.color.r*.88f,head.color.g*.88f,head.color.b*.88f,head.color.a);
                 neck.alpha=1;
                 neck.isVisible=d.layers.neck;
                 neck.MoveBehindOtherNode(head);
@@ -1399,6 +1445,7 @@ namespace MoreIterators
         public readonly IOraclePersonalSpace PersonalSpace;
         public void GoTo(Vector2 target)
         {
+            target=CreatorChamberMotion.MoveTarget(oracle,target);
             if(Destination!=null)Destination.Invoke(this,new object[]
             {
                 target
@@ -1424,7 +1471,8 @@ namespace MoreIterators
         {
             get
             {
-                return CreatorReadingPresentation.Target(oracle,StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.OracleGetToPos:new Vector2(480,350));
+                bool rest=!encounterActive&&!CreatorReadingPresentation.ControlsMovement(oracle)&&!CreatorDialogueActions.For(oracle).Active&&(PersonalSpace==null||!PersonalSpace.Avoiding);
+                return CreatorChamberMotion.Target(oracle,CreatorReadingPresentation.Target(oracle,StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.OracleGetToPos:new Vector2(480,350)),rest);
             }
         }
         public override bool EyesClosed { get { return CreatorReadingPresentation.EyesClosed(oracle,base.EyesClosed); } }
@@ -1432,14 +1480,14 @@ namespace MoreIterators
         {
             get
             {
-                return StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.BaseGetToPos:new Vector2(480,600);
+                return CreatorChamberMotion.BaseTarget(oracle,StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.BaseGetToPos:new Vector2(480,600));
             }
         }
         public override Vector2 GetToDir
         {
             get
             {
-                return StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.GetToDir:Vector2.up;
+                return CreatorChamberMotion.Direction(oracle,StudioRuntime.Pose.playMode||StudioRuntime.Pose.animate?base.GetToDir:Vector2.up);
             }
         }
         public override void UnconciousUpdate()
@@ -1474,9 +1522,9 @@ namespace MoreIterators
                 finally { nativePaletteUpdateRoom=previousPaletteRoom;if(!controlsRoom)oracle.room.gravity=previousGravity; }
                 if(controlsRoom)oracle.room.gravity=requestedGravity;
                 if(PersonalSpace!=null)PersonalSpace.Move();
-                if(!CreatorReadingPresentation.ControlsMovement(oracle)&&(PersonalSpace==null||!PersonalSpace.Avoiding)&&!encounterActive&&++workMoveTick%240==1&&Destination!=null)
+                if(!CreatorReadingPresentation.ControlsMovement(oracle)&&!CreatorDialogueActions.For(oracle).Active&&(PersonalSpace==null||!PersonalSpace.Avoiding)&&!encounterActive&&++workMoveTick%240==1&&Destination!=null)
                 {
-                    Vector2 target=new Vector2(oracle.room.PixelWidth*.5f+Mathf.Sin(workMoveTick*.003f)*85,oracle.room.PixelHeight*.52f+Mathf.Cos(workMoveTick*.005f)*40);
+                    Vector2 target=CreatorChamberMotion.WorkTarget(oracle,workMoveTick,new Vector2(oracle.room.PixelWidth*.5f+Mathf.Sin(workMoveTick*.003f)*85,oracle.room.PixelHeight*.52f+Mathf.Cos(workMoveTick*.005f)*40));
                     if(!oracle.room.GetTile(target).Solid)Destination.Invoke(this,new object[]
                     {
                         target

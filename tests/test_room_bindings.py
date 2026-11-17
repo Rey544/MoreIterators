@@ -116,19 +116,25 @@ class RoomBindingTests(unittest.TestCase):
 
     def test_no_second_oracle_in_custom_region(self):
         self.projects.append(dict(projectId='two', roomBinding=dict(self.b, ai='XX_SECOND', entry='XX_B01', oracleId='other')))
-        with self.assertRaisesRegex(ValueError, '已有另一个'):
+        with self.assertRaises(rooms.RoomBindingError) as caught:
             rooms.validate(self.p, self.b, self.cat)
+        self.assertEqual(caught.exception.code, 'rooms.error.regionProject')
+        self.assertEqual(caught.exception.params, {'region': 'XX', 'name': 'two'})
 
     def test_disk_collision_rejected_even_when_not_in_live_catalog(self):
         self.cat['reservedRooms'] = ['XX_AI']
-        with self.assertRaisesRegex(ValueError, '已存在'):
+        with self.assertRaises(rooms.RoomBindingError) as caught:
             rooms.validate(self.p, self.b, self.cat)
+        self.assertEqual(caught.exception.code, 'rooms.error.roomTaken')
+        self.assertEqual(caught.exception.params, {'room': 'XX_AI'})
 
     def test_external_entry_cannot_be_another_creator_project_room(self):
         self.existing()
         self.projects.append(dict(projectId='two', roomBinding=dict(self.b, ai='XY_OTHER', oracleId='other')))
-        with self.assertRaisesRegex(ValueError, '另一项目'):
+        with self.assertRaises(rooms.RoomBindingError) as caught:
             rooms.validate(self.p, self.b, self.cat)
+        self.assertEqual(caught.exception.code, 'rooms.error.roomTaken')
+        self.assertEqual(caught.exception.params, {'room': 'XX_A01'})
 
     def test_native_and_active_mod_oracle_ids_are_reserved(self):
         self.b['oracleId'] = 'lttm_spear'
@@ -141,8 +147,10 @@ class RoomBindingTests(unittest.TestCase):
 
     def test_existing_region_copy_rejected(self):
         self.cat['reservedRegions'] = ['XX']
-        with self.assertRaisesRegex(ValueError, '区域已存在'):
+        with self.assertRaises(rooms.RoomBindingError) as caught:
             rooms.validate(self.p, self.b, self.cat)
+        self.assertEqual(caught.exception.code, 'rooms.error.regionTaken')
+        self.assertEqual(caught.exception.params, {'region': 'XX'})
 
     def test_existing_entry_requires_fresh_complete_live_and_verified_geometry(self):
         row = self.existing()

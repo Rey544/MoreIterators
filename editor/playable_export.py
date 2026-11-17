@@ -306,6 +306,15 @@ def save_preferences(request,server):
     projects=request.get('projects',[])
     if not isinstance(projects,list) or len(projects)>100 or any(not isinstance(item,str) for item in projects) or len(set(projects))!=len(projects):raise ValueError('请选择有效项目')
     value['projects']=[storage.valid_id(item) for item in projects]
+    import project_bundles
+    external=request.get('externalMods',[])
+    if not isinstance(external,list) or len(external)>20 or any(not isinstance(item,str) for item in external) or len(set(external))!=len(external):raise ValueError('请选择有效的地图模组')
+    value['externalMods']=[project_bundles._mod_id(item) for item in external]
+    if 'packageName' in request or 'packageVersion' in request:
+        for key,limit in (('packageName',100),('packageVersion',32)):
+            item=request.get(key,'')
+            if not isinstance(item,str) or len(item)>limit or '\x00' in item:raise ValueError('导出配置无效：'+key)
+            value[key]=item
     for key in ('dialogue','pearls','broadcasts','workPearls','projections'):
         item=request.get(key,False)
         if type(item) is not bool:raise ValueError('导出配置无效：'+key)
@@ -320,7 +329,7 @@ def save_preferences(request,server):
             raise ValueError('导出内容无效')
         value['parts']=list(parts)
     if 'format' in request:
-        if request['format'] not in ('project','mod','playable','assets','region'):raise ValueError('导出内容无效')
+        if request['format'] not in ('project','json','mod','playable','assets','region'):raise ValueError('导出内容无效')
         value['format']=request['format']
     for key,pattern in (('startRoom',room_bindings.ROOM_RE),('region',room_bindings.REGION_RE)):
         item=request.get(key,'')

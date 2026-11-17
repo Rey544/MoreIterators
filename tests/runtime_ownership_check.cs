@@ -7,8 +7,8 @@ using MoreSlugcats;
  
  
 public static class ModManager {
- public class Mod {public string id,path,TargetedPath,NewestPath;public bool hasTargetedVersionFolder,hasNewestFolder;public Mod(string id,string path){this.id=id;this.path=path;}}
- public static List<Mod> ActiveMods=new List<Mod>();
+ public class Mod {public string id,path,basePath,version,targetGameVersion,TargetedPath,NewestPath;public bool enabled=true,hasTargetedVersionFolder,hasNewestFolder;public int loadOrder;public Mod(string id,string path){this.id=id;this.path=path;}}
+ public static bool InitializationScreenFinished=true;public static List<Mod> ActiveMods=new List<Mod>();
 }
 namespace UnityEngine {
  public static class Application {public static string persistentDataPath;}

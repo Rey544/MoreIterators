@@ -90,7 +90,7 @@ public static class AssetManager {
  }
 }
 public static class WorldLoader {public static string FindRoomFile(string room,bool root,string suffix,bool warn=true){foreach(string p in new[]{"world/"+room.Split('_')[0].ToLowerInvariant()+"-rooms/"+room+suffix,"levels/"+room+suffix}){string full=AssetManager.ResolveFilePath(p);if(File.Exists(full))return full;}return null;}}
-public static class ModManager {public static bool MSC;public sealed class Mod {public string id,path,TargetedPath,NewestPath;public bool hasTargetedVersionFolder,hasNewestFolder;public Mod(string id,string path){this.id=id;this.path=path;}}public static readonly List<Mod> ActiveMods=new List<Mod>();}
+public static class ModManager {public static bool MSC;public static bool InitializationScreenFinished=true;public sealed class Mod {public string id,path,basePath,version,targetGameVersion,TargetedPath,NewestPath;public bool enabled=true,hasTargetedVersionFolder,hasNewestFolder;public int loadOrder;public Mod(string id,string path){this.id=id;this.path=path;}}public static readonly List<Mod> ActiveMods=new List<Mod>();}
 namespace BepInEx {public static class Paths {public static string ConfigPath;}}
 namespace MoreSlugcats {public sealed class NamespaceMarker {}}
 namespace Menu {

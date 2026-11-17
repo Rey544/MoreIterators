@@ -1,0 +1,43 @@
+(async()=>{
+ const get=id=>document.getElementById(id);let checks=0;
+ const assert=(value,message)=>{checks++;if(!value)throw Error(message);};
+ const switchProject=async id=>{get('projects').value=id;await get('projects').onchange();};
+ try{
+  await waitFor(()=>get('connectionError').textContent.includes('world_test.txt')&&!get('projects').disabled);
+  assert(get('ai').value==='TEST_AI'&&get('entry').value==='TEST_ENTRY','A connection failure discarded successfully loaded names');
+  assert(!get('bindingFields').disabled&&get('applyRoomNames').disabled,'Unavailable workflow allowed name application or hid editable drafts');
+  assert(!get('overseerFields').disabled,'Unrelated monitor controls were disabled');
+  assert(get('connectionFields').disabled&&get('applyConnection').disabled,'Missing workflow can write connections');
+  assert(!roomCalls.some(call=>call.body),'Loading or failure recovery wrote data');
+  fixtureLoadFailure='';get('refreshCatalog').click();await waitFor(()=>!get('connectionFields').disabled);
+  assert(get('ownRoomChoices').children.length===2,'Refresh did not retry the failed section');
+  assert(!get('connectionError').textContent,'Recovered error remained visible');
+  fixtureLoadFailure='room-workflow';await switchProject('oc-room-second');
+  assert(get('ai').value==='SECOND_AI','Failed project switch kept previous project names');
+  assert(!get('ownRoomChoices').children.length&&get('applyConnection').disabled,'Failed project switch retained actionable old connections');
+  roomCalls.length=0;await get('connectionForm').onsubmit({preventDefault(){}});assert(!roomCalls.some(call=>call.body),'Submission with no workflow wrote to the previous project');
+  fixtureLoadFailure='overseer';await switchProject('oc-room-fixture');
+  assert(!get('connectionFields').disabled&&!get('bindingFields').disabled,'Monitor failure blocked room editing');
+  assert(get('overseerFields').disabled&&get('overseerNotice').textContent.includes('world_test.txt'),'Monitor failure was hidden');
+  fixtureLoadFailure='room-draft';await switchProject('oc-room-fixture');
+  assert(get('bindingFields').disabled&&!get('connectionFields').disabled,'Missing draft revision allowed draft writes or blocked unrelated connection inspection');
+  fixtureLoadFailure='';fixtureLoadIssues=[{code:'exitCountMismatch',room:'TEST_ENTRY',actualExitCount:2,connectionSlotCount:1,geometrySource:'rooms/rendered/TEST_ENTRY.txt',connectionSource:'world/test/world_test.txt',canReconcile:true}];
+  await switchProject('oc-room-fixture');
+  let repair=document.querySelector('button[data-room="TEST_ENTRY"]');assert(repair&&!repair.disabled,'Explicit exit repair is unavailable');
+  assert(get('connectionError').textContent.includes('rooms/rendered/TEST_ENTRY.txt')&&get('connectionError').textContent.includes('world/test/world_test.txt'),'Mismatch omitted the compared files');
+  assert(getComputedStyle(get('connectionError')).whiteSpace==='pre-line','Diagnostic lines are flattened');
+  assert(!fixtureReconcileCalls.length,'Viewing an issue automatically repaired data');
+  await MI18n.setLocale('en');repair=document.querySelector('button[data-room="TEST_ENTRY"]');assert(repair.textContent==='Update exits','Repair action was not localized');
+  get('entry').value='TEST_AUTHORED';get('entry').dispatchEvent(new Event('input',{bubbles:true}));roomCalls.length=0;
+  await repair.onclick();assert(fixtureReconcileCalls.length===1,'Explicit repair was not sent exactly once');
+  const sent=fixtureReconcileCalls[0];assert(sent.projectId==='oc-room-fixture'&&sent.reconcileRooms.join(',')==='TEST_ENTRY'&&sent.connections.length===0,'Repair request unexpectedly replaces connections');
+  assert(!Object.hasOwn(sent,'draftRevision')&&!roomCalls.some(call=>call.route==='room-draft'&&call.body),'Repair changed the room-name draft');
+  assert(get('entry').value==='TEST_AUTHORED','Repair discarded an unsaved name');
+  assert(!document.querySelector('button[data-room="TEST_ENTRY"]')&&!get('connectionError').textContent,'Resolved issue still blocks the page');
+  assert(get('connectionStatus').textContent==='Exit list updated','Repair success is not visible');
+  fixtureLoadIssues=[{code:'exitCountMismatch',room:'TEST_ENTRY',actualExitCount:1,connectionSlotCount:2,geometrySource:'rooms/rendered/TEST_ENTRY.txt',connectionSource:'world/test/world_test.txt',canReconcile:false}];
+  await switchProject('oc-room-fixture');assert(!document.querySelector('button[data-room="TEST_ENTRY"]'),'Destructive truncation is offered as a safe repair');
+  assert(fixtureReconcileCalls.length===1,'Reloading implicitly repaired an unsafe issue');
+  assert(!roomErrors.length,roomErrors.join('\n'));get('result').textContent=JSON.stringify({ok:true,checks});
+ }catch(error){get('result').textContent=JSON.stringify({ok:false,checks,error:error.stack,roomErrors});}
+})();

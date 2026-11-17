@@ -310,6 +310,10 @@ body.mi-studio.pearl-studio .line-number,body.mi-studio.pearl-studio .count-badg
 body.mi-studio.pearl-studio .line-timing{font-size:12px}
 body.mi-studio :is(#subtitle,.mi-motion-plane){border-image:none;border-color:var(--mi-soft);animation:none!important}
 body.mi-studio :is(.preview-stage,.paint-wrap,#preview):hover{animation:none!important}
+.appearance-studio .preview-hover-outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.7;background:transparent;image-rendering:auto}
+@keyframes mi-preview-hover-pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@media(hover:hover) and (prefers-reduced-motion:no-preference){.appearance-studio .preview-hover-outline:not([hidden]){animation:mi-preview-hover-pulse 1s ease-in-out infinite}}
+body.mi-studio .mi-link-tooltip.mi-preview-name{position:fixed;right:auto;bottom:auto;width:max-content;max-width:min(240px,calc(100vw - 16px));padding:8px 12px;pointer-events:none;visibility:visible;opacity:1;z-index:1000;overflow-wrap:anywhere}
 body.mi-studio :is(.layer button,.line-drag-handle,.quiet,.mi-topbar-menu button,.mi-topbar-menu a,.context-tabs button,.reference-tabs button,#stages button,.texture-actions button,.line-menu button){border-image:none!important;animation:none!important}
 
 /* Rain World SimpleButton: rounded main frame plus an expanding selection frame. */
@@ -328,5 +332,4 @@ body.mi-studio.appearance-studio #groups details>details{padding-left:0}
 body.mi-studio.appearance-studio #groups details details details{border:0;margin-left:14px}
 body.mi-studio.appearance-studio #groups .settings-category{border:0}
 @media(prefers-reduced-motion:reduce){body.mi-studio :is(button,select,input,textarea,summary){animation:none!important}}
-body.mi-studio .layer-mask-hint{font-size:11px;line-height:1.6;color:var(--mi-muted);margin:4px 0 10px;overflow-wrap:anywhere}
 @media(max-width:760px){body.mi-studio .mi-topbar{padding-top:16px}}

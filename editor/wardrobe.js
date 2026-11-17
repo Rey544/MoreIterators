@@ -121,9 +121,9 @@ function wardrobeLegPreview(ctx,d,map){
   const [x,y]=map((side?3:-3)+legShift(d,side),18,true),thigh=legValue(d,side,'thighLength'),shin=legValue(d,side,'shinLength'),width=legValue(d,side,'legWidth'),knee=legValue(d,side,'kneeSize');
   ctx.save();ctx.translate(x,y);if(side&&d.legSymmetry)ctx.scale(-1,1);
   const tex=key=>materialPreview(key+(side&&!d.legSymmetry?'R':''));
-  ctx.drawImage(tex('legThigh'),-width*scale/2,0,width*scale,thigh*scale);
-  ctx.drawImage(tex('legShin'),-width*scale/2,thigh*scale,width*scale,shin*scale);
-  ctx.drawImage(tex('legKnee'),-knee*scale/2,(thigh-knee/2)*scale,knee*scale,knee*scale);ctx.restore();
+  PreviewSelection.rect('legThigh'+(side?'R':''),tex('legThigh'),-width*scale/2,0,width*scale,thigh*scale,ctx);ctx.drawImage(tex('legThigh'),-width*scale/2,0,width*scale,thigh*scale);
+  PreviewSelection.rect('legShin'+(side?'R':''),tex('legShin'),-width*scale/2,thigh*scale,width*scale,shin*scale,ctx);ctx.drawImage(tex('legShin'),-width*scale/2,thigh*scale,width*scale,shin*scale);
+  PreviewSelection.rect('legKnee'+(side?'R':''),tex('legKnee'),-knee*scale/2,(thigh-knee/2)*scale,knee*scale,knee*scale,ctx);ctx.drawImage(tex('legKnee'),-knee*scale/2,(thigh-knee/2)*scale,knee*scale,knee*scale);ctx.restore();
  }
 }
 function previewLayerQueue(d){
@@ -183,7 +183,7 @@ function wardrobePreview(ctx,d,anchors,queue){
  let xy=[],uv=[],triangles=[],n=10,top=Math.hypot(bb[0]-aa[0],bb[1]-aa[1]);for(let x=0;x<=n;x++)for(let y=0;y<=n;y++){let u=x/n,v=(y-(cloth?(a.bindRow||0):0))/n,curve=(1-a.roundness)*(1-Math.abs(2*u-1))+a.roundness*Math.sin(Math.PI*u);if(cloth)xy.push(aa[0]+(bb[0]-aa[0])*u+(u-.5)*(a.width*scale-top)*v+a.midX*4*u*(1-u)*scale,aa[1]+(bb[1]-aa[1])*u+(a.length+a.sag*curve)*v*scale-a.midY*4*u*(1-u)*scale);else xy.push(...wardrobeRigidPoint(aa,bb,frame,a,scale,u,y/n));uv.push(u,y/n);if(x<n&&y<n){let k=x*(n+1)+y;triangles.push(k,k+1,k+n+1,k+1,k+n+2,k+n+1);}}
  anchors[id]={xy};if(!enabled)continue;
  if(cloth&&id.startsWith('front')&&a.lockGown&&anchors.gownMesh){let gm=anchors.gownMesh,gn=Math.sqrt(gm.length/2),side=id==='frontL'?0:1;for(let y=0;y<=n;y++){let gy=Math.min(gn-1,Math.round(y/n*(gn-1))),l=[gm[gy*2],gm[gy*2+1]],r=[gm[((gn-1)*gn+gy)*2],gm[((gn-1)*gn+gy)*2+1]];if(l[0]>r[0])[l,r]=[r,l];let mid=[(l[0]+r[0])/2,(l[1]+r[1])/2],outer=side?r:l;outer[0]+=(side?1:-1)*.6*scale;for(let x=0;x<=n;x++){let u=x/n,a0=side?mid:outer,b0=side?outer:mid,k=(x*(n+1)+y)*2;xy[k]=a0[0]+(b0[0]-a0[0])*u;xy[k+1]=a0[1]+(b0[1]-a0[1])*u;}}}
- queue.add(id,()=>{let key=id==='frontR'&&d.frontSymmetry?'frontL':id,im=materialPreview(key);if(id==='frontR'&&d.frontSymmetry){let flipped=canvas(im.width,im.height),cc=flipped.getContext('2d');cc.translate(im.width,0);cc.scale(-1,1);cc.drawImage(im,0,0);im=flipped;}function paint(points){for(let i=0;i<triangles.length;i+=3){let ids=triangles.slice(i,i+3);triangle(ctx,im,ids.flatMap(k=>points.slice(k*2,k*2+2)),ids.flatMap(k=>uv.slice(k*2,k*2+2)));}}paint(xy);if(a.mirror)paint(xy.map((v,i)=>i%2?v:-v));
+ queue.add(id,()=>{let key=id==='frontR'&&d.frontSymmetry?'frontL':id,im=materialPreview(key);if(id==='frontR'&&d.frontSymmetry){let flipped=canvas(im.width,im.height),cc=flipped.getContext('2d');cc.translate(im.width,0);cc.scale(-1,1);cc.drawImage(im,0,0);im=flipped;}function paint(points){PreviewSelection.mesh(id,{triangles},points,im,uv,ctx);for(let i=0;i<triangles.length;i+=3){let ids=triangles.slice(i,i+3);triangle(ctx,im,ids.flatMap(k=>points.slice(k*2,k*2+2)),ids.flatMap(k=>uv.slice(k*2,k*2+2)));}}paint(xy);if(a.mirror)paint(xy.map((v,i)=>i%2?v:-v));
  if(cloth&&a.fringe){ctx.strokeStyle=a.fringeColor;ctx.lineWidth=.6*scale;for(let x=0;x<=n;x++){let k=(x*(n+1)+n)*2;ctx.beginPath();ctx.moveTo(xy[k],xy[k+1]);ctx.lineTo(xy[k]+Math.sin(x*7)*scale,xy[k+1]+a.fringeLength*(.55+(x*37%13)/20)*scale);ctx.stroke();if(a.mirror){ctx.beginPath();ctx.moveTo(-xy[k],xy[k+1]);ctx.lineTo(-xy[k]-Math.sin(x*7)*scale,xy[k+1]+a.fringeLength*(.55+(x*37%13)/20)*scale);ctx.stroke();}}}
  });
  }

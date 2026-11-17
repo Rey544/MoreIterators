@@ -9,7 +9,7 @@ const PaintLayers=(()=>{
   for(const [index,layer] of layers.entries()){layer.id||=uid();layer.locked??=false;layer.visible??=true;layer.opacity??=1;if(hardware(key))layer.surface??=oldHardware||index===0?'inner':'outer';}
   return texture;
  }
- function blank(key){return {symmetry:key==='collar',layers:Array.from({length:4},(_,index)=>({id:uid(),name:index?MI18n.t('default.layer_texture',{index}):MI18n.t('default.layer_base'),png:'',visible:true,locked:false,opacity:1,...(hardware(key)?{surface:index?'outer':'inner'}:{})}))};}
+ function blank(key){return {symmetry:key==='collar',symmetryY:false,layers:Array.from({length:4},(_,index)=>({id:uid(),name:index?MI18n.t('default.layer_texture',{index}):MI18n.t('default.layer_base'),png:'',visible:true,locked:false,opacity:1,...(hardware(key)?{surface:index?'outer':'inner'}:{})}))};}
  function selected(key=target,index=activeLayer){return project.textures[key]?.layers[index];}
  function requireIdle(){if(typeof historyBusy!=='undefined'&&historyBusy)throw Error(text('请等待撤销完成。'));}
  function requireWritableTexture(key){if(project.textures[key]?.layers.some(layer=>layer.locked))throw Error(text('目标贴图含锁定图层，请先解锁。'));}
@@ -143,7 +143,6 @@ const PaintLayers=(()=>{
    const opacity=document.createElement('input');opacity.type='range';opacity.className='layer-opacity';opacity.min=0;opacity.max=1;opacity.step=.05;opacity.value=layer.opacity;opacity.disabled=layer.locked;opacity.setAttribute('aria-label',MI18n.t('head28.opacity',{name}));opacity.oninput=run(async()=>{requireEditable(key,index);const value=Number(opacity.value),current=await prepareMetadata(key,layer.id),at=project.textures[key].layers.indexOf(current);requireEditable(key,at);current.opacity=value;PuppetArms.textureChanged(key);changed();});row.append(eye,lock,select,opacity);
    list.append(row);
   }
-  let hint=$('layerMaskHint');if(!hint){hint=document.createElement('p');hint.id='layerMaskHint';hint.className='layer-mask-hint';list.before(hint);}hint.hidden=!hardware(key);if(hardware(key)){const selected=tex.layers[activeLayer];hint.textContent=MI18n.t('paint.maskHint',{mask:MI18n.t(surface(selected||tex.layers[0],activeLayer,tex.layers)==='inner'?'paint.innerMask':'paint.outerMask')});}
   if($('layerAdd')){$('layerAdd').disabled=tex.layers.length>=MAX;$('layerAdd').onclick=run(()=>{stroke=null;activeLayer=append();updateTarget();changed();});}
   if($('layerDelete')){$('layerDelete').disabled=!canRemove(key,activeLayer);$('layerDelete').onclick=run(remove);}
  }

@@ -1,4 +1,33 @@
 'use strict';
+(()=>{
+ if(window.MIStudioPageSession)return;
+ window.MIStudioPageSession=true;
+ const url='/api/studio-session';
+ let id='',sequence=0,closed=true,timer=0,enabled=true;
+ const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),value=>value.toString(16).padStart(2,'0')).join('');
+ function send(event,beacon=false){
+  if(!enabled)return;
+  const body=JSON.stringify({event,id,sequence:++sequence});
+  if(beacon){
+   try{if(navigator.sendBeacon(url,new Blob([body],{type:'application/json'})))return;}catch{}
+  }
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).then(response=>{
+   if(response.status===404){enabled=false;clearInterval(timer);}
+  }).catch(()=>{});
+ }
+ function open(){
+  if(!closed)return;
+  id=token();sequence=0;closed=false;send('open');
+  clearInterval(timer);timer=setInterval(()=>{if(!closed)send('open');},30000);
+ }
+ window.addEventListener('pagehide',()=>{
+  if(closed)return;
+  closed=true;clearInterval(timer);send('close',true);
+ });
+ window.addEventListener('pageshow',open);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!closed)send('open');});
+ open();
+})();
 document.addEventListener('DOMContentLoaded',()=>{
  const nodes=document.querySelectorAll('#saveState,#notice,#status,#overseerState');
  const update=node=>{

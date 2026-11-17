@@ -110,9 +110,15 @@ class RegionPackageTests(unittest.TestCase):
     def test_other_local_projects_are_not_silently_included(self):
         project=dict(projectId='mine',roomBinding=dict(region='ZZ',ai='ZZ_A01',entry='ZZ_A02',entryMode='copy',oracleId='mine',aiNode=0,entryNode=0))
         self.text(storage.PROJECTS/'mine/project.json',json.dumps(project))
-        self.assertFalse(region_packages.choices()['regions'][0]['available'])
-        self.assertFalse(region_packages.inspect('ZZ')['ok'])
-        self.assertTrue(region_packages.inspect('ZZ',['mine'])['ok'])
+        choice=region_packages.choices()['regions'][0]
+        self.assertTrue(choice['available'])
+        self.assertEqual(choice['projectIds'],['mine'])
+        preview=region_packages.inspect('ZZ',['unrelated'])
+        self.assertTrue(preview['ok'])
+        self.assertEqual(preview['projectIds'],['mine'])
+        self.assertEqual(preview['includedProjects'],[dict(projectId='mine',name='mine')])
+        with self.assertRaisesRegex(ValueError,'区域内的作品已变化'):self.archive()
+        with self.assertRaisesRegex(ValueError,'区域内的作品已变化'):self.archive(['mine','unrelated'])
         with self.archive(['mine']) as archive:self.assertNotIn('project.json',archive.namelist())
         with self.assertRaises(ValueError):region_packages.build('TEST',self.metadata)
 

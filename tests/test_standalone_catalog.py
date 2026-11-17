@@ -29,13 +29,32 @@ class StandaloneCatalogueRuntimeTests(unittest.TestCase):
         ], capture_output=True, text=True, encoding='utf-8', timeout=30)
         if result.returncode:
             raise AssertionError(result.stdout + result.stderr)
+        generated = []
+        assets = (root / 'src/ContentAssets.cs').read_text('utf-8')
+        for namespace, owner in (('PackA', 'pack.a'), ('PackB', 'pack.b')):
+            for name, content in (
+                ('RuntimePaths', source.replace('__MOD_ID__', owner)),
+                ('ContentAssets', assets),
+            ):
+                path = cls.work / (namespace + name + '.cs')
+                path.write_text(content.replace('namespace MoreIterators {', 'namespace ' + namespace + ' {'), 'utf-8')
+                generated.append(str(path))
+        cls.two_exe = cls.work / 'two-catalogue-check.exe'
+        result = subprocess.run([
+            str(compiler), '/nologo', '/utf8output', '/define:PLAYBACK', '/out:' + str(cls.two_exe), '/r:' + str(game_assembly),
+            *generated, str(root / 'tests/content_assets_host.cs'), str(root / 'tests/two_standalone_cache_check.cs'),
+        ], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30)
+        if result.returncode:
+            raise AssertionError(result.stdout + result.stderr)
 
     def run_scenario(self, name):
         folder = self.work / name
         folder.mkdir()
-        result = subprocess.run([str(self.exe), name, str(folder)], capture_output=True, text=True, timeout=15)
+        result = subprocess.run([str(self.exe), name, str(folder)], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('catalogue assertions passed: ' + name, result.stdout)
+        if name == 'cache':
+            print(result.stdout.strip())
 
     def test_early_hook_recovers_when_mod_list_becomes_ready(self):
         self.run_scenario('early')
@@ -54,6 +73,18 @@ class StandaloneCatalogueRuntimeTests(unittest.TestCase):
 
     def test_registry_design_paths_use_owner_versions_and_preserve_legacy_layout(self):
         self.run_scenario('designs')
+
+    def test_production_cache_hot_calls_refresh_failure_recovery_and_context_changes(self):
+        self.run_scenario('cache')
+
+    def test_two_generated_runtimes_keep_same_named_files_and_caches_isolated(self):
+        folder = self.work / 'two-runtimes'
+        folder.mkdir()
+        result = subprocess.run([str(self.two_exe), 'two-runtimes', str(folder)], capture_output=True,
+                                text=True, encoding='utf-8', errors='replace', timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertRegex(result.stdout, r'PASS \d+ two-production-runtime assertions')
+        print(result.stdout.strip())
 
 
 if __name__ == '__main__':

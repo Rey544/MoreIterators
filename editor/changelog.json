@@ -1,6 +1,6 @@
 {
   "schema": "moreiterators.changelog.v1",
-  "plannedRelease": "0.4.0",
+  "plannedRelease": "0.5.1",
   "thanks": [
     "粉笔",
     "LL77",
@@ -12,15 +12,124 @@
   ],
   "acknowledgements": {
     "zh-CN": [
-      "本次 debug 测试使用了匿名用户的作品「pool moon」。",
       "特别感谢 Xuanzebufeng 在兼容性问题上提供的建议。"
     ],
     "en": [
-      "Debug testing for this update used pool moon, a work by an anonymous user.",
       "Special thanks to Xuanzebufeng for suggestions on compatibility issues."
     ]
   },
   "entries": [
+    {
+      "version": "0.5.1",
+      "changes": {
+        "zh-CN": [
+          "优化部分UI和UX"
+        ],
+        "en": [
+          "Improved parts of the UI and UX."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.5.0",
+      "changes": {
+        "zh-CN": [
+          "修复房间导出检查和待改名房间的异常提示，补全 RTM 房间设置与区域坐标读取，支持自动同步和缺失文件手动导入，恢复项目 JSON 导出。",
+          "新增预览部件选择、轮廓高亮和名称提示，可调整高亮颜色与提示开关。",
+          "新增参考图，支持移动、远近缩放、前后层与透明度调整。",
+          "新增 X轴、Y轴对称绘制。"
+        ],
+        "en": [
+          "Fixed room export checks and errors for rooms pending a rename. Completed RTM room settings and region coordinate reading, added automatic syncing and manual import for missing files, and restored project JSON export.",
+          "Added preview part selection, outline highlights and name tooltips, with highlight color and tooltip settings.",
+          "Added reference images with movement, depth scaling, front/back layers and opacity controls.",
+          "Added X-axis and Y-axis painting symmetry."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.4.6",
+      "changes": {
+        "zh-CN": [
+          "修复破损房间的坐姿、拖动和珍珠漂浮问题，修复人偶移出房间时的报错、Rained 同步及重复应用失败，新增编辑器日志导出。"
+        ],
+        "en": [
+          "Fixed sitting, dragging and floating pearls in damaged chambers, errors when an iterator is removed from a room, Rained syncing and failures when reapplying rooms. Added editor log export."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.4.4",
+      "changes": {
+        "zh-CN": [
+          "修复房间预设应用、区域连接和项目 ZIP 导出问题，完善报错提示与外部色板兼容，修正部分透明度计算。移除图层多余说明，新项目默认保留贴图原色。"
+        ],
+        "en": [
+          "Fixed room preset application, region connections, and project ZIP export issues. Improved error messages and external palette compatibility, corrected some opacity calculations, removed unnecessary layer instructions, and made new projects preserve original texture colors by default."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.4.3",
+      "changes": {
+        "zh-CN": [
+          "修复房间设置与区域坐标导出遗漏，支持多个作品一起导入导出，补充外部地图模组打包兼容，并调整导入导出界面。"
+        ],
+        "en": [
+          "Fixed missing room settings and region coordinates in exports, added multi-project import and export and external map mod packaging, and improved the import/export UI."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.4.2",
+      "changes": {
+        "zh-CN": [
+          "修复部分独立导出模组造成的游戏卡顿。"
+        ],
+        "en": [
+          "Fixed game slowdown caused by some standalone exported mods."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
+    {
+      "version": "0.4.1",
+      "changes": {
+        "zh-CN": [
+          "调整了交互逻辑和UI界面。"
+        ],
+        "en": [
+          "Adjusted the interaction logic and UI."
+        ]
+      },
+      "notices": {
+        "zh-CN": [],
+        "en": []
+      }
+    },
     {
       "version": "0.4.0",
       "changes": {
@@ -101,6 +210,14 @@
         ],
         "en": [
           "With limited time and the workload of developing and maintaining this project on my own, I have not been able to test every feature in-game. Project ZIPs, standalone mod exports, the new room presets and sizes, complete maps in single-player Story and Meadow multiplayer, in-game depth scenes, and Steam returning to its stopped state still need full validation. The intermittent transparency issue is still under investigation. Please report any bugs on Discord."
+        ]
+      },
+      "acknowledgements": {
+        "zh-CN": [
+          "本次 debug 测试使用了匿名用户的作品「pool moon」。"
+        ],
+        "en": [
+          "Debug testing for this update used pool moon, a work by an anonymous user."
         ]
       }
     },

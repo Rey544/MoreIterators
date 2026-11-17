@@ -15,7 +15,7 @@ namespace MoreIterators {
    int generation=ContentAssets.Generation;
    if(manifestGeneration!=generation){manifests.Clear();manifestGeneration=generation;}
    string manifest=null;
-   if(ModManager.ActiveMods!=null)foreach(var mod in ModManager.ActiveMods)if(mod.path==modPath){manifest=ContentAssets.ResolveOwnedFile(mod.id,"content-manifest.json");break;}
+   if(ModManager.ActiveMods!=null)foreach(var mod in ModManager.ActiveMods)if(mod!=null&&mod.enabled&&mod.path==modPath){manifest=ContentAssets.ResolveOwnedFile(mod.id,"content-manifest.json");break;}
    if(!File.Exists(manifest)){manifests.Remove(modPath);return false;}
    try{
     var info=new FileInfo(manifest);ManifestState cached;
@@ -54,10 +54,15 @@ namespace MoreIterators {
 
  public static class IteratorCatalog {
   static float nextRead;
+  static float lastRead;
+  static int loadedGeneration=-1;
   static List<Dictionary<string,object>> projects=new List<Dictionary<string,object>>();
+  public static void Reset(){nextRead=lastRead=0;loadedGeneration=-1;projects=new List<Dictionary<string,object>>();}
   public static string Text(Dictionary<string,object> data,string key){object value;return data.TryGetValue(key,out value)&&value is string?(string)value:"";}
   public static List<Dictionary<string,object>> Projects(){
-   if(Time.realtimeSinceStartup<nextRead)return projects;nextRead=Time.realtimeSinceStartup+.5f;
+   int generation=ContentAssets.Generation;float now=Time.realtimeSinceStartup;
+   if(generation==loadedGeneration&&now>=lastRead&&now<nextRead)return projects;
+   lastRead=now;nextRead=now+.5f;loadedGeneration=generation;
    var result=new Dictionary<string,Dictionary<string,object>>();
    try{foreach(var asset in ContentAssets.Files("moreiterators",".json"))if(String.Equals(Path.GetFileName(asset.path),"registry.json",StringComparison.OrdinalIgnoreCase)&&ContentAssets.Managed(asset.owner))Read(asset.path,String.IsNullOrEmpty(asset.owner)?null:asset.owner,result,false,false);}
    catch(Exception error){MiDiagnostics.Report("MI_REGISTRY_DIRECTORY","IteratorCatalog.Projects",error,"moreiterators/registry.json");}
@@ -67,7 +72,7 @@ namespace MoreIterators {
   }
   public static bool OwnerEnabled(string id){
    if(ModManager.ActiveMods==null)return false;
-   foreach(var active in ModManager.ActiveMods)if(active.id==id)return !RuntimePaths.HasIndependentRuntime(active.path);
+   foreach(var active in ModManager.ActiveMods)if(active!=null&&active.enabled&&active.id==id)return !RuntimePaths.HasIndependentRuntime(active.path);
    return false;
   }
   // Editor/menu-only discoverability. Inactive local projects must never enter

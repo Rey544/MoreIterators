@@ -65,11 +65,12 @@ def default(collection_id=None):
     cid=pearl_projects.resolve(collection_id);used={p['id'] for p in listing(cid)}
     pid=next(chr(65+i//99)+str(i%99+1).zfill(2) for i in range(26*99) if chr(65+i//99)+str(i%99+1).zfill(2) not in used)
     return dict(schema=SCHEMA,collectionId=cid,id=pid,name=pid,uid=uuid.uuid4().hex,revision=0,notes='',appearance=dict(baseColor='#000000',highlightColor='#b0d8f0',secondaryColor='#365576',twoTone=False,size=1,effect='none',effectColor='#88bbff',effectOpacity=.4,effectSize=28,pulseSpeed=1,music=False,musicVolume=.16,musicTrack=audio_assets.default_track()),readers=[],spawnProjects=[],spawnRooms=[],spawnRoomPositions={})
-def validate(p):
+def validate(p,resolve_sources=True):
     p=copy.deepcopy(p)
     if not isinstance(p,dict):raise ValueError('珍珠项目格式无效')
     if p.get('schema')!=SCHEMA:raise ValueError('珍珠项目格式无效')
-    if 'collectionId' not in p:p['collectionId']=pearl_projects.ensure_legacy()
+    if not resolve_sources:p['collectionId']=pearl_projects.valid_id(p.get('collectionId'))
+    elif 'collectionId' not in p:p['collectionId']=pearl_projects.ensure_legacy()
     else:p['collectionId']=pearl_projects.resolve(p['collectionId'])
     valid_id(p.get('id'))
     if not isinstance(p.get('uid'),str) or not re.fullmatch('[a-f0-9]{32}',p['uid']):raise ValueError('珍珠内部 ID 无效')
@@ -78,6 +79,7 @@ def validate(p):
     for key,limit in [('name',100),('notes',20000)]:
         if not isinstance(p.get(key),str) or len(p[key])>limit or key=='name' and not p[key].strip():raise ValueError('名称或作者备注无效')
     a=p.get('appearance',{})
+    if not isinstance(a,dict):raise ValueError('珍珠项目格式无效')
     for key in ('baseColor','highlightColor','secondaryColor','effectColor'):
         if not re.fullmatch('#[0-9a-fA-F]{6}',a.get(key,'')):raise ValueError('颜色必须为 RGB 十六进制')
     for key,lo,hi in [('size',.5,3),('effectOpacity',0,1),('effectSize',5,120),('pulseSpeed',.1,4),('musicVolume',0,.6)]:
@@ -108,6 +110,7 @@ def validate(p):
     if not isinstance(p.get('readers'),list) or len(p['readers'])>200:raise ValueError('读取者列表无效')
     for r in p['readers']:
         if not isinstance(r,dict):raise ValueError('读取者条目无效')
+        if not resolve_sources and type(r.get('requireMark',True)) is not bool:raise ValueError('离开规则或印记开关无效')
         r['requireMark']=True
         if 'presentation' in r:r['presentation']=dialogue.validate_presentation(r['presentation'])
         r.setdefault('repeatEnabled',False);r.setdefault('repeat',[])
@@ -119,7 +122,7 @@ def validate(p):
             r['projectId']='';pid=reader_key(r)
         else:
             pid=storage.valid_id(r.get('projectId'))
-            reference_project(pid)
+            if resolve_sources:reference_project(pid)
         if pid in seen:raise ValueError('同一个迭代器不能重复绑定')
         seen.add(pid)
         if r.get('leavePolicy') not in ('resume','restart','cancel') or type(r.get('requireMark')) is not bool:raise ValueError('离开规则或印记开关无效')
@@ -141,19 +144,25 @@ def validate(p):
                 if type(branch['repeatEnabled']) is not bool:raise ValueError('珍珠好感度重复读取开关无效')
                 check_pool(branch['repeat'])
         validate_native_features(r)
-    if not isinstance(p.get('spawnProjects'),list) or len(set(p['spawnProjects']))!=len(p['spawnProjects']):raise ValueError('测试房间列表无效')
-    for pid in p['spawnProjects']:reference_project(storage.valid_id(pid))
+    if not isinstance(p.get('spawnProjects'),list) or any(not isinstance(pid,str) for pid in p['spawnProjects']) or len(set(p['spawnProjects']))!=len(p['spawnProjects']):raise ValueError('测试房间列表无效')
+    for pid in p['spawnProjects']:
+        storage.valid_id(pid)
+        if resolve_sources:reference_project(pid)
     positions=p.get('spawnPositions',{})
     if not isinstance(positions,dict) or set(positions)-set(p['spawnProjects']):raise ValueError('珍珠生成位置必须属于已选择的房间')
-    for pid,position in positions.items():validate_position(position,spawn_geometry(pid),p['appearance']['size'])
+    for pid,position in positions.items():
+        if resolve_sources:validate_position(position,spawn_geometry(pid),p['appearance']['size'])
+        else:_validate_position_values(position)
     rooms=p.setdefault('spawnRooms',[])
     if not isinstance(rooms,list) or len(rooms)>1000 or any(not isinstance(name,str) or not re.fullmatch(r'[A-Z0-9]+_[A-Z0-9_]+',name) for name in rooms) or len(set(rooms))!=len(rooms):raise ValueError('珍珠生成房间编号无效或重复')
     room_positions=p.setdefault('spawnRoomPositions',{})
     if not isinstance(room_positions,dict) or set(room_positions)-set(rooms):raise ValueError('珍珠生成位置必须属于已选择的房间')
-    known={item['entry'] for item in destinations()} if rooms else set()
+    known={item['entry'] for item in destinations()} if rooms and resolve_sources else set()
     for name in rooms:
-        if name not in known:raise ValueError('珍珠生成房间不在当前房间目录中：'+name)
-        if name in room_positions:validate_position(room_positions[name],room_geometry(name),p['appearance']['size'])
+        if resolve_sources and name not in known:raise ValueError('珍珠生成房间不在当前房间目录中：'+name)
+        if name in room_positions:
+            if resolve_sources:validate_position(room_positions[name],room_geometry(name),p['appearance']['size'])
+            else:_validate_position_values(room_positions[name])
     return p
 
 def destinations(roomnames=None):
@@ -222,9 +231,12 @@ def _geometry_file(source,room_name):
         return dict(room=room_name,region=room_name.split('_')[0],width=width,height=height,solids=solids,shortcuts=shortcuts,cameras=cameras)
     except (OSError,ValueError,IndexError,UnicodeError):raise ValueError('珍珠生成房间地形无法读取，请先导入有效房间。')
 
-def validate_position(position,geometry,size):
+def _validate_position_values(position):
     if not isinstance(position,dict) or set(position)!={'x','y'}:raise ValueError('珍珠生成位置格式无效')
     if any(type(position[key]) not in (int,float) or not math.isfinite(position[key]) or not 0<=position[key]<=1 for key in ('x','y')):raise ValueError('珍珠生成位置应为 0—1 的有限数值')
+
+def validate_position(position,geometry,size):
+    _validate_position_values(position)
     x=position['x']*geometry['width']*20;y=position['y']*geometry['height']*20;radius=5*size
     if not radius<=x<=geometry['width']*20-radius or not radius<=y<=geometry['height']*20-radius:raise ValueError('珍珠生成位置超出房间边界，请向房间内侧移动。')
     if [int(x//20),int(y//20)] in geometry['solids']:raise ValueError('珍珠生成位置位于实体地形内，请选择空闲位置。')

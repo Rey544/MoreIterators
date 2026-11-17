@@ -37,11 +37,11 @@ function pearlAccessoriesPreview(ctx,d,anchors,queue){
   const localRight=baseRight.map((v,i)=>v*Math.cos(angle)-baseUp[i]*Math.sin(angle)),localUp=baseUp.map((v,i)=>v*Math.cos(angle)+baseRight[i]*Math.sin(angle));
   const map=p=>[origin[0]+(a.x+localRight[0]*p[0]+localUp[0]*p[1])*scale,origin[1]+(-a.y+localRight[1]*p[0]+localUp[1]*p[1])*scale];
   queue.add(a.id,()=>{
-   ctx.save();ctx.strokeStyle=a.stringColor;ctx.lineWidth=a.thickness*scale;ctx.lineCap='round';ctx.beginPath();if(a.horizontalChains||a.hangingChains)for(const [i,j] of graph.links){ctx.moveTo(...map(graph.points[i]));ctx.lineTo(...map(graph.points[j]));}ctx.stroke();
-   graph.beads.forEach((index,i)=>{const bead=a.beads[i],style=a.colorMode===2&&bead?bead:a.colorMode===1&&i%2?a.alternate:a.primary,diameter=(bead?.size||a.size)*scale,p=map(graph.points[index]);MIPearlIcons.drawAt(ctx,p[0],p[1],diameter,MIPearlIcons.accessoryAppearance(style));});
+   ctx.save();ctx.strokeStyle=a.stringColor;ctx.lineWidth=a.thickness*scale;ctx.lineCap='round';ctx.beginPath();if(a.horizontalChains||a.hangingChains)for(const [i,j] of graph.links){PreviewSelection.line(a.id,map(graph.points[i]),map(graph.points[j]),a.thickness*scale,ctx);ctx.moveTo(...map(graph.points[i]));ctx.lineTo(...map(graph.points[j]));}ctx.stroke();
+   graph.beads.forEach((index,i)=>{const bead=a.beads[i],style=a.colorMode===2&&bead?bead:a.colorMode===1&&i%2?a.alternate:a.primary,diameter=(bead?.size||a.size)*scale,p=map(graph.points[index]);PreviewSelection.ellipse(a.id,p[0],p[1],diameter/2,ctx);MIPearlIcons.drawAt(ctx,p[0],p[1],diameter,MIPearlIcons.accessoryAppearance(style));});
    for(const child of a.children){if(!child.enabled)continue;const image=pearlChildImage(child.png);if(!image)continue;const p=graph.beads.length?graph.points[graph.beads[Math.min(child.bead,graph.beads.length-1)]]:[0,0],at=map([p[0]+child.x,p[1]+child.y]);ctx.save();ctx.translate(...at);ctx.rotate(Math.atan2(localRight[1],localRight[0])+child.rotation*Math.PI/180);let tinted=image;
     if(child.color!=='#ffffff'){const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const paint=canvas.getContext('2d');paint.drawImage(image,0,0);paint.globalCompositeOperation='multiply';paint.fillStyle=child.color;paint.fillRect(0,0,canvas.width,canvas.height);paint.globalCompositeOperation='destination-in';paint.drawImage(image,0,0);tinted=canvas;}
-    ctx.drawImage(tinted,-child.width*scale/2,-child.height*scale/2,child.width*scale,child.height*scale);ctx.restore();
+    PreviewSelection.rect(a.id+'/child/'+a.children.indexOf(child),tinted,-child.width*scale/2,-child.height*scale/2,child.width*scale,child.height*scale,ctx);ctx.drawImage(tinted,-child.width*scale/2,-child.height*scale/2,child.width*scale,child.height*scale);ctx.restore();
    }ctx.restore();
   });
  }
@@ -94,7 +94,7 @@ function buildPearlAccessorySettings(host,d,changed){
   }refreshBeads();
   const childSection=garmentSection(body,'子配件');button(childSection,'添加子配件',()=>{if(a.children.length>=8)throw Error('珍珠组合最多 8 个子配件');a.children.push(pearlAccessoryChild());refresh();});
   for(const c of a.children){
-   const part=garmentSection(childSection,c.name||'子配件');if(c.name)MI18n.content(part.querySelector('summary'));field(part,c,'enabled','启用子配件','checkbox');const childBody=settingDependency(part,()=>c.enabled);field(childBody,c,'name','子配件名称','text');
+   const part=garmentSection(childSection,c.name||'子配件');part.dataset.previewPart=a.id+'/child/'+a.children.indexOf(c);if(c.name)MI18n.content(part.querySelector('summary'));field(part,c,'enabled','启用子配件','checkbox');const childBody=settingDependency(part,()=>c.enabled);field(childBody,c,'name','子配件名称','text');
    const imageInput=document.createElement('input');imageInput.type='file';imageInput.accept='image/png,.png';imageInput.hidden=true;childBody.append(imageInput);button(childBody,'导入 PNG 贴图',()=>imageInput.click());imageInput.onchange=()=>run(async()=>{const file=imageInput.files[0];if(!file)return;if(file.size>4_500_000)throw Error('子配件只支持 PNG');const png=await new Promise((ok,no)=>{const reader=new FileReader();reader.onload=()=>ok(reader.result);reader.onerror=no;reader.readAsDataURL(file);});const image=new Image();image.src=png;await image.decode();checkOwner();if(!png.startsWith('data:image/png;base64,')||image.naturalWidth>1024||image.naturalHeight>1024)throw Error('子配件 PNG 损坏或超过 1024 × 1024');c.png=png;changed();})();
    field(childBody,c,'bead','绑定珍珠（从 0 起）','range',0,Math.max(0,a.pearls-1),1);
    for(const [key,label,min,max] of [['x','左右偏移',-80,80],['y','上下偏移',-80,80],['width','宽度',.1,120],['height','高度',.1,120],['rotation','旋转角度',-180,180]])field(childBody,c,key,label,'range',min,max,.1);

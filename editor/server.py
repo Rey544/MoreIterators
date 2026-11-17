@@ -1,7 +1,7 @@
 """OC Creator: loopback-only project store, TEST room compiler, partial exports."""
 from http.server import ThreadingHTTPServer,BaseHTTPRequestHandler
 from pathlib import Path
-import json,os,re,datetime,threading,shutil,hashlib,base64,io,zipfile,urllib.parse,time
+import json,os,re,datetime,threading,shutil,hashlib,base64,io,zipfile,urllib.parse,time,copy
 from PIL import Image,ImageColor
 ROOT=Path(__file__).resolve().parent
 import sys
@@ -31,7 +31,10 @@ import room_editor
 import room_bindings
 import room_preview
 import room_controls
+import project_bundles
+import export_file_import
 import room_migration
+import room_workflow
 import project_purge
 import room_cleanup
 import waiting_room
@@ -98,7 +101,7 @@ def default():
     return dict(schema='moreiterators.project.v1',projectId='oc-'+datetime.datetime.now().strftime('%y%m%d%H%M%S'),name=default_text.text('default.project_name'),design=dict(
       headColor='#a6aaa9',eyeColor='#fbf5df',clothTopColor='#813c46',clothMiddleColor='#b68b8e',clothBottomColor='#e0dfd8',clothGrain=.12,
       antennaColor='#7fad99',metalColor='#323e3d',armColor='#7c8b85',armShadowStrength=.35,sleeveMapping='front',armJointColor='#414b48',collarColor='#98464b',
-      antennaTint=True,antennaInnerColor='#9cafaa',antennaOuterColor='#323e3d',
+      antennaTint=False,antennaInnerColor='#9cafaa',antennaOuterColor='#323e3d',
       necklaceCount=0,necklaces=[],earTint=False,earCustom=False,earInnerColor='#9cafaa',earOuterColor='#323e3d',roomBrightness=1,roomContrast=1,roomSaturation=1,
       scarfPanels=0,scarfLength=36,scarfWidth=36,scarfGap=.18,scarfLightness=.7,scarfFringe=False,scarfFringeLength=5,
       scarfShape=0,scarfTopWidth=10,
@@ -133,6 +136,9 @@ def validate(p):
     project_lifecycle.assert_active(p['projectId'])
     if not isinstance(p.get('name'),str) or not 1<=len(p['name'].strip())<=60:raise ValueError('名称长度应为 1—60 字')
     if 'roomBinding' in p:p['roomBinding']=room_bindings.normalize(p['roomBinding'])
+    if 'roomConnections' in p:
+        import room_workflow
+        p['roomConnections']=room_workflow.normalize_connections(p,p['roomConnections'])
     if 'overseer' in p:p['overseer']=overseers.normalize(p['overseer'])
     original=p.get('design',{});base=default()['design'];base.update(original);p['design']=base
     base['sleeveMapping']=original.get('sleeveMapping','strip')
@@ -190,6 +196,8 @@ def _save(p,dialogue_edit=False):
         # Room identity changes only through the previewed migration endpoint.
         if 'roomBinding' in previous:p['roomBinding']=previous['roomBinding']
         else:p.pop('roomBinding',None)
+        if 'roomConnections' in previous:p['roomConnections']=previous['roomConnections']
+        else:p.pop('roomConnections',None)
         if waiting_room.FIELD in previous:p[waiting_room.FIELD]=previous[waiting_room.FIELD]
         else:p.pop(waiting_room.FIELD,None)
         p['overseer']=overseers.normalize(previous.get('overseer'));p['overseerRevision']=previous.get('overseerRevision',0)
@@ -211,6 +219,11 @@ def import_project(raw):
     with LOCK:
         project=validate(raw);pid=project['projectId'];file=storage.project_file(pid)
         if file.exists() or not project.get('roomBinding'):return _save(project)
+        if project.get('roomConnections'):
+            if storage.binding(pid):raise room_bindings.RoomBindingError('workflowReadOnly')
+            if 'dialogue' not in project:project['dialogue']=dialogue.profile(project)
+            atomic(file,project)
+            return project
         requested=project.pop('roomBinding')
         if storage.binding(pid) or requested['entryMode']!='copy':
             raise ValueError('导入不能自动改写原版、关联模组或现有房间连接；请在区域连接预览并应用。')
@@ -348,10 +361,16 @@ def copy_room(source,directory,name,palette=None,replace=False):
             text=src.read_text('utf-8-sig')
             if palette is not None:text=re.sub(r'(?m)^Palette:.*','Palette: '+str(palette),text)
             dest.write_text(text,encoding='utf-8')
-        else:shutil.copy2(src,dest)
+        else:
+            if dest.exists() and src.samefile(dest):continue
+            shutil.copy2(src,dest)
 def compile_design(p):
+    import copy
+    p=copy.deepcopy(p)
     wardrobe.defaults(p['design'])
     ai,entry,oid=roomnames(p);d=dict(p['design'],schema='moreiterators.oracle.v1',projectId=p['projectId'],name=p['name'],oracleId=oid,roomTemplate=p.get('roomTemplate','fp'),previewToken=datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
+    preset=p.get('chamberPreset','')
+    d['chamberPreset']=preset if preset in ('mi-chamber-pebbles','mi-chamber-moon','mi-chamber-broken','mi-chamber-irregular','mi-chamber-multi-screen') else ''
     fields={'forehead':'facePng','face':'cheekPng','gown':'gownPng','sleeve':'sleevePng','collar':'collarPng','scarf':'scarfPng'}
     for key,field in fields.items():
         d[field]=''
@@ -368,7 +387,6 @@ def compile_design(p):
         d[key+'BasePng']='data:image/png;base64,'+base64.b64encode(pngbytes(cloth_base(p,key))).decode()
         d[key+'Png']='data:image/png;base64,'+base64.b64encode(composite(pattern_texture(p,key),texture_size(p,key))).decode()
     # Compile a copy: embedded runtime textures must never pollute editable source data.
-    import copy
     for group in ('frontPanels','shawls','accessories'):
         d[group]=copy.deepcopy(d[group])
         for item in d[group]:
@@ -423,6 +441,9 @@ def entry_room_template():
 
 def default_room_source(p,name,kind):
     room_editor.ensure_synced(p['projectId'],name)
+    if p.get('roomConnections'):
+        import room_workflow
+        return room_workflow.require_sources(p)[kind]
     cached=room_editor.cached_source(p['projectId'],name)
     if cached:return cached
     if storage.binding(p['projectId']) or p.get('roomBinding'):
@@ -431,21 +452,24 @@ def default_room_source(p,name,kind):
     if kind=='entry' and p.get('roomBinding',{}).get('entryMode')=='existing':return room_bindings.resolve_room_source(name)
     return ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else entry_room_template()
 
-def rained_settings_source(p,name,kind):
+def rained_settings_source(p,name,kind,allow_template=True):
     cached=room_editor.cache_base(p['projectId'],name)
     settings=project_packages.selected_room_settings(p,name,cached)
     if settings.is_file():return settings
+    if not allow_template:raise ValueError('缺少房间文件：'+name+'_settings.txt')
     source=ASSETS/'world/ss-rooms/ss_ai' if kind=='ai' else entry_room_template()
     return Path(str(source)+'_settings.txt')
 
-def sync_rained(pid,kind):
+def sync_rained(pid,kind,apply=True,for_export=False):
+    if not isinstance(apply,bool) or not isinstance(for_export,bool) or kind not in ('ai','entry') or for_export and apply:raise ValueError('Invalid room sync request.')
     if native_projects.binding(pid):
         raise ValueError('原版固定房间暂不支持地形同步，不能覆盖游戏原始房间；请使用自建项目编辑房间。')
     p=storage.load_project(storage.valid_id(pid));ai,entry,_=roomnames(p);name=ai if kind=='ai' else entry
     if kind=='entry' and p.get('roomBinding',{}).get('entryMode')=='existing':raise ValueError('所选外部房间属于原版或其他模组，不能在此覆盖地形。')
-    result=room_editor.import_render(pid,kind,roomnames,rained_settings_source(p,name,kind))
-    deploy(p)
-    return result
+    with LOCK:
+        settings=rained_settings_source(p,name,kind,allow_template=False) if for_export else rained_settings_source(p,name,kind)
+        return room_editor.import_render(pid,kind,roomnames,settings,
+            apply=(lambda:room_editor.apply_with_rollback(pid,roomnames(p)[2],lambda:deploy(p))) if apply else None)
 
 def sync_linked_rooms(p,ai,entry):
     """Apply only explicitly rendered rooms owned by this linked project."""
@@ -466,9 +490,38 @@ def deploy(p):
 
 def _deploy(p):
     storage.require_game_root()
+    connection_plan=None
+    current_file=storage.project_file(p['projectId'])
+    current=storage.load_project(p['projectId']) if current_file.is_file() else p
+    if current_file.is_file():
+        p=copy.deepcopy(p)
+        for key in ('roomBinding','roomConnections',waiting_room.FIELD):
+            if key in current:p[key]=copy.deepcopy(current[key])
+            else:p.pop(key,None)
+    if current.get('roomConnections'):
+        import room_workflow
+        for kind,name in room_workflow._owned(p['roomBinding']).items():room_editor.ensure_synced(p['projectId'],name)
+        connection_plan=room_workflow.import_plan(p)
+        for item in connection_plan['roomCopies']:
+            source=Path(item['source']);name=item['name']
+            lines=source.with_suffix('.txt').read_text('utf-8-sig').splitlines()
+            cameras=[part for part in lines[3].split('|') if part.strip()] if len(lines)>3 else []
+            settings=project_packages.selected_room_settings(p,name,source)
+            if not cameras or not settings.is_file() or any(not Path(str(source)+'_'+str(index)+'.png').is_file() for index in range(1,len(cameras)+1)):
+                raise room_bindings.RoomBindingError('workflowSourceMissing',room=name)
     package_assets=project_packages.before_deploy(p,sys.modules[__name__])
+    if not storage.binding(p['projectId']):
+        preflight_project=p;preflight_plan=connection_plan
+        if not package_assets['files'] and not p.get('roomConnections'):
+            preflight_project,preflight_plan=waiting_room.prepare(p,_preview=True)
+        registry=DESIGNS/'creator/registry.json'
+        existing=json.loads(registry.read_text('utf-8')) if registry.is_file() else []
+        ai,entry,oid=roomnames(preflight_project)
+        records=[record for record in existing if record['projectId']!=p['projectId']]+[storage.registry_record(preflight_project,ai,entry,oid)]
+        room_bindings.compile_worlds(records,plans={p['projectId']:preflight_plan} if preflight_plan is not None else None)
     p=save(p);d=compile_design(p)
-    if not package_assets['files']:p=waiting_room.prepare(p)
+    if not package_assets['files'] and not p.get('roomConnections'):p=waiting_room.prepare(p)
+    if connection_plan is not None:atomic(storage.project_file(p['projectId']).parent/'room-binding-plan.json',connection_plan)
     ai,entry,oid=roomnames(p)
     audio_assets.copy_referenced([d],storage.target_mod(p['projectId']))
     audio_assets.copy_referenced([d],storage.installed_mod(p['projectId']))
@@ -566,6 +619,7 @@ def export_checked_rooms(data,projects):
     extras=data.get('extraRooms',[])
     if data.get('scope')!='region':return extras
     region=data.get('region')
+    region_packages.validate_projects(region,[project['projectId'] for project in projects])
     if not isinstance(region,str) or not room_bindings.REGION_RE.fullmatch(region):raise room_source_choices.RoomChoiceError('room_choices_invalid')
     names={row['name'] for item in room_bindings.catalog().get('regions',[]) if item.get('name')==region for row in item.get('rooms',[])}
     return sorted({row['name'] for project in projects for row in (project_packages.load_metadata(project['projectId']) or {}).get('rooms',[])
@@ -573,16 +627,19 @@ def export_checked_rooms(data,projects):
 
 
 def export_with_room_choices(data,build,ids=None,projects=None):
-    selected=projects if projects is not None else export_projects(ids if ids is not None else data.get('projects',[]))
+    selected_ids=ids if ids is not None else data.get('projects',[])
+    selected=projects if projects is not None else [] if data.get('scope')=='region' and selected_ids==[] else export_projects(selected_ids)
     payload=data.get('roomSourceChoices')
     if payload is not None and not isinstance(payload,dict):raise room_source_choices.RoomChoiceError('room_choices_invalid')
     payload=dict(payload or {},extraRooms=export_checked_rooms(data,selected))
+    region=data.get('region') if data.get('scope')=='region' else None
+    if not selected and region is None:return build()
     result=None
     try:
-        with room_source_choices.resolution_scope(selected,payload):result=build()
+        with room_source_choices.resolution_scope(selected,payload,region=region):result=build()
     except Exception:
         if isinstance(result,dict) and isinstance(result.get('url'),str) and result['url'].startswith('/exports/'):
-            name=result['url'][len('/exports/'):]
+            name=urllib.parse.unquote(result['url'][len('/exports/'):])
             output=(storage.EXPORTS/name).resolve()
             if name==Path(name).name and output.is_relative_to(storage.EXPORTS.resolve()) and output.suffix.lower()=='.zip':output.unlink(missing_ok=True)
         raise
@@ -599,21 +656,29 @@ def export_room_plan(data):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self,*args):pass
+    def request_path(self):
+        return urllib.parse.urlsplit(self.path).path.rstrip('/') or '/'
+    def send_response(self, code, message=None):
+        if code >= 400:diagnostics.record_http_failure(getattr(self,'command',''), getattr(self,'path',''), code)
+        super().send_response(code, message)
     def reply(self,status,data,ctype='application/json; charset=utf-8'):
         b=data if isinstance(data,bytes) else json.dumps(data,ensure_ascii=False).encode();self.send_response(status);self.send_header('Content-Type',ctype);self.send_header('Content-Length',str(len(b)));self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(b)
     @default_text.request_language
     @server_lifecycle.request
     def do_GET(self):
         if self.headers.get('Host') not in (f'127.0.0.1:{PORT}',f'localhost:{PORT}'):return self.reply(403,{'error':'仅限本机'})
-        path=urllib.parse.urlparse(self.path).path
         try:
-            if path=='/api/health':return self.reply(200,dict(service='more-iterators-studio',protocol=1,pid=os.getpid(),dataDirectory=str(storage.DATA.resolve()),editorDirectory=str(ROOT),closing=getattr(self.server,'closing',False)))
+            path=self.request_path()
+            if path=='/api/health':return self.reply(200,dict(service='more-iterators-studio',protocol=1,pid=os.getpid(),dataDirectory=str(storage.DATA.resolve()),editorDirectory=str(ROOT),closing=getattr(self.server,'closing',False),runtime=diagnostics.runtime_info(),diskVersion=diagnostics.disk_version(),diskServerSha256=diagnostics.disk_server_sha256()))
             if path=='/api/install-paths':return self.reply(200,installation_paths())
             if path.startswith('/api/audio/') and path.endswith('.mp3'):
                 return self.reply(200,audio_assets.asset_path(path[len('/api/audio/'):-4]).read_bytes(),'audio/mpeg')
             if path=='/api/export-settings':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
                 return self.reply(200,standalone.preferences(pid))
+            if path=='/api/project-bundle-mods':
+                with LOCK:value=project_bundles.mod_choices()
+                return self.reply(200,value)
             if path=='/api/dialogue':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
                 with LOCK:
@@ -649,8 +714,8 @@ class Handler(BaseHTTPRequestHandler):
                 key=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
                 return self.reply(200,chamber_presets.preview(key),'image/png')
             if path=='/api/project-package-rooms':
-                pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('id',[''])[0]
-                with LOCK:value=project_packages.inspect_choices(pid,sys.modules[__name__])
+                query=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query);pid=query.get('id',[''])[0]
+                with LOCK:value=project_packages.inspect_choices(pid,sys.modules[__name__],check=query.get('check',[''])[0]!='0')
                 return self.reply(200,value)
             if path=='/api/region-package-choices':
                 ids=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projects',[''])[0].split(',')
@@ -663,6 +728,10 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/room-cleanup':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projectId',[''])[0]
                 with LOCK:result=room_cleanup.preview(pid)
+                return self.reply(200,result)
+            if path=='/api/room-workflow':
+                pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projectId',[''])[0]
+                with LOCK:result=room_workflow.load(pid)
                 return self.reply(200,result)
             if path=='/api/room-draft':
                 pid=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('projectId',[''])[0]
@@ -736,7 +805,33 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/project-association-operations':
                 with LOCK:result=project_associations.operations()
                 return self.reply(200,result)
-            if path=='/api/diagnostics':return self.reply(200,diagnostics.snapshot())
+            if path in ('/api/diagnostics','/api/diagnostics/download'):
+                source=urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query,keep_blank_values=True).get('source',['game'])
+                try:
+                    if len(source)!=1:raise diagnostics.DiagnosticLogError('diagnostics.invalidSource')
+                    if path=='/api/diagnostics':return self.reply(200,diagnostics.snapshot(source[0]))
+                    stream,name,details=diagnostics.open_download(source[0],include_runtime=True)
+                except diagnostics.DiagnosticLogError as error:
+                    return self.reply(error.status,dict(code=error.code,params={}))
+                except OSError:
+                    return self.reply(503,dict(code='diagnostics.readFailed',params={}))
+                with stream:
+                    self.send_response(200)
+                    self.send_header('Content-Type','text/plain; charset=utf-8')
+                    self.send_header('Content-Length',str(details.st_size))
+                    self.send_header('Content-Disposition','attachment; filename="'+name+'"')
+                    self.send_header('Cache-Control','no-store')
+                    self.send_header('X-Content-Type-Options','nosniff')
+                    self.end_headers()
+                    remaining=details.st_size
+                    try:
+                        while remaining:
+                            chunk=stream.read(min(65536,remaining))
+                            if not chunk:break
+                            self.wfile.write(chunk)
+                            remaining-=len(chunk)
+                    except (BrokenPipeError,ConnectionResetError):pass
+                return
             if path=='/api/frame.png':
                 request_studio_frame()
                 f=DESIGNS/'studio-frame.png';return self.reply(200,f.read_bytes(),'image/png') if f.exists() else self.reply(404,{'error':'尚无实机画面'})
@@ -744,9 +839,9 @@ class Handler(BaseHTTPRequestHandler):
             if path in ('/api/legacy-cf.json','/api/legacy-ir.json'):
                 oid=path.split('-')[1].split('.')[0];f=storage.legacy_asset('legacy-'+oid+'.json');return self.reply(200,json.loads(f.read_text('utf-8')) if f and f.exists() else None)
             if path.startswith('/exports/'):
-                name=path.split('/')[-1]
-                if not re.fullmatch(r'[a-z0-9-]+\.zip',name):raise ValueError('文件名无效')
-                return self.reply(200,(EXPORTS/name).read_bytes(),'application/zip')
+                name=urllib.parse.unquote(path[len('/exports/'):])
+                if len(name)>200 or Path(name).name!=name or not name.endswith('.zip'):raise ValueError('文件名无效')
+                return self.reply(200,project_bundles._safe(EXPORTS,name).read_bytes(),'application/zip')
             file={'/scene-assets.js':'scene-assets.js','/scene-assets.css':'scene-assets.css','/studio-status.css':'studio-status.css','/studio-status.js':'studio-status.js','/standalone.js':'standalone.js','/broadcasts':'broadcasts.html','/broadcasts.html':'broadcasts.html','/broadcasts.js':'broadcasts.js','/broadcasts.css':'broadcasts.css','/':'index.html','/index.html':'index.html','/app.js':'app.js','/preview-background.js':'preview-background.js','/sleeve-mapping.js':'sleeve-mapping.js','/pearl-accessories.js':'pearl-accessories.js','/head-segments.js':'head-segments.js','/color-gradients.js':'color-gradients.js','/puppet-arms.js':'puppet-arms.js','/wardrobe.js':'wardrobe.js','/necklaces.js':'necklaces.js','/legacy-preview.js':'legacy-preview.js','/style.css':'style.css','/dialogue':'dialogue.html','/dialogue.html':'dialogue.html','/dialogue.js':'dialogue.js','/line-actions.js':'line-actions.js','/dialogue.css':'dialogue.css','/pearls':'pearls.html','/pearls.html':'pearls.html','/pearls.js':'pearls.js','/pearl-icons.js':'pearl-icons.js','/pearls.css':'pearls.css'}.get(path)
             if path in ('/projections','/projections.html','/projections.js','/projections.css','/projection-depth.js'):file='projections.html' if path in ('/projections','/projections.html') else path.lstrip('/')
             if path in ('/rooms','/rooms.html','/rooms.js','/rooms.css','/overseer-preview.js'):file='rooms.html' if path in ('/rooms','/rooms.html') else path.lstrip('/')
@@ -768,24 +863,38 @@ class Handler(BaseHTTPRequestHandler):
                 linked=storage.legacy_asset(file) if file=='legacy-preview.js' else None
                 return self.reply(200,(linked or ROOT/file).read_bytes(), 'text/html; charset=utf-8' if file.endswith('html') else 'text/css; charset=utf-8' if file.endswith('css') else 'application/javascript; charset=utf-8')
             self.reply(404,{'error':'未找到'})
-        except (OSError,ValueError,KeyError,TypeError) as e:self.reply(400,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
-        except Exception as e:self.reply(500,diagnostics.error_payload(e,urllib.parse.urlparse(self.path).path))
+        except (OSError,ValueError,KeyError,TypeError) as e:self.reply(400,diagnostics.error_payload(e,self.path))
+        except Exception as e:self.reply(500,diagnostics.error_payload(e,self.path))
     @default_text.request_language
     @server_lifecycle.request
     def do_POST(self):
         if self.headers.get('Origin') not in (f'http://127.0.0.1:{PORT}',f'http://localhost:{PORT}'):return self.reply(403,{'error':'拒绝外部来源'})
         try:
+            path=self.request_path()
             n=int(self.headers.get('Content-Length','0'))
-            if self.path in ('/api/project-package-inspect','/api/import-project-package'):
+            if path=='/api/studio-session':
+                if not 0<n<=2048:raise ValueError('Invalid editor page session size.')
+                payload=self.rfile.read(n)
+                if len(payload)!=n:raise ValueError('Incomplete editor page session.')
+                accepted=self.server.page_session(json.loads(payload))
+                return self.reply(200 if accepted else 503,dict(ok=accepted))
+            if path in ('/api/project-package-inspect','/api/import-project-package'):
                 if not 0<n<=project_packages.MAX_COMPRESSED:raise ValueError('项目包压缩体积超限')
                 payload=self.rfile.read(n)
                 if len(payload)!=n:raise ValueError('项目包上传不完整')
                 with LOCK:
-                    result=project_packages.inspect_import(payload,sys.modules[__name__]) if self.path.endswith('-inspect') else project_packages.import_package(payload,sys.modules[__name__],replace=self.headers.get('X-MI-Replace-Project')=='1')
+                    choices=json.loads(self.headers.get('X-MI-Import-Choices','{}'))
+                    result=project_bundles.inspect_import(payload,sys.modules[__name__]) if path.endswith('-inspect') else project_bundles.import_package(payload,sys.modules[__name__],replace=self.headers.get('X-MI-Replace-Project')=='1',choices=choices)
                 return self.reply(200,result)
-            limit=128*1024*1024 if self.path in ('/api/export-playable','/api/export-settings') else 16000000
-            if not 0<n<limit:raise ValueError('导出配置体积超限' if self.path in ('/api/export-playable','/api/export-settings') else '项目体积超限')
-            data=json.loads(self.rfile.read(n));path=self.path
+            limit=128*1024*1024 if path in ('/api/export-playable','/api/export-settings','/api/export-file-import') else 16000000
+            if not 0<n<limit:raise ValueError('导出配置体积超限' if path in ('/api/export-playable','/api/export-settings') else '项目体积超限')
+            data=json.loads(self.rfile.read(n))
+            if path=='/api/export-file-import':
+                with LOCK:result=export_file_import.import_missing(data,sys.modules[__name__])
+                return self.reply(200,result)
+            if path=='/api/project-bundle-mod-check':
+                with LOCK:result=project_bundles.inspect_mods(data)
+                return self.reply(200,result)
             if path=='/api/install-paths':
                 if not isinstance(data,dict):raise ValueError('Installation settings must be an object.')
                 return self.reply(200,installation_paths(data))
@@ -833,11 +942,17 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/room-draft':
                 with LOCK:result=studio_drafts.save(data,atomic)
                 return self.reply(200,result)
+            if path in ('/api/room-workflow/names','/api/room-workflow/cancel','/api/room-workflow/apply'):
+                with LOCK:
+                    if path.endswith('/names'):result=room_workflow.names(data,sys.modules[__name__])
+                    elif path.endswith('/cancel'):result=room_workflow.cancel(data)
+                    else:result=room_workflow.apply(data,sys.modules[__name__])
+                return self.reply(200,result)
             if path=='/api/room-binding/preview':
                 with LOCK:result=room_migration.preview(data['projectId'],data['binding'])
                 return self.reply(200,result)
             if path=='/api/room-binding/apply':
-                with LOCK:result=room_migration.apply(data['projectId'],data['binding'],data.get('token'),sys.modules[__name__])
+                with LOCK:result=room_migration.apply(data['projectId'],data['binding'],data.get('token'),sys.modules[__name__],draft_revision=data.get('draftRevision'))
                 return self.reply(200,result)
             if path=='/api/export-standalone':
                 with LOCK:result=export_with_room_choices(data,lambda:standalone.build(data,sys.modules[__name__]))
@@ -854,12 +969,14 @@ class Handler(BaseHTTPRequestHandler):
                 with LOCK:result=export_with_room_choices(data,lambda:export_room_plan(data))
                 return self.reply(200,result)
             if path=='/api/export-project-package':
-                with LOCK:result=export_with_room_choices(data,lambda:project_packages.export_package(data['projectId'],data.get('extraRooms',[]),sys.modules[__name__]),[data['projectId']])
+                with LOCK:
+                    ids=data.get('projects',[data['projectId']] if data.get('projectId') else [])
+                    result=export_with_room_choices(data,lambda:project_bundles.export_package(data,sys.modules[__name__]),ids) if ids else project_bundles.export_package(data,sys.modules[__name__])
                 return self.reply(200,result)
             if path=='/api/export-room-check':
                 with LOCK:
-                    selected=export_projects(data.get('projects',[]))
-                    result=room_source_choices.preflight(selected,export_checked_rooms(data,selected))
+                    selected=[] if data.get('scope')=='region' and data.get('projects',[])==[] else export_projects(data.get('projects',[]))
+                    result=room_source_choices.preflight(selected,export_checked_rooms(data,selected),region=data.get('region') if data.get('scope')=='region' else None)
                 return self.reply(200,result)
             if path=='/api/chamber-preset-project':
                 with LOCK:result=chamber_presets.create(data,sys.modules[__name__])
@@ -890,7 +1007,7 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/sync-room':
                 with LOCK:
                     project_lifecycle.assert_active(data['projectId'])
-                    result=sync_rained(data['projectId'],data['kind'])
+                    result=sync_rained(data['projectId'],data['kind'],data.get('apply',True),data.get('forExport',False))
                 return self.reply(200,result)
             if path=='/api/dialogue':
                 with LOCK:

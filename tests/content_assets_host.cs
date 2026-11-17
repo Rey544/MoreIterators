@@ -10,6 +10,7 @@ namespace RWCustom {
  
 public static class AssetManager {
  public static string Root;
+ public static int ListCalls;public static bool Fail;public static Action OnList;
  public static string GetConsoleFilesSubfolder(){return "";}
  static IEnumerable<string> Roots(){
   if(!String.IsNullOrEmpty(Root))yield return Path.Combine(Root,"mergedmods");
@@ -22,6 +23,7 @@ public static class AssetManager {
   if(!String.IsNullOrEmpty(Root))yield return Root;
  }
  public static string[] ListDirectory(string path,bool directories=false,bool includeAll=false,bool moddedOnly=false){
+  ListCalls++;if(Fail)throw new IOException("fixture enumeration failure");if(OnList!=null)OnList();
   var files=new List<string>();var names=new HashSet<string>();
   foreach(string root in Roots()){
    if(moddedOnly&&root==Root)continue;

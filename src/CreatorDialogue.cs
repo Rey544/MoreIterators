@@ -86,7 +86,8 @@ public sealed class CreatorDialogue {
  public CreatorDialogue(Oracle o){oracle=o;speech=new CreatorSpeech(o);unmarkedVoice=new CreatorVoice(o);Attach();restart=CreatorEncounter.Restart;mode=CreatorRuntime.Mode;config=IteratorDesign.ForRoom(o.room).dialogueJson;voicePreview=CreatorVoicePreview.WithoutMark(oracle);}
  void Attach(){string id=IteratorDesign.ForRoom(oracle.room).oracleId;if(!sessions.TryGetValue(id,out session)||session.game!=oracle.room.game){session=new Session{game=oracle.room.game,firstComplete=CreatorPearlReader.CompletedStory(oracle,id)};sessions[id]=session;}if(session.owner!=oracle){session.state=new CreatorDialogueState();session.entered=session.firstComplete;session.owner=oracle;}state=session.state;state.BeforeAction=delegate(CreatorGroupAction action,Action<bool> finished,Action<int> steps){CreatorDialogueActions.For(oracle).Schedule(action,listener,finished,steps);};state.LineCompleted=delegate(CreatorDialogueLine line){if(CreatorGroupAction.GrantsMark(line.action)&&!HasMark())markAttempted=true;var action=CreatorDialogueActions.For(oracle).Completed(line.action,listener);if(action!=null)action();};}
  void StopHUD(){speech.Clear();}
- public void Suspend(){state.Interrupt(new CreatorDialogueLine[0]);StopHUD();ResetUnmarkedVoice();}
+ public void Suspend(){Suspend(true,true);}
+ public void Suspend(bool ownsState,bool clearHud){if(ownsState)state.Interrupt(new CreatorDialogueLine[0]);speech.Clear(ownsState&&clearHud);ResetUnmarkedVoice();}
  // Sample departure before speech/action/reception gates. Clearing a dead player's
  // HUD must not count as finishing the interrupted line.
  public void ObservePresence(Player player){

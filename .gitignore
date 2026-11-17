@@ -19,3 +19,17 @@ Thumbs.db
 .DS_Store
 /runtime/
 /editor/StudioShell.exe
+bin/
+obj/
+/plugins/
+logs/
+evidence/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+node_modules/
+*.exe
+*.cache
+*.user
+*.suo

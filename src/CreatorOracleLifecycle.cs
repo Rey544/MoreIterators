@@ -6,12 +6,17 @@ namespace MoreIterators {
  // Own the whole constructor lifetime, including a room loader constructing an
  // oracle before ReadyForAI. Renaming only around our own `new Oracle` misses it.
  public static class CreatorOracleLifecycle {
-  sealed class Ownership {public bool constructing=true,attaching,reportedNative;}
+  sealed class Ownership {public bool constructing=true,attaching,reportedNative,pendingInitialPlacement;public UnityEngine.Vector2 initialPosition;}
   sealed class EncounterOwner {public Oracle oracle;}
   static readonly ConditionalWeakTable<Oracle,Ownership> owned=new ConditionalWeakTable<Oracle,Ownership>();
   static readonly ConditionalWeakTable<Room,EncounterOwner> encounters=new ConditionalWeakTable<Room,EncounterOwner>();
 
   public static bool Owns(Oracle oracle){Ownership value;return oracle!=null&&owned.TryGetValue(oracle,out value);}
+  public static bool ConsumeInitialPlacement(Oracle oracle){
+   Ownership state;if(oracle==null||!owned.TryGetValue(oracle,out state)||state.constructing||oracle.room==null||oracle.firstChunk==null)return false;
+   bool initial=state.pendingInitialPlacement;state.pendingInitialPlacement=false;
+   return initial&&(oracle.firstChunk.pos-state.initialPosition).sqrMagnitude<.25f;
+  }
   static string Context(Oracle oracle){return "room="+(oracle.room==null||oracle.room.abstractRoom==null?"<none>":oracle.room.abstractRoom.name)+" entity="+(oracle.abstractPhysicalObject==null?"<none>":oracle.abstractPhysicalObject.ID.ToString())+" behavior="+(oracle.oracleBehavior==null?"<none>":oracle.oracleBehavior.GetType().FullName);}
 
   // Behaviour ownership is established before a directly constructed copy can
@@ -48,10 +53,11 @@ namespace MoreIterators {
    if(!Owns(oracle)||oracle.room==null||!oracle.room.readyForAI||!(oracle.oracleBehavior is IteratorBehavior))return false;
    var room=oracle.room;var state=encounters.GetValue(room,delegate(Room key){return new EncounterOwner();});
    if(state.oracle!=null&&!state.oracle.slatedForDeletetion&&state.oracle.room==room)return false;
-   foreach(var item in room.updateList)if(item is CreatorEncounter&&!item.slatedForDeletetion)return false;
+   foreach(var item in room.updateList){var encounter=item as CreatorEncounter;if(encounter==null||encounter.slatedForDeletetion)continue;if(encounter.Owns(oracle)){state.oracle=oracle;return false;}if(encounter.OwnerPresent)return false;}
    state.oracle=oracle;return true;
   }
-  public static void ReleaseEncounter(Oracle oracle){EncounterOwner state;if(oracle!=null&&oracle.room!=null&&encounters.TryGetValue(oracle.room,out state)&&state.oracle==oracle)state.oracle=null;}
+  public static void ReleaseEncounter(Oracle oracle){ReleaseEncounter(oracle,oracle==null?null:oracle.room);}
+  public static void ReleaseEncounter(Oracle oracle,Room room){EncounterOwner state;if(oracle!=null&&room!=null&&encounters.TryGetValue(room,out state)&&state.oracle==oracle)state.oracle=null;}
   public static bool ControlsRoom(Oracle oracle){EncounterOwner state;return !Owns(oracle)||(oracle.room!=null&&encounters.TryGetValue(oracle.room,out state)&&state.oracle==oracle);}
   static bool OwnsRoom(Room room){
    if(room==null||room.abstractRoom==null)return false;
@@ -73,7 +79,9 @@ namespace MoreIterators {
    string original=room.abstractRoom.name;
    CreatorRoomSettings.CaptureGravity(room);
    bool moon=ModManager.MSC&&IteratorDesign.ForId(IteratorCatalog.Id(original)).nativeOracle=="DM";
-   var ownership=new Ownership();owned.Add(oracle,ownership);
+   var ownership=new Ownership{pendingInitialPlacement=true};
+   foreach(var item in room.updateList){var existing=item as Oracle;if(existing!=null&&existing!=oracle&&!existing.slatedForDeletetion&&existing.room==room){ownership.pendingInitialPlacement=false;break;}}
+   owned.Add(oracle,ownership);
    try {
     room.abstractRoom.name=moon?"DM_AI":"SS_AI";
     orig(oracle,abstractObject,room);
@@ -90,6 +98,7 @@ namespace MoreIterators {
     if(oracle.myScreen==null){oracle.myScreen=new OracleProjectionScreen(room,oracle.oracleBehavior);room.AddObject(oracle.myScreen);}
    }
    EnsureBehavior(oracle,false);
+   if(oracle.firstChunk!=null)ownership.initialPosition=oracle.firstChunk.pos;
   }
 
   static void SetUpSwarmers(On.Oracle.orig_SetUpSwarmers orig,Oracle oracle){

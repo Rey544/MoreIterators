@@ -20,7 +20,7 @@ function buildNecklaceSettings(host,d,changed){
  }
  function rebuild(){
   rows.replaceChildren();for(let i=0;i<d.necklaceCount;i++){
-   d.necklaces[i]??=necklaceStrand(i);let v=d.necklaces[i],section=document.createElement('details'),title=document.createElement('summary');title.textContent='第 '+(i+1)+' 条项链';section.append(title);section.open=i===0;rows.append(section);const prefix='项链 '+(i+1)+' 的 ';
+   d.necklaces[i]??=necklaceStrand(i);let v=d.necklaces[i],section=document.createElement('details'),title=document.createElement('summary');title.textContent='第 '+(i+1)+' 条项链';section.dataset.sectionId='necklace:'+i;section.append(title);section.open=i===0;rows.append(section);const prefix='项链 '+(i+1)+' 的 ';
    const slider=(label,key,min,max,step,after)=>field(section,prefix+label,v,key,'range',min,max,step,null,after);
    function copySize(parent,label,get,set){let box=document.createElement('div');box.className='tools';for(let action of ['复制','粘贴']){let b=document.createElement('button');b.textContent=action+label;b.setAttribute('aria-label',prefix+action+label);b.onclick=()=>{if(action==='复制'){necklaceSizeClipboard=get();notice('已复制大小 '+necklaceSizeClipboard);}else if(necklaceSizeClipboard!==null){set(necklaceSizeClipboard);changed();}else notice('请先复制一个大小。');};box.append(b);}parent.append(box);}
    let individual,sizeDetails;slider('珍珠数量','pearls',0,32,1,()=>{if(individual)individual();if(sizeDetails)sizeDetails();});let strandSize=slider('珍珠直径','size',.6,6,.1);copySize(section,'本层大小',()=>v.size,n=>{v.size=n;strandSize.querySelector('input').value=n;strandSize.querySelector('output').textContent=n;});
@@ -46,11 +46,11 @@ function drawNecklaces(ctx,d,anchors,guides){
  for(let n=d.necklaceCount-1;n>=0;n--){
   let row=d.necklaces[n]||necklaceStrand(n),a=[center[0]+row.leftX*scale,center[1]-row.leftY*scale],b=[center[0]+(row.symmetric?-row.leftX:row.rightX)*scale,center[1]-(row.symmetric?row.leftY:row.rightY)*scale],points=[],total=0;
   ctx.strokeStyle=row.stringColor;ctx.lineWidth=row.thickness*scale;ctx.lineJoin='round';ctx.beginPath();
-  for(let i=0;i<25;i++){let u=i/24,p=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u+4*row.sag*scale*u*(1-u)];if(i){total+=Math.hypot(p[0]-points[i-1][0],p[1]-points[i-1][1]);ctx.lineTo(...p);}else ctx.moveTo(...p);points.push(p);}ctx.stroke();
+  for(let i=0;i<25;i++){let u=i/24,p=[a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u+4*row.sag*scale*u*(1-u)];if(i){total+=Math.hypot(p[0]-points[i-1][0],p[1]-points[i-1][1]);ctx.lineTo(...p);}else ctx.moveTo(...p);points.push(p);}ctx.stroke();for(let i=1;i<points.length;i++)PreviewSelection.line('necklace:'+n,points[i-1],points[i],row.thickness*scale,ctx);
   for(let i=0;i<row.pearls;i++){
    let remaining=total*(i+1)/(row.pearls+1),p=points[0];for(let j=1;j<points.length;j++){let len=Math.hypot(points[j][0]-points[j-1][0],points[j][1]-points[j-1][1]);if(remaining<=len||j===24){let u=len?Math.min(1,remaining/len):0;p=points[j-1].map((v,k)=>v+(points[j][k]-v)*u);break;}remaining-=len;}
    let style=necklaceStyle(row,i),diameter=(row.beads[i]?.size||row.size)*scale;
-   MIPearlIcons.drawAt(ctx,p[0],p[1],diameter,MIPearlIcons.accessoryAppearance(style));
+   PreviewSelection.ellipse('necklace:'+n,p[0],p[1],diameter/2,ctx);MIPearlIcons.drawAt(ctx,p[0],p[1],diameter,MIPearlIcons.accessoryAppearance(style));
   }
   if(guides&&document.getElementById('necklaceSettings')?.open){ctx.fillStyle=referenceColor();ctx.fillRect(a[0]-.4,a[1]-.4,.8,.8);ctx.fillRect(b[0]-.4,b[1]-.4,.8,.8);}
  }

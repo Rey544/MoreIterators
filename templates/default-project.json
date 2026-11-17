@@ -16,7 +16,7 @@
     "sleeveMapping": "front",
     "armJointColor": "#414b48",
     "collarColor": "#98464b",
-    "antennaTint": true,
+    "antennaTint": false,
     "antennaInnerColor": "#9cafaa",
     "antennaOuterColor": "#323e3d",
     "necklaceCount": 0,

@@ -56,7 +56,7 @@ def copy_owned_room(project, source, directory, name, kind, server, replace=Fals
 
 def require_portable_subset(text, name):
     
-    effects = re.search(r'(?m)^Effects:\s*([^\r\n]*)', text)
+    effects = re.search(r'(?m)^Effects:[ \t]*([^\r\n]*)', text)
     if effects and any(float(match[1]) > 0 for match in re.finditer(r'(?:^|,\s*)AboveCloudsView-([0-9.]+)-', effects[1])):
         raise ValueError('房间 ' + name + ' 的天空远景依赖完整区域坐标，请使用整片区域导出。')
 
@@ -80,11 +80,11 @@ def effective_palette_settings(project, source):
                 found = [p for p in folder.iterdir() if p.name.casefold() == filename.casefold() and p.is_file()]
                 if len(found) == 1:return found[0]
         return None
-    template = re.search(r'(?m)^Template:\s*([^\r\n]+)', text)
+    template = re.search(r'(?m)^Template:[ \t]*([^ \t\r\n][^\r\n]*)', text)
     template_name = template[1].strip() if template else ''
     if not template_name:
         properties = region_file('properties.txt')
-        names = re.search(r'(?m)^Room Setting Templates:\s*([^\r\n]+)', properties.read_text('utf-8-sig')) if properties else None
+        names = re.search(r'(?m)^Room Setting Templates:[ \t]*([^ \t\r\n][^\r\n]*)', properties.read_text('utf-8-sig')) if properties else None
         if names:template_name = region.lower() + '_settingstemplate_' + names[1].split(',')[0].strip()
     palette = 0
     if template_name and template_name.upper() != 'NONE':
@@ -92,9 +92,9 @@ def effective_palette_settings(project, source):
             raise ValueError('房间模板名称无效：' + template_name)
         file = region_file(template_name.lower() + '.txt')
         if file is None:raise ValueError('房间模板缺失：' + template_name)
-        inherited = re.search(r'(?m)^Palette:\s*(\d+)\b', file.read_text('utf-8-sig'))
+        inherited = re.search(r'(?m)^Palette:[ \t]*(\d+)\b', file.read_text('utf-8-sig'))
         if inherited:palette = int(inherited[1])
-    direct = re.search(r'(?m)^Palette:\s*(\d+)\b', text)
+    direct = re.search(r'(?m)^Palette:[ \t]*(\d+)\b', text)
     if direct:palette = int(direct[1])
-    fade = re.search(r'(?m)^FadePalette:\s*([^\r\n]+)', text)
+    fade = re.search(r'(?m)^FadePalette:[ \t]*([^ \t\r\n][^\r\n]*)', text)
     return dict(palette=palette, fade=fade[1].split(',') if fade else [], text=text)

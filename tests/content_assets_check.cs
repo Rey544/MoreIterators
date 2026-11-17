@@ -7,11 +7,11 @@ using MoreIterators;
  
 public static class ModManager {
  public sealed class Mod {
-  public string id,path,TargetedPath,NewestPath;
-  public bool hasTargetedVersionFolder,hasNewestFolder;
+  public string id,path,basePath,version,targetGameVersion,TargetedPath,NewestPath;public int loadOrder;
+  public bool enabled=true,hasTargetedVersionFolder,hasNewestFolder;
   public Mod(string id,string path){this.id=id;this.path=path;TargetedPath=Path.Combine(path,"targeted");NewestPath=Path.Combine(path,"newest");}
  }
- public static List<Mod> ActiveMods=new List<Mod>();
+ public static bool InitializationScreenFinished=true;public static List<Mod> ActiveMods=new List<Mod>();
 }
 namespace RWCustom {public static class Custom {public static string Root;public static string RootFolderDirectory(){return Root;}}}
 namespace UnityEngine {public static class Debug {public static void LogWarning(object value){Console.WriteLine(value);}}}

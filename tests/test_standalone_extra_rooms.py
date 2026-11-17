@@ -159,13 +159,64 @@ class ExtraRoomExportTests(unittest.TestCase):
             self.assertEqual(self.read(archive,'world/zx-rooms/ZX_ENTRY_settings.txt').decode().splitlines(),settings.splitlines())
             self.assertEqual(self.read(archive,'world/zx-rooms/ZX_ENTRY_1.png'),camera.read_bytes())
 
-    def test_template_inheritance_is_blocked_instead_of_silently_erased(self):
+    def test_unregistered_template_keeps_native_fallback_and_missing_registered_template_is_blocked(self):
         settings=Path(str(self.source('ZX_EXTRA'))+'_settings.txt')
         settings.write_text('Template: ZX_SettingsTemplate_Custom\n','utf-8')
-        with self.assertRaisesRegex(ValueError,'模板依赖'):self.archive(['ZX_EXTRA'])
+        with self.archive(['ZX_EXTRA']) as archive:
+            self.assertIn(b'Template: ZX_SettingsTemplate_Custom',self.read(archive,'world/zx-rooms/ZX_EXTRA_settings.txt'))
         settings.write_text('Palette: 26\n','utf-8')
         properties=self.local/'world/zx/properties.txt';properties.write_text('Room Setting Templates: Custom\n','utf-8')
-        with self.assertRaisesRegex(ValueError,'模板依赖'):self.archive(['ZX_EXTRA'])
+        with self.assertRaisesRegex(ValueError,'缺少房间模板'):self.archive(['ZX_EXTRA'])
+
+    def test_sky_room_carries_normalized_coordinates_and_only_selected_map_rows(self):
+        folder=self.local/'world/zx'
+        (folder/'map_zx.txt').write_text('\n'.join(row['name']+': '+str(i*100)+'><'+str(i*50)+'><0><0><0' for i,row in enumerate(self.rows))+'\n','utf-8')
+        Path(str(self.source('ZX_ENTRY'))+'_settings.txt').write_text('Template: NONE\nEffects: AboveCloudsView-1-0-0\n','utf-8')
+        before={str(path):path.read_bytes() for path in self.data.rglob('*') if path.is_file()}
+        with self.archive() as archive:
+            context=json.loads(self.read(archive,'world/zx-rooms/ZX_ENTRY_mi_background.json'))
+            self.assertEqual(context['room'],'ZX_ENTRY');self.assertEqual(context['sourceRegion'],'ZX')
+            self.assertEqual(context['size'],[4,4]);self.assertEqual(context['mapPosition'],[106.0,56.0])
+            text=self.read(archive,'world/zx/map_zx.txt').decode()
+            self.assertIn('ZX_AI:',text);self.assertIn('ZX_ENTRY:',text)
+            self.assertNotIn('ZX_EXTRA:',text);self.assertNotIn('ZX_UNUSED:',text)
+        self.assertEqual(before,{str(path):path.read_bytes() for path in self.data.rglob('*') if path.is_file()})
+
+    def test_cross_region_sky_template_and_sidecar_follow_new_room_identity(self):
+        source=self.external();folder=source.parent.parent/'su';folder.mkdir()
+        (folder/'properties.txt').write_text('Palette: 26\nRoom Setting Templates: Sky\n','utf-8')
+        (folder/'su_settingstemplate_sky.txt').write_text('Effects: AboveCloudsView-1-0-0\nPalette: 26\n','utf-8')
+        (folder/'map_su.txt').write_text('SU_A01: 100><200><0><0><0\n','utf-8')
+        (folder/'world_su.txt').write_text('ROOMS\nSU_A01 : DISCONNECTED, DISCONNECTED\nEND ROOMS\n','utf-8')
+        Path(str(source)+'_settings.txt').write_text('Template: SU_settingstemplate_sky\n','utf-8')
+        with self.archive(['SU_A01']) as archive:
+            self.assertIn(b'Template: ZX_settingstemplate_sky',self.read(archive,'world/zx-rooms/ZX_SU_A01_settings.txt'))
+            self.assertIn(b'AboveCloudsView-1',self.read(archive,'world/zx/zx_settingstemplate_sky.txt'))
+            context=json.loads(self.read(archive,'world/zx-rooms/ZX_SU_A01_mi_background.json'))
+            self.assertEqual(context['room'],'ZX_SU_A01');self.assertEqual(context['sourceRegion'],'SU')
+            self.assertIn(b'ZX_SU_A01:',self.read(archive,'world/zx/map_zx.txt'))
+            manifest=json.loads(self.read(archive,'content-manifest.json'))
+            self.assertIn('world/zx-rooms/ZX_SU_A01_mi_background.json',manifest['extraRooms'][0]['files'])
+
+    def test_zero_strength_sky_does_not_require_world_coordinates(self):
+        Path(str(self.source('ZX_ENTRY'))+'_settings.txt').write_text('Template: NONE\nEffects: AboveCloudsView-0-0-0\n','utf-8')
+        with self.archive() as archive:
+            self.assertFalse(any('_mi_background.json' in name for name in archive.namelist()))
+
+    def test_imported_background_context_is_reusable_without_original_region(self):
+        folder=self.local/'world/zx';(folder/'world_zx.txt').unlink()
+        Path(str(self.source('ZX_ENTRY'))+'_settings.txt').write_text('Template: NONE\nEffects: AboveCloudsView-1-0-0\n','utf-8')
+        context=dict(schema='moreiterators.background-coordinates.v1',room='ZX_ENTRY',sourceRegion='ZX',size=[4,4],mapPosition=[106.0,56.0])
+        Path(str(self.source('ZX_ENTRY'))+'_mi_background.json').write_text(json.dumps(context),'utf-8')
+        with self.archive() as archive:self.assertEqual(json.loads(self.read(archive,'world/zx-rooms/ZX_ENTRY_mi_background.json')),context)
+
+    def test_oe_sky_cannot_silently_lose_its_special_behavior_in_another_region(self):
+        source=self.source('OE_ENTRY');self.render(source,'OE_ENTRY')
+        Path(str(source)+'_settings.txt').write_text('Template: NONE\nEffects: AboveCloudsView-1-0-0\n','utf-8')
+        destination=self.root/'export/world/zx-rooms'
+        with self.assertRaisesRegex(ValueError,'OE 天空远景暂不支持跨区域导出'):
+            standalone.copy_selected_room(self.project,source,'OE_ENTRY','ZX_OE_ENTRY',destination,server,core=False)
+        self.assertFalse(destination.exists())
 
     def test_unused_registered_templates_have_exact_manifest_and_palette(self):
         folder=self.local/'world/zx';(folder/'properties.txt').write_text('Room Setting Templates: Empty, Blue\nPalette: 26\n','utf-8')
@@ -198,6 +249,37 @@ class ExtraRoomExportTests(unittest.TestCase):
             manifest=stage/'content-manifest.json';value=json.loads(manifest.read_text('utf-8'))
             value['extraRooms'][0]['files'].append('world/zx-rooms/ZX_SECRET.txt');standalone.dump(manifest,value)
             with self.assertRaisesRegex(ValueError,'白名单'):standalone.audit(stage,['selected'],['ZX_EXTRA'])
+
+    def connection_plan(self,links):
+        self.project['roomConnections']=dict(version=2,ownedRegions=['ZX'],rows=[
+            dict(name=name,region='ZX',connections=values,tags='',owned=name in ('ZX_AI','ZX_ENTRY'),
+                 **({'kind':'ai' if name=='ZX_AI' else 'entry'} if name in ('ZX_AI','ZX_ENTRY') else {}))
+            for name,values in links.items()])
+
+    def test_v2_export_keeps_explicit_exit_choices_instead_of_binding_defaults(self):
+        self.connection_plan({'ZX_AI':['DISCONNECTED','ZX_ENTRY'],'ZX_ENTRY':['DISCONNECTED','ZX_AI']})
+        with self.archive() as archive:
+            world=self.read(archive,'world/zx/world_zx.txt').decode()
+            self.assertIn('ZX_AI : DISCONNECTED, ZX_ENTRY',world)
+            self.assertIn('ZX_ENTRY : DISCONNECTED, ZX_AI',world)
+            records=json.loads(self.read(archive,'moreiterators/registry.json'))
+            self.assertEqual((records[0]['exitNode'],records[0]['entryNode']),(1,1))
+
+    def test_v2_indirect_route_requires_selected_intermediate_room(self):
+        self.connection_plan({'ZX_AI':['ZX_EXTRA','DISCONNECTED'],'ZX_ENTRY':['ZX_EXTRA','DISCONNECTED'],
+                              'ZX_EXTRA':['ZX_AI','ZX_ENTRY']})
+        with self.assertRaisesRegex(ValueError,'ZX_EXTRA'):self.archive()
+        with self.archive(['ZX_EXTRA']) as archive:
+            world=self.read(archive,'world/zx/world_zx.txt').decode()
+            self.assertIn('ZX_AI : ZX_EXTRA, DISCONNECTED',world)
+            self.assertIn('ZX_ENTRY : ZX_EXTRA, DISCONNECTED',world)
+            self.assertIn('ZX_EXTRA : ZX_AI, ZX_ENTRY',world)
+            self.assertNotIn('ZX_AI : ZX_ENTRY',world)
+
+    def test_v2_read_keeps_selected_links_despite_old_world_and_metadata(self):
+        self.connection_plan({'ZX_AI':['ZX_EXTRA','ZX_ENTRY'],'ZX_ENTRY':['DISCONNECTED','ZX_AI']})
+        links,tags=project_packages.selected_room_connections(self.project,'ZX_AI',self.source('ZX_AI'),rows={})
+        self.assertEqual(links,['ZX_EXTRA','ZX_ENTRY'])
 
 
 if __name__=='__main__':unittest.main()

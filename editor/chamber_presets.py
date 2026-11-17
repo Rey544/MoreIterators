@@ -227,6 +227,7 @@ def replace(request,server):
             row=dict(name=room,kind='ai',region=binding['region']);metadata['rooms'].append(row)
         planned=next(item for text in plan['worldFiles'].values() for item in room_bindings.parse_world(text,binding['region']) if item['name']==room)
         row.update(sourceAvailable=True,connections=list(planned['connections']),tags=planned.get('tags',''),updatedAtNs=stamp)
+        metadata=project_packages.complete_preset_metadata(project,metadata,plan)
         old_paths={file.relative_to(directory).as_posix() for file in originals}
         metadata['files']=[item for item in metadata['files'] if item['path'] not in old_paths]
         metadata['files'].extend(project_packages._records({file.relative_to(directory).as_posix():file.read_bytes() for file in room_files(project) if project_packages._local_file(file.relative_to(directory).as_posix())}))

@@ -19,7 +19,8 @@ public sealed class CreatorWorkPearl:DataPearl {
   records[ap.ID.ToString()]=new Record{world=room.world,home=room.abstractRoom.name,index=index,pearl=ap};room.abstractRoom.AddEntity(ap);
   var pearl=new CreatorWorkPearl(ap,room.world,index,room.abstractRoom.name);room.AddObject(pearl);pearl.firstChunk.HardSetPosition(p);return pearl;
  }
- public bool CanDrive{get{return !slatedForDeletetion&&room!=null&&room.abstractRoom.name==home&&grabbedBy.Count==0;}}
+ bool BrokenChamber{get{return room!=null&&IteratorDesign.ForRoom(room).chamberPreset=="mi-chamber-broken";}}
+ public bool CanDrive{get{return !slatedForDeletetion&&room!=null&&room.abstractRoom.name==home&&grabbedBy.Count==0&&!BrokenChamber;}}
  public void DriveTo(Vector2 p){if(!CanDrive){StopDriving();return;}target=p;drive=3;}
  public void StopDriving(){drive=0;tracked=false;gravity=.9f;}
  public override void Update(bool eu){
@@ -27,6 +28,7 @@ public sealed class CreatorWorkPearl:DataPearl {
   if(slatedForDeletetion||room==null)return;
   if(CreatorRuntime.Paused&&CanDrive)return;bool driven=drive>0;
   if(driven){if(!tracked)smoothed=pos;smoothed=Vector2.MoveTowards(smoothed,target,2.4f);firstChunk.vel=Vector2.ClampMagnitude(Vector2.Lerp(firstChunk.vel,Vector2.ClampMagnitude((smoothed-pos)*.09f,3.5f),.14f),3.5f);gravity=0;}else gravity=.9f;
+  if(BrokenChamber&&grabbedBy.Count==0)firstChunk.vel.y-=.9f*(1-room.gravity);
   tracked=driven;if(drive>0)drive--;base.Update(eu);glimmer=lastGlimmer=0;
  }
  public void Paint(RoomCamera.SpriteLeaser s){if(s.sprites.Length<3)return;Color c=IteratorDesign.ForId(CreatorRuntime.Id(home)).PearlColor(index);if(c==Color.black)c.g=1f/255;

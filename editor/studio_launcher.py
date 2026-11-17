@@ -1,7 +1,7 @@
 """Start the independent local editor before opening a requested studio page."""
 from pathlib import Path
 from contextlib import contextmanager
-import argparse,json,os,subprocess,sys,time,traceback,urllib.error,urllib.parse,urllib.request
+import argparse,hashlib,json,os,subprocess,sys,time,traceback,urllib.error,urllib.parse,urllib.request
 ROOT=Path(__file__).resolve().parent
 # A configured embedded Python may still list another MI copy in its _pth file.
 sys.path.insert(0,str(ROOT))
@@ -38,6 +38,13 @@ def online():
     if Path(data.get('dataDirectory','')).resolve()!=storage.DATA.resolve() or Path(data.get('editorDirectory','')).resolve()!=ROOT:
         raise RuntimeError(text('startup.other_directory',port=PORT))
     if data.get('closing'):raise ServerClosing(text('startup.game_closed'))
+    runtime=data.get('runtime')
+    fingerprint=runtime.get('serverSha256') if isinstance(runtime,dict) else None
+    if not isinstance(fingerprint,str) or len(fingerprint)!=64 or any(c not in '0123456789abcdefABCDEF' for c in fingerprint):
+        raise RuntimeError(text('startup.restart_required'))
+    try:expected=hashlib.sha256((ROOT/'server.py').read_bytes()).hexdigest()
+    except OSError as error:raise RuntimeError(text('startup.restart_required')) from error
+    if fingerprint.lower()!=expected:raise RuntimeError(text('startup.restart_required'))
     return True
 
 @contextmanager
@@ -106,6 +113,23 @@ def register_game_launcher(owner=None):
         temporary.write_text(json.dumps(value,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
         os.replace(temporary,config)
 
+def reserve_page_open(owner=None):
+    for attempt in range(2):
+        if owner:owner.require_alive()
+        request=urllib.request.Request(BASE+'/api/studio-session',data=b'{"event":"opening"}',
+            headers={'Origin':BASE,'Content-Type':'application/json'},method='POST')
+        try:
+            with HTTP.open(request,timeout=2) as response:
+                try:payload=json.load(response)
+                except (ValueError,TypeError):payload=None
+                if isinstance(payload,dict) and payload.get('ok') is True:return
+            raise RuntimeError(text('startup.failed',path=storage.archive_root()/'logs/server-startup.log'))
+        except urllib.error.HTTPError as error:
+            if error.code!=503 or attempt:raise
+        except (urllib.error.URLError,TimeoutError,OSError):
+            if attempt:raise
+        ensure_server(owner)
+
 def main(argv=None):
     parser=argparse.ArgumentParser()
     parser.add_argument('--page',choices=PAGES,default='appearance')
@@ -121,7 +145,9 @@ def main(argv=None):
     with server_lifecycle.owner_from(args) as owner:
         ensure_server(owner);register_game_launcher(owner)
         if owner:owner.require_alive()
-        if not args.no_browser and not desktop_launch.open_url(url):raise RuntimeError(text('startup.browser',url=url))
+        if not args.no_browser:
+            reserve_page_open(owner)
+            if not desktop_launch.open_url(url):raise RuntimeError(text('startup.browser',url=url))
     return url
 
 def run():

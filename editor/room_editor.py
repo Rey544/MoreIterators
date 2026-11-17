@@ -82,6 +82,8 @@ def rendered_source(pid,kind,roomnames,data_root=None):
         raise ValueError('Rained 尚未渲染 '+name+'；请在 Rained 保存后按 Ctrl+R，再回到这里同步。')
     text=Path(str(source)+'.txt').read_text('utf-8-sig').splitlines()
     if len(text)<4:raise ValueError('Rained 渲染结果不完整：'+name)
+    import project_packages
+    project_packages._geometry(Path(str(source)+'.txt').read_bytes(),name)
     cameras=[v.strip() for v in text[3].split('|') if v.strip()]
     if not cameras:raise ValueError('Rained 渲染结果没有相机：'+name)
     for i in range(1,len(cameras)+1):
@@ -94,15 +96,41 @@ def render(pid,kind,roomnames,source_hashes=None):
     if source_hashes is not None:
         source_hashes.update({file.name:hashlib.sha256(file.read_bytes()).hexdigest() for file in (source,source.with_suffix('.png')) if file.is_file()})
     data=rained_data_root(exe)
+    output=data/'Levels'/source.stem
+    previous={file.name:file.stat().st_mtime_ns for file in output.parent.glob(output.name+'*') if file.is_file()}
     app_data=storage.project_file(pid).parent/'rooms/.rained-renderer';app_data.mkdir(parents=True,exist_ok=True)
+    command=[str(exe),'--no-splash-screen','--app-data',str(app_data),'--data',str(data),'--render','--threads','1',str(source)]
+    message=''
     try:
-        result=subprocess.run([str(exe),'--no-splash-screen','--app-data',str(app_data),'--data',str(data),'--render','--threads','1',str(source)],cwd=str(exe.parent),capture_output=True,timeout=180)
+        result=subprocess.run(command,cwd=str(exe.parent),capture_output=True,timeout=180)
+        if result.returncode:
+            message=(result.stdout+result.stderr).decode('utf-8',errors='replace')
+            if all(value in message for value in ('error while loading materials:', 'System.NullReferenceException:',
+                    'at Rained.Assets.AssetPackManager.GetInitDirectories', 'at Rained.LuaScripting.APIBatchHost..ctor()', 'at Rained.Boot.LaunchBatch()')):
+                scripts=app_data/'scripts';blocker=None
+                try:
+                    if scripts.is_symlink():blocker=str(scripts)
+                    else:
+                        try:scripts.lstat()
+                        except FileNotFoundError:pass
+                        else:
+                            if not scripts.is_dir():blocker=str(scripts)
+                            else:blocker=', '.join(str(path) for path in sorted(scripts.iterdir())) or None
+                except OSError:blocker=str(scripts)
+                if blocker:raise ValueError('Rained 启动失败，未跳过自动加载脚本：'+blocker+'\n'+message[-2000:])
+                result=subprocess.run(command[:-1]+['--no-autoloads',command[-1]],cwd=str(exe.parent),capture_output=True,timeout=180)
+                if result.returncode:message+='\n'+(result.stdout+result.stderr).decode('utf-8',errors='replace')
     except subprocess.TimeoutExpired:
         raise ValueError('Rained 渲染超过 180 秒，房间未同步；请确认房间能在 Rained 正常渲染后重试。') from None
     if result.returncode:
-        message=(result.stdout+result.stderr).decode('utf-8',errors='replace')[-2000:]
-        raise ValueError('Rained 渲染失败：'+message)
-    return rendered_source(pid,kind,roomnames,data_root=data)
+        raise ValueError('Rained 渲染失败：'+message[-4000:])
+    rendered=rendered_source(pid,kind,roomnames,data_root=data)
+    text=rendered.with_suffix('.txt').read_text('utf-8-sig').splitlines()
+    cameras=[value for value in text[3].split('|') if value.strip()]
+    outputs=[rendered.with_suffix('.txt'),*[Path(str(rendered)+'_'+str(i)+'.png') for i in range(1,len(cameras)+1)]]
+    if any(previous.get(file.name)==file.stat().st_mtime_ns for file in outputs):
+        raise ValueError('Rained 渲染结果未更新，房间未同步：'+rendered.name)
+    return rendered
 
 def cached_source(pid,name):
     source=cache_base(pid,name)
@@ -116,19 +144,63 @@ def ensure_synced(pid,name):
     if cached is None or source.stat().st_mtime_ns>Path(str(cached)+'.txt').stat().st_mtime_ns:
         raise ValueError(name+' 有尚未同步的 Rained 修改；请先在 Rained 保存，再点击对应的“同步等待房间”或“同步演算室”，然后重新应用或导出。')
 
-def import_render(pid,kind,roomnames,settings_source):
+def apply_with_rollback(pid,oid,apply):
+    import room_migration
+    project=storage.project_file(pid)
+    roots=list(dict.fromkeys(path.resolve() for path in (storage.target_mod(pid),storage.installed_mod(pid),storage.history_directory(pid))))
+    files=[project,project.parent/'room-binding-plan.json',project.parent/'room-package.json',
+           storage.design_path(pid,oid),storage.RUNTIME/'creator/registry.json']
+    files += [file.with_suffix(file.suffix+'.tmp') for file in files]
+    def outputs():
+        result=set(files)
+        for root in roots:
+            for file in root.rglob('*'):
+                if not file.is_file():continue
+                if not file.resolve().is_relative_to(root):raise ValueError('房间同步输出路径越界')
+                result.add(file)
+        return result
+    with room_migration.staging_directory() as staged:
+        originals={}
+        for index,file in enumerate(sorted(outputs())):
+            backup=staged/str(index)
+            if file.is_file():shutil.copy2(file,backup);originals[file]=backup
+            else:originals[file]=None
+        try:return apply()
+        except Exception:
+            failures=[]
+            for file in outputs()|set(originals):
+                try:
+                    backup=originals.get(file)
+                    if backup is None:file.unlink(missing_ok=True)
+                    else:file.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(backup,file)
+                except OSError as error:failures.append(str(file)+': '+str(error))
+            if failures:raise OSError('房间同步回滚未完成：'+'; '.join(failures))
+            raise
+
+def import_render(pid,kind,roomnames,settings_source,apply=None):
     """Snapshot a Rained render into this project so deploy and export use it."""
     settings_source=Path(settings_source)
     if not settings_source.is_file():raise ValueError('缺少房间设置模板：'+str(settings_source))
+    import project_packages
+    project=storage.load_project(storage.valid_id(pid))
+    ai,entry,_=roomnames(project);name=ai if kind=='ai' else entry
+    settings_files=project_packages.room_settings_files(project,name,settings_source)
+    settings_bytes={filename:project_packages._file(path) for filename,path in settings_files.items()}
+    for filename,content in settings_bytes.items():project_packages._text(content,filename)
     source_hashes={}
     source=render(pid,kind,roomnames,source_hashes)
-    name=source.name;dest=cache_base(pid,name);dest.parent.mkdir(parents=True,exist_ok=True)
-    lines=Path(str(source)+'.txt').read_text('utf-8-sig').splitlines()
-    cameras=[v.strip() for v in lines[3].split('|') if v.strip()]
+    if source.name!=name:raise ValueError('房间地形或相机数据无效：'+name)
+    for filename,path in settings_files.items():
+        if project_packages._file(path)!=settings_bytes[filename]:
+            import room_source_choices
+            raise room_source_choices.RoomChoiceError('room_choices_stale')
+    dest=cache_base(pid,name)
+    geometry=Path(str(source)+'.txt').read_bytes()
+    cameras,_=project_packages._geometry(geometry,name)
     
-    writes={Path(str(dest)+'.txt'):Path(str(source)+'.txt').read_bytes(),
-            Path(str(dest)+'_settings.txt'):settings_source.read_bytes()}
-    for i in range(1,len(cameras)+1):writes[Path(str(dest)+'_'+str(i)+'.png')]=Path(str(source)+'_'+str(i)+'.png').read_bytes()
+    writes={Path(str(dest)+'.txt'):geometry}
+    writes.update({dest.parent/filename:content for filename,content in settings_bytes.items()})
+    for i in range(1,cameras+1):writes[Path(str(dest)+'_'+str(i)+'.png')]=Path(str(source)+'_'+str(i)+'.png').read_bytes()
     import room_migration
     transaction=room_migration.Files()
     try:
@@ -140,7 +212,8 @@ def import_render(pid,kind,roomnames,settings_source):
             record=room_source_choices.pairing_record(pid,name)
             if record['sourceHashes']!=source_hashes:raise room_source_choices.RoomChoiceError('room_choices_stale')
             transaction.json(dest.with_name(name+'.source.json'),record)
+        if apply is not None:apply()
     except Exception:
         transaction.rollback()
         raise
-    return dict(ok=True,room=name,path=str(dest),cameras=len(cameras))
+    return dict(ok=True,room=name,path=str(dest),cameras=cameras)

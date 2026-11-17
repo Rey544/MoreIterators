@@ -27,8 +27,9 @@ def validate(texture, key):
     layers = texture.get('layers')
     if not isinstance(layers, list) or not 1 <= len(layers) <= MAX_LAYERS:
         raise ValueError('每张贴图需要 1–32 个图层')
-    if 'symmetry' in texture and type(texture['symmetry']) is not bool:
-        raise ValueError('贴图对称开关格式错误')
+    for axis in ('symmetry', 'symmetryY'):
+        if axis in texture and type(texture[axis]) is not bool:
+            raise ValueError('贴图对称开关格式错误')
     seen = set()
     for index, layer in enumerate(layers):
         if not isinstance(layer, dict):

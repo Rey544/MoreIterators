@@ -7,10 +7,10 @@ using MoreIterators;
 
 public static class ModManager {
  public sealed class Mod {
-  public string id,path,TargetedPath,NewestPath;public bool hasTargetedVersionFolder,hasNewestFolder;
+  public string id,path,basePath,version,targetGameVersion,TargetedPath,NewestPath;public bool enabled=true,hasTargetedVersionFolder,hasNewestFolder;public int loadOrder;
   public Mod(string id,string path){this.id=id;this.path=path;TargetedPath=Path.Combine(path,"targeted");NewestPath=Path.Combine(path,"newest");}
  }
- public static List<Mod> ActiveMods=new List<Mod>();
+ public static bool InitializationScreenFinished=true;public static List<Mod> ActiveMods=new List<Mod>();
 }
 namespace RWCustom {public static class Custom {public static string Root;public static string RootFolderDirectory(){return Root;}}}
 namespace UnityEngine {
@@ -64,6 +64,7 @@ public static class ContentAssetCacheCheck {
   Directory.CreateDirectory(Path.GetDirectoryName(target));File.WriteAllText(target,text);
  }
  static string Read(string file){return file==null?null:File.ReadAllText(file);}
+ static string Registry(string name){return "[{\"projectId\":\"shared-id\",\"name\":\""+name+"\",\"ai\":\"SHARED_AI\",\"entry\":\"SHARED_ENTRY\",\"oracleId\":\"shared\"}]";}
  static void Refresh(){Thread.Sleep(300);}
  static ModManager.Mod Add(string id){var mod=new ModManager.Mod(id,Path.Combine(fixtureRoot,"mods",id));ModManager.ActiveMods.Add(mod);return mod;}
  static void Run(){
@@ -82,6 +83,18 @@ public static class ContentAssetCacheCheck {
   Check(AssetManager.ListCalls==scans,"repeat owner/extension queries enumerate once");
   first[0].owner="mutated";first[0].path="mutated";first.Clear();
   Check(Read(ContentAssets.ResolveOwnedFile("pack.b",relative))=="b-root","mutating result list or item cannot poison cache");
+
+  int generation=ContentAssets.Generation;scans=AssetManager.ListCalls;a.enabled=false;
+  Check(ContentAssets.Generation>generation,"enabled flag invalidates directory generation immediately");ContentAssets.Files(folder,".json");Check(AssetManager.ListCalls>scans,"enabled change re-enters original native enumeration");a.enabled=true;
+  generation=ContentAssets.Generation;a.loadOrder++;Check(ContentAssets.Generation>generation,"load order value invalidates generation");
+  generation=ContentAssets.Generation;ModManager.ActiveMods=new List<ModManager.Mod>(ModManager.ActiveMods);Check(ContentAssets.Generation>generation,"same-sized active list replacement invalidates generation");
+  generation=ContentAssets.Generation;var replacement=new ModManager.Mod(b.id,b.path);ModManager.ActiveMods[1]=replacement;b=replacement;Check(ContentAssets.Generation>generation,"same-id same-path replacement instance invalidates generation");
+  generation=ContentAssets.Generation;a.basePath="changed-base";Check(ContentAssets.Generation>generation,"base path metadata invalidates generation");
+  generation=ContentAssets.Generation;a.version="changed-version";Check(ContentAssets.Generation>generation,"mod version invalidates generation");
+  generation=ContentAssets.Generation;a.targetGameVersion="changed-target";Check(ContentAssets.Generation>generation,"target game version invalidates generation");
+  generation=ContentAssets.Generation;ModManager.InitializationScreenFinished=false;Check(ContentAssets.Generation>generation,"unready transition invalidates generation");
+  scans=AssetManager.ListCalls;ContentAssets.Files(folder,".json");ContentAssets.Files(folder,".json");Check(AssetManager.ListCalls==scans+2,"unready directory results are not cached");
+  generation=ContentAssets.Generation;ModManager.InitializationScreenFinished=true;Check(ContentAssets.Generation>generation,"ready transition invalidates startup snapshot");
 
   ModManager.ActiveMods.Reverse();Check(ContentAssets.Files(folder,".json")[0].owner=="pack.a","mod reorder invalidates immediately");
   ModManager.ActiveMods.Remove(a);Check(ContentAssets.ResolveOwnedFile("pack.a",relative)==null,"disabled owner cannot read B");
@@ -147,6 +160,17 @@ public static class ContentAssetCacheCheck {
   Check(ContentAssets.ResolveOwnedFile("pack.a",relative)==null&&!RuntimePaths.HasIndependentRuntime(a.path),"early null active list never falls through to a content pack");
   ModManager.ActiveMods=active;
   Check(!RuntimePaths.HasIndependentRuntime(a.path),"active list restoration resolves current manifest");
+  Write(Path.Combine(a.path,"moreiterators/registry.json"),Registry("from-a"));Write(Path.Combine(b.path,"moreiterators/registry.json"),Registry("from-b"));
+  IteratorCatalog.Reset();var catalogue=IteratorCatalog.Projects();
+  Check(catalogue.Count==1&&IteratorCatalog.Text(catalogue[0],"name")=="from-a","core registry uses original highest-priority provider for conflicting project ID");
+  var timer=System.Diagnostics.Stopwatch.StartNew();for(int i=0;i<5000;i++)Check(Object.ReferenceEquals(catalogue,IteratorCatalog.Projects()),"core unchanged context retains cached list");timer.Stop();
+  Console.WriteLine("TIMING core_warm_5000_ms="+timer.Elapsed.TotalMilliseconds.ToString("F3",System.Globalization.CultureInfo.InvariantCulture));
+  a.enabled=false;Check(IteratorCatalog.Text(IteratorCatalog.Projects()[0],"name")=="from-b","core enabled flag change invalidates within old half-second cache window");
+  a.enabled=true;Check(IteratorCatalog.Text(IteratorCatalog.Projects()[0],"name")=="from-a","core reenabling makes original priority visible immediately");
+  Write(Path.Combine(a.path,"moreiterators/registry.json"),Registry("changed-a"));a.loadOrder++;
+  Check(IteratorCatalog.Text(IteratorCatalog.Projects()[0],"name")=="changed-a","core metadata order change refreshes before game clock advances");
+  ModManager.ActiveMods.Reverse();Check(IteratorCatalog.Text(IteratorCatalog.Projects()[0],"name")=="from-b","core reorder immediately uses current native priority");
+  Check(UnityEngine.Time.realtimeSinceStartup==0,"core context regression did not advance game clock to conceal stale cache");
   Console.WriteLine("PASS "+assertions+" actual-method assertions; native ordering, mutable results, lifecycle and manifest invalidation");
  }
  public static int Main(){

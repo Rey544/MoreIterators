@@ -21,7 +21,8 @@ public sealed class CreatorSpeech {
  }
  bool HasCamera{get{return oracle!=null&&oracle.room!=null&&oracle.room.game!=null&&oracle.room.game.cameras!=null&&oracle.room.game.cameras.Length>0&&oracle.room.game.cameras[0]!=null;}}
  public bool Showing {get{if(pending!=null||hiddenTicks>0)return true;if(!HasCamera)return false;var h=oracle.room.game.cameras[0].hud;return h!=null&&h.dialogBox!=null&&h.dialogBox.ShowingAMessage;}}
- public void Clear(){voice.Stop();pending=null;pendingTicks=0;hiddenTicks=0;wasShowing=false;cancelled=true;CreatorProjections.Pause(oracle,this);CreatorReadingPresentation.ClearLine(oracle,this);if(!HasCamera)return;var h=oracle.room.game.cameras[0].hud;if(h!=null&&h.dialogBox!=null&&h.dialogBox.ShowingAMessage)h.dialogBox.Interrupt("",1);}
+ public void Clear(){Clear(true);}
+ public void Clear(bool clearHud){voice.Stop();pending=null;pendingTicks=0;hiddenTicks=0;wasShowing=false;cancelled=true;CreatorProjections.Pause(oracle,this);CreatorReadingPresentation.ClearLine(oracle,this);if(!clearHud||!HasCamera)return;var h=oracle.room.game.cameras[0].hud;if(h!=null&&h.dialogBox!=null&&h.dialogBox.ShowingAMessage)h.dialogBox.Interrupt("",1);}
  public void Finish(){voice.Stop();pending=null;pendingTicks=0;wasShowing=false;CreatorProjections.Finish(oracle,this,!cancelled);CreatorReadingPresentation.ClearLine(oracle,this);}
  public void Say(CreatorDialogueLine line,bool hide=false){
   if(line==null||System.String.IsNullOrWhiteSpace(line.text))return;

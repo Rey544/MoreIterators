@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 import storage
 import native_projects
 import waiting_room
+import rtm_room_sources
 
 LOCK = threading.RLock()
 SCHEMA = 'moreiterators.room-catalog.v1'
@@ -33,6 +34,29 @@ _selection_key = None
 _geometry_cache = None
 _geometry_at = 0
 _geometry_key = None
+
+
+class RoomBindingError(ValueError):
+    def __init__(self, code, **params):
+        import default_text
+        self.code = 'rooms.error.' + code
+        self.params = params
+        super().__init__(default_text.text(self.code).format(**params))
+
+
+def _foreign_region_source(project, region):
+    own = {(storage.DATA / 'local-mod').resolve()}
+    installed = storage.installed_mod(project['projectId'], required=False)
+    if installed is not None:own.add(installed.resolve())
+    for root in _asset_roots():
+        if root.resolve() in own:continue
+        for parent in (root / 'world', root / 'modify/world'):
+            if not parent.is_dir():continue
+            for folder in parent.iterdir():
+                if not folder.is_dir() or folder.name.lower() != region.lower():continue
+                if any(file.is_file() and file.name.lower() == 'world_' + region.lower() + '.txt' for file in folder.iterdir()):
+                    return True
+    return False
 
 
 def _atomic(path, data):
@@ -290,6 +314,12 @@ def room_geometry_index(roots=None, refresh=False):
                         if not file.is_file(follow_symlinks=False):continue
                         result.setdefault((region, name.stem.upper()), Path(file.path))
             except OSError:continue
+    for source in rtm_room_sources.registered_rooms(roots):
+        if ROOM_RE.fullmatch(source['name']):
+            key = (source['region'], source['name'])
+            existing = result.get(key)
+            if existing is None or existing.resolve().is_relative_to((source['root'] / 'world').resolve()):
+                result[key] = source['base'].with_suffix('.txt')
     _geometry_key, _geometry_at, _geometry_cache = key, time.monotonic(), result
     return result
 
@@ -316,11 +346,12 @@ def _asset_roots():
     return roots
 
 
-def offline_catalog(refresh=False):
+def offline_catalog(refresh=False, *, include_reserved=True):
     global _offline_cache, _offline_at, _offline_key
     key = (storage.GAME.resolve(), storage.DATA.resolve(), asset_selection_key())
-    if not refresh and _offline_cache is not None and _offline_key == key and time.monotonic() - _offline_at < 20:
-        return copy.deepcopy(_offline_cache)
+    cached = (_offline_cache or {}).get(include_reserved)
+    if not refresh and cached is not None and cached['key'] == key and time.monotonic() - cached['at'] < 20:
+        return copy.deepcopy(cached['value'])
     regions, reserved, reserved_regions = {}, set(), set()
     enabled_roots = enabled_asset_roots()
     geometry_files = room_geometry_index(enabled_roots, refresh=refresh)
@@ -336,8 +367,17 @@ def offline_catalog(refresh=False):
             for row in rows:
                 geometry_path = geometry_files.get((region, row['name']))
                 if geometry_path is not None:row['geometryPath'] = str(geometry_path)
+    for source in rtm_room_sources.registered_rooms(enabled_roots):
+        name, region = source['name'], source['region']
+        if not ROOM_RE.fullmatch(name) or not REGION_RE.fullmatch(region):continue
+        selected = geometry_files.get((region, name))
+        if selected is not None and selected.resolve() != source['base'].with_suffix('.txt').resolve():continue
+        regions.setdefault(region, {})[name] = dict(name=name, region=region,
+            connections=source['connections'] or ['DISCONNECTED'], tags=source['tags'],
+            geometryPath=str(source['base'].with_suffix('.txt')), exitCount=-1,
+            verified=False, conditional=False, loaded=False, oracle=name.endswith('_AI'))
     
-    for root in _asset_roots():
+    for root in _asset_roots() if include_reserved else []:
         for world_root in (root / 'world', root / 'modify/world'):
             if not world_root.is_dir():
                 continue
@@ -358,18 +398,20 @@ def offline_catalog(refresh=False):
                         name = file.stem.upper()
                         if not name.endswith('_SETTINGS') and re.fullmatch(r'[A-Z0-9]+_[A-Z0-9_]+', name):
                             reserved.add(name)
-    _offline_cache = dict(source='offline', fresh=False, complete=False, capturedAt=None, generation=None,
+    value = dict(source='offline', fresh=False, complete=False, capturedAt=None, generation=None,
                          regions=[dict(name=k, rooms=list(v.values())) for k, v in sorted(regions.items())],
                          reservedRooms=sorted(reserved), reservedRegions=sorted(reserved_regions),
                          warnings=['离线目录仅包含已启用内容；连接房间前请进入游戏核对。'] if _selection()['enabled'] is not None
                          else ['未读取到模组启用状态，仅显示原版房间。'])
     _offline_at = time.monotonic()
     _offline_key = key
-    return copy.deepcopy(_offline_cache)
+    if _offline_cache is None:_offline_cache = {}
+    _offline_cache[include_reserved] = dict(key=key, at=_offline_at, value=value)
+    return copy.deepcopy(value)
 
 
-def catalog():
-    offline = offline_catalog()
+def catalog(include_reserved=True):
+    offline = offline_catalog(include_reserved=include_reserved)
     state = _selection()
     if not state['compatible'] or state['snapshot'] is None:
         return offline
@@ -435,6 +477,8 @@ def geometry(path, content=None):
     try:
         text = Path(path).read_text('utf-8-sig') if content is None else content.decode('utf-8-sig')
         lines = text.splitlines()
+        if len(lines) < 10:
+            raise ValueError('房间文件缺少地形或出口数据')
         if len(lines) >= 12 and lines[9] == '0':
             width, height = map(int, lines[1].split('|')[0].split('*'))
             if not 0 < width <= 10000 or not 0 < height <= 10000 or width * height > 8 * 1024 * 1024 or lines[10].strip():
@@ -490,16 +534,19 @@ def geometry(path, content=None):
                     raise ValueError()
             return dict(exitCount=len(exits), width=width, height=height)
         parts = lines[9].split('|')
+        if len(parts) < 3:
+            raise ValueError('房间出口记录不完整')
         count = int(parts[1])
         generation = int(parts[0])
-        if generation < 0 or count < 1 or len(parts) < count + 3:
+        if generation < 0 or not 1 <= count <= 1024 or len(parts) < count + 3:
             raise ValueError()
         types = [int(part.split(',')[0]) for part in parts[3:3 + count]]
         exits = next((i for i, kind in enumerate(types) if kind != 0), count)
         if 0 in types[exits:]:
             raise ValueError()
-        width = int(lines[1].split('*')[0])
-        height = int(lines[1].split('*')[1].split('|')[0])
+        width, height = map(int, lines[1].split('|')[0].split('*'))
+        if not 0 < width <= 10000 or not 0 < height <= 10000 or width * height > 8 * 1024 * 1024:
+            raise ValueError()
         if generation == 0:
             # Native PreprocessRoom writes generation 0 when setupValues.bake
             # is false. The connectivity map can still be complete. Validate
@@ -533,21 +580,26 @@ def geometry(path, content=None):
             if actual_exits != exits:
                 raise ValueError()
         return dict(exitCount=exits, width=width, height=height)
-    except (OSError, ValueError, IndexError, UnicodeError):
-        raise ValueError('房间出口数据尚未烘焙或无法读取，请先在房间编辑器中保存并导入渲染结果。')
+    except (OSError, ValueError, IndexError, UnicodeError) as error:
+        name = Path(path).stem if path is not None else lines[0].strip() if 'lines' in locals() and lines else ''
+        raise ValueError('房间地形或出口数据无效：' + name) from error
 
 
 def source_for(project, kind):
     previous = binding(project)
     name = previous['ai' if kind == 'ai' else 'entry']
+    import room_source_choices
+    selected = room_source_choices.selected_source(project['projectId'], name)
+    if selected is not None:return selected
     if kind == 'entry' and project.get('roomBinding') and previous['entryMode'] == 'existing':
         return resolve_room_source(name)
     cache = storage.project_file(project['projectId']).parent / 'rooms/rendered' / name
-    if cache.with_suffix('.txt').exists():
-        return cache
     own = storage.target_mod(project['projectId']) / 'world' / (previous['region'].lower() + '-rooms') / name
-    if own.with_suffix('.txt').exists():
-        return own
+    installed = storage.installed_mod(project['projectId'], required=False)
+    deployed = installed / 'world' / (previous['region'].lower() + '-rooms') / name if installed is not None else None
+    if cache.with_suffix('.txt').exists() or own.with_suffix('.txt').exists() or deployed is not None and deployed.with_suffix('.txt').exists():
+        import project_packages
+        return project_packages.selected_room_source(project, name, rows={})
     if project.get('roomBinding'):
         raise ValueError('当前绑定的房间素材缺失：' + name + '；请先同步此房间，不会回退到旧房间或默认模板。')
     if kind == 'entry':
@@ -622,27 +674,30 @@ def validate(project, raw, catalogue=None):
         used = binding(other)
         if used['oracleId'].lower() == result['oracleId'].lower():
             raise ValueError('此迭代器内部编号已被另一项目使用。')
-        if result['ai'] in (used['ai'], used['entry']) or result['entry'] in (used['ai'], used['entry']):
-            raise ValueError('此房间编号已被另一项目使用。')
+        for key in ('ai', 'entry'):
+            if result[key] in (used['ai'], used['entry']):
+                raise RoomBindingError('roomTaken', room=result[key])
         if used['region'] == result['region'] and result['region'] != 'TEST':
-            raise ValueError('目标区域已有另一个迭代器项目，请使用独立区域。')
+            raise RoomBindingError('regionProject', region=result['region'], name=other.get('name') or other['projectId'])
+    if result['entryMode'] == 'copy' and result['region'] != 'TEST' and _foreign_region_source(project, result['region']):
+        raise RoomBindingError('regionTaken', region=result['region'])
     reserved = set(cat.get('reservedRooms', [])) | set(rooms)
     for key in ('ai', 'entry'):
         if key == 'entry' and result['entryMode'] == 'existing':
             continue
         if result[key] in reserved and result[key] not in own:
-            raise ValueError('目标房间编号已存在于游戏或已安装模组中：' + result[key])
+            raise RoomBindingError('roomTaken', room=result[key])
     if result['region'] != 'TEST':
         for room in rooms.values():
             if room.get('region') == result['region'] and room.get('oracle') and room['name'] not in own:
-                raise ValueError('目标区域已有原版或其他模组的演算室。')
+                raise RoomBindingError('regionChamber', region=result['region'])
         for name in cat.get('reservedRooms', []):
             if name.startswith(result['region'] + '_') and name.endswith('_AI') and name not in own:
-                raise ValueError('目标区域的已安装内容已有演算室。')
+                raise RoomBindingError('regionChamber', region=result['region'])
     known_regions = set(cat.get('reservedRegions', [])) | {v['name'] for v in cat.get('regions', [])}
     current_local_region = result['region'] == current['region'] and current.get('entryMode') == 'copy'
     if result['entryMode'] == 'copy' and result['region'] in known_regions and not current_local_region:
-        raise ValueError('此区域已存在；请选择新区域，或明确选择该区域的现有房间作为入口。')
+        raise RoomBindingError('regionTaken', region=result['region'])
     ai_geometry = geometry(source_for(project, 'ai').with_suffix('.txt'))
     if result['aiNode'] >= ai_geometry['exitCount']:
         raise ValueError('所选演算室出口不在实际房间地形中。')
@@ -741,10 +796,146 @@ def _stored_plan(pid):
     return json.loads(path.read_text('utf-8'))
 
 
+def validate_connection_ownership(project, portable):
+    current=normalize(project['roomBinding']);pid=project['projectId']
+    if _fixed(pid):raise RoomBindingError('workflowReadOnly')
+    names={row['name'] for row in portable['rows'] if row['owned']}
+    reserved={v['oracleId'].lower() for v in native_projects.BINDINGS.values()}|{'default'}
+    for linked in storage.LINKS:reserved.update(v['oracleId'].lower() for v in linked.get('projects',{}).values())
+    for other in _projects():
+        if other['projectId']==pid:continue
+        used=binding(other)
+        if used['oracleId'].lower()==current['oracleId'].lower():raise ValueError('此迭代器内部编号已被另一项目使用。')
+        for name in names:
+            if name in (used['ai'],used['entry']):raise RoomBindingError('roomTaken',room=name)
+        if used['region'] in portable['ownedRegions'] and used['region']!='TEST':raise RoomBindingError('regionProject',region=used['region'],name=other.get('name') or other['projectId'])
+    for region in portable['ownedRegions']:
+        if _foreign_region_source(project,region):raise RoomBindingError('regionTaken',region=region)
+    excluded={(storage.DATA/'local-mod').resolve()};installed=storage.installed_mod(pid,required=False)
+    if installed is not None:excluded.add(installed.resolve())
+    for root in _asset_roots():
+        root=root.resolve()
+        if any(root==own or root.is_relative_to(own) for own in excluded):continue
+        for name in names:
+            folder=root/'world'/(name.split('_')[0].lower()+'-rooms')
+            if (folder/(name+'.txt')).is_file():raise RoomBindingError('roomTaken',room=name)
+        for parent in (root/'world',root/'modify/world'):
+            region=current['region'].lower();file=parent/region/('world_'+region+'.txt')
+            if not file.is_file():continue
+            text=file.read_text('utf-8-sig')
+            found={row['name'] for row in parse_world(text,current['region'])}|set(re.findall(r'^\[REPLACE\]([A-Z0-9]+_[A-Z0-9_]+)\s*:',text,re.M))
+            for name in names&found:raise RoomBindingError('roomTaken',room=name)
+        registry=root/'moreiterators/registry.json'
+        if registry.is_file():
+            try:records=json.loads(registry.read_text('utf-8-sig'))
+            except (ValueError,OSError):raise RoomBindingError('workflowState')
+            if not isinstance(records,list):raise RoomBindingError('workflowState')
+            reserved.update(row['oracleId'].lower() for row in records if isinstance(row,dict) and isinstance(row.get('oracleId'),str))
+    for oracle in catalog().get('oracles',[]):
+        if oracle.get('projectId')!=pid:reserved.add(oracle.get('oracleId','').lower())
+    if current['oracleId'].lower() in reserved:raise ValueError('此迭代器内部编号已由原版、关联项目或已启用内容使用。')
+
+
+def _external_world_rows(region, project_ids):
+    selection=_selection();assets=selection['assets'];excluded={(storage.DATA/'local-mod').resolve()}
+    for pid in project_ids:
+        installed=storage.installed_mod(pid,required=False)
+        if installed is not None:excluded.add(installed.resolve())
+    roots=[];owners={}
+    for root in selection['roots']:
+        root=root.resolve()
+        if any(root==own or root.is_relative_to(own) for own in excluded):continue
+        if assets is not None and root.is_relative_to(assets/'mergedmods'):continue
+        roots.append(root)
+        owners[root]=next((base for base in selection['installed'].values() if root==base or root.is_relative_to(base)),root)
+    relative=Path('world')/region.lower()/('world_'+region.lower()+'.txt')
+    base=next((root/relative for root in roots if (root/relative).is_file()),None)
+    if base is None:return {}
+    rows={}
+    for row in parse_world(base.read_text('utf-8-sig'),region):
+        if row['name'] in rows:row['conditional']=True
+        rows[row['name']]=row
+    modifiers=[];seen=set()
+    for root in roots:
+        path=root/'modify'/relative
+        if owners[root] in seen or not path.is_file():continue
+        seen.add(owners[root]);modifiers.append(path)
+    for path in reversed(modifiers):
+        text=path.read_text('utf-8-sig');prefix,marker,merge=text.partition('[MERGE]')
+        commands=[line.strip() for line in prefix.splitlines() if line.strip() and not line.lstrip().startswith('//')]
+        while commands:
+            find=commands.pop(0)
+            if not find.startswith('[FINDLINESTART]') or not commands or not commands[0].startswith('[REPLACE]'):
+                raise RoomBindingError('workflowExternalUnavailable',room=region)
+            needle=find[len('[FINDLINESTART]'):];replacement=commands.pop(0)[len('[REPLACE]'):]
+            matches=[name for name,row in rows.items() if _room_line(name,row['connections'],row.get('tags','')).startswith(needle)]
+            parsed=parse_world('ROOMS\n'+replacement+'\nEND ROOMS\n',region)
+            if len(matches)!=1 or len(parsed)!=1 or parsed[0]['name']!=matches[0]:raise RoomBindingError('workflowExternalUnavailable',room=region)
+            rows[matches[0]]=parsed[0]
+        if marker:
+            if re.search(r'^\s*\[',merge,re.M):raise RoomBindingError('workflowExternalUnavailable',room=region)
+            for row in parse_world(merge,region):
+                if row['name'] in rows:row['conditional']=True
+                rows[row['name']]=row
+    return rows
+
+
+def rebase_external_rows(plans):
+    requested={};project_ids=[pid for pid,_ in plans]
+    for pid,plan in plans:
+        import project_packages
+        extras={};metadata=project_packages.load_metadata(pid)
+        if metadata:
+            project=storage.load_project(pid);catalog_rows=project_packages._catalog_rows()
+            for room in metadata['rooms']:
+                if room['kind']!='extra':continue
+                project_packages._assert_extra_available(project,room,catalog_rows)
+                extras[room['name']]=room
+        owned={row['name'] for row in plan['connectionRows'] if row['owned']}
+        for row in plan['connectionRows']:
+            if row['owned'] or row['name'] in extras:continue
+            ports={node:target for node,target in enumerate(row['connections']) if target in owned}
+            if not ports:continue
+            value=requested.setdefault(row['name'],dict(region=row['region'],count=len(row['connections']),ports={}))
+            if value['count']!=len(row['connections']):raise RoomBindingError('workflowGeometry',room=row['name'])
+            for node,target in ports.items():
+                if node in value['ports'] and value['ports'][node]!=target:raise RoomBindingError('workflowOccupied',room=row['name'],node=node+1)
+                value['ports'][node]=target
+    bases={};result=[]
+    for name,value in requested.items():
+        region=value['region']
+        if region not in bases:bases[region]=_external_world_rows(region,project_ids)
+        source=bases[region].get(name)
+        if source is None or source.get('conditional'):raise RoomBindingError('workflowExternalUnavailable',room=name)
+        links=list(source['connections'])
+        if len(links)!=value['count']:raise RoomBindingError('workflowGeometry',room=name)
+        for node,target in value['ports'].items():
+            if links[node] not in ('DISCONNECTED',target):raise RoomBindingError('workflowOccupied',room=name,node=node+1)
+            links[node]=target
+        result.append(dict(name=name,region=region,connections=links,tags=source.get('tags',''),owned=False))
+    return result
+
+
+def connection_world_files(plan, include_external=True):
+    groups={}
+    for row in plan['connectionRows']:
+        if not row['owned'] and (not include_external or not any(target in {item['name'] for item in plan['connectionRows'] if item['owned']} for target in row['connections'])):continue
+        region=row['region'].lower();owned=row['owned'];base=owned and row['region'] in plan.get('ownedRegions',[])
+        relative=('world/' if base else 'modify/world/')+region+'/world_'+region+'.txt'
+        value=groups.setdefault(relative,dict(rows=[],directives=[]))
+        if owned:value['rows'].append(row)
+        else:value['directives'].append('[FINDLINESTART]'+row['name']+' :\n[REPLACE]'+_room_line(row['name'],row['connections'],row.get('tags',''))+'\n')
+    files={}
+    for relative,value in groups.items():
+        prefix=''.join(value['directives'])+'[MERGE]\n' if relative.startswith('modify/') else ''
+        files[relative]=prefix+'ROOMS\n'+'\n'.join(_room_line(row['name'],row['connections'],row.get('tags','')) for row in value['rows'])+'\nEND ROOMS\n'
+    return files
+
+
 def compile_worlds(records, plans=None):
     """Return reviewed local-mod relative text files without mutating storage."""
     plans = plans or {}
-    files, groups, replacements, owned_regions = {}, {}, {}, set()
+    files, groups, replacements, owned_regions, external_plans = {}, {}, {}, set(), []
     for record in records:
         if record.get('ownerMod') != 'moreiterators.local' or _fixed(record['projectId']):
             continue
@@ -755,6 +946,24 @@ def compile_worlds(records, plans=None):
                 raise ValueError('房间绑定计划与当前项目不同，请重新预览并保存房间设置。')
             current = storage.load_project(pid) if storage.project_file(pid).exists() else None
             current_matches = current is not None and binding(current) == value['binding']
+            if value.get('connectionVersion')==2:
+                import room_workflow
+                plan_project=dict(current or dict(projectId=pid),roomBinding=value['binding'])
+                portable=room_workflow.normalize_connections(plan_project,dict(version=2,rows=value['connectionRows'],ownedRegions=value.get('ownedRegions',[])))
+                validate_connection_ownership(plan_project,portable)
+                for row in portable['rows']:
+                    if not row['owned']:continue
+                    copied=next(item for item in value['roomCopies'] if item['kind']==row['kind'])
+                    source=source_for(current,row['kind']) if current_matches else Path(copied['source'])
+                    if geometry(source.with_suffix('.txt'))['exitCount']!=len(row['connections']):raise RoomBindingError('workflowGeometry',room=row['name'])
+                external_plans.append((pid,value))
+                for relative,text in connection_world_files(value,include_external=False).items():
+                    groups.setdefault(relative,[]).extend(parse_world(text,Path(relative).parent.name.upper()))
+                    if relative.startswith('modify/'):
+                        directives=text.split('[MERGE]\n',1)[0]
+                        if directives:replacements.setdefault(relative,[]).append(directives)
+                owned_regions.update(portable['ownedRegions'])
+                continue
             owned_links = {}
             for copied in value.get('roomCopies', []):
                 kind = copied['kind']
@@ -790,10 +999,16 @@ def compile_worlds(records, plans=None):
             groups.setdefault(relative, []).extend([
                 dict(name=record['ai'], connections=['DISCONNECTED', record['entry']], tags=''),
                 dict(name=record['entry'], connections=([record['ai']] if record.get('entryNode', 1) == 0 else ['DISCONNECTED', record['ai']]), tags='')])
+    for row in rebase_external_rows(external_plans):
+        relative='modify/world/'+row['region'].lower()+'/world_'+row['region'].lower()+'.txt'
+        groups.setdefault(relative,[])
+        replacements.setdefault(relative,[]).append('[FINDLINESTART]'+row['name']+' :\n[REPLACE]'+_room_line(row['name'],row['connections'],row.get('tags',''))+'\n')
     for relative, rows in groups.items():
         names = [row['name'] for row in rows]
         if len(names) != len(set(names)):
             raise ValueError('多个项目正在修改同一房间，请先解决房间冲突。')
+        overridden=re.findall(r'\[FINDLINESTART\]([^\r\n:]+)', ''.join(replacements.get(relative,[])))
+        if len(overridden)!=len(set(overridden)):raise RoomBindingError('workflowChanged')
         prefix = ''.join(replacements.get(relative, [])) + '[MERGE]\n' if relative.startswith('modify/') else ''
         files[relative] = prefix + 'ROOMS\n' + '\n'.join(_room_line(row['name'], row['connections'], row.get('tags', '')) for row in rows) + '\nEND ROOMS\n\nCREATURES\nEND CREATURES\n'
     for region in sorted(owned_regions):

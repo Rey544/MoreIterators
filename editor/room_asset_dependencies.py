@@ -15,7 +15,7 @@ def _name(value):
 
 def references(text,label='room'):
     result=[('terrainpalettes/'+name+'.png',) for name in terrain_palette_names(text,label)]
-    for raw in re.findall(r'(?m)^PlacedObjects:\s*([^\r\n]*)',text):
+    for raw in re.findall(r'(?m)^PlacedObjects:[ \t]*([^\r\n]*)',text):
         for item in re.split(r',\s*',raw):
             fields=item.split('><')
             if fields[0]!='CustomDecal':continue
@@ -24,7 +24,7 @@ def references(text,label='room'):
             name=values[11]
             if not _name(name):raise ValueError('自定义贴花名称无效：'+label)
             result.append(('decals/'+name.lower()+'.png',))
-    for raw in re.findall(r'(?m)^AmbientSounds:\s*([^\r\n]*)',text):
+    for raw in re.findall(r'(?m)^AmbientSounds:[ \t]*([^\r\n]*)',text):
         for item in re.split(r',\s*',raw):
             if not item.strip():continue
             fields=item.split('><')

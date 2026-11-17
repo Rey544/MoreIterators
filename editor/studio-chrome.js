@@ -33,7 +33,13 @@
   }
   const voice=document.createElement('a');voice.id='voiceEditorLink';voice.href='/#iteratorVoice';voice.textContent='无印记声线';voice.dataset.studioDestination='/';navigation.append(voice);
   for(const link of links)if(!navigation.contains(link))navigation.append(link);
-  content.append(navigation);if(language)content.append(language);
+  content.append(navigation);
+  if(typeof PreviewSelection!=='undefined'){
+    const settings=document.createElement('details'),heading=document.createElement('summary'),controls=document.createElement('div');
+    settings.className='mi-preview-preferences';heading.dataset.i18n='previewSelection.settings';heading.textContent=MI18n.t('previewSelection.settings');
+    settings.append(heading,controls);PreviewSelection.mountPreferences(controls);content.append(settings);
+  }
+  if(language)content.append(language);
   menu.replaceChildren(summary,content);menu.className='mi-topbar-menu';menu.open=false;
   right.append(menu);header.replaceChildren(left,right);header.classList.add('mi-topbar');header.dataset.chromeReady='true';
   for(const old of menus)if(old!==menu){old.replaceChildren();old.hidden=true;header.append(old);}

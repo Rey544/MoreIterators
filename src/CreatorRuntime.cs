@@ -355,6 +355,7 @@ namespace MoreIterators
                 Color c=t.GetPixel(x,y);
                 float v=c.grayscale;
                 Color tint=Color.Lerp(new Color(v,v,v,c.a),theme*v*1.6f,.55f);
+                tint.a=c.a;
                 t.SetPixel(x,y,tint);
             }
             t.Apply(false);
@@ -365,6 +366,7 @@ namespace MoreIterators
         public static int Restart;
         int restart;
         readonly Oracle oracle;
+        static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Oracle,CreatorEncounter> currentOwners=new System.Runtime.CompilerServices.ConditionalWeakTable<Oracle,CreatorEncounter>();
         readonly List<CreatorWorkPearl> pearls=new List<CreatorWorkPearl>();
         readonly List<WorkPearlGlyph> labels=new List<WorkPearlGlyph>();
         readonly CreatorWorkPearlBounds pearlBounds;
@@ -381,6 +383,23 @@ namespace MoreIterators
         void ReactToHit(Weapon weapon){if(lastHitWeapon==weapon&&lastHitFrame==Time.frameCount)return;lastHitWeapon=weapon;lastHitFrame=Time.frameCount;var d=D;bool spear=weapon is Spear;CreatorAffinity.Update(oracle,d);string tier=CreatorAffinity.Hit(oracle,d,spear);var rules=CreatorDialogueProfile.For(d).affinity;bool responding=reader.TryRespond((spear?rules.attackSpear:rules.attackRock).For(tier),(spear?"attackSpear:":"attackRock:")+tier,weapon.thrownBy as Player);if(responding)dialogue.Suspend();MiDiagnostics.Debug("affinity.hit","oracle="+d.oracleId+" weapon="+(spear?"spear":"rock")+" preTier="+tier+" value="+CreatorAffinity.Get(oracle,d).value+" response="+responding);}
         float blend=1f;
         public bool Working=true;
+        bool suspended;
+        public bool Owns(Oracle value){return oracle==value;}
+        public bool OwnerPresent{get{return oracle!=null&&!oracle.slatedForDeletetion&&room!=null&&oracle.room==room;}}
+        bool OwnsOracleState{get{CreatorEncounter owner;return currentOwners.TryGetValue(oracle,out owner)&&owner==this;}}
+        bool CanClearHud{get{return OwnsOracleState&&oracle.room!=null&&oracle.room==room&&CreatorOracleLifecycle.ControlsRoom(oracle);}}
+        void TakeControl()
+        {
+            CreatorEncounter previous;
+            if(currentOwners.TryGetValue(oracle,out previous)&&previous!=this)
+            {
+                CreatorDialogueActions.For(oracle).Cancel();
+                CreatorReadingPresentation.Clear(oracle);
+                CreatorPearlOffers.Clear(oracle,"encounter changed");
+            }
+            currentOwners.Remove(oracle);
+            currentOwners.Add(oracle,this);
+        }
         IteratorDesign D
         {
             get
@@ -393,6 +412,7 @@ namespace MoreIterators
             oracle=o;
             room=o.room;
             restart=Restart;
+            TakeControl();
             dialogue=new CreatorDialogue(o);
             reader=new CreatorPearlReader(o);
             pearlBounds=new CreatorWorkPearlBounds(room,oracle.firstChunk.pos);
@@ -426,23 +446,47 @@ namespace MoreIterators
         }
         public override void Destroy()
         {
+            bool shared=OwnsOracleState;
             music.Stop();
-            if(reader!=null)reader.Cancel();
-            foreach(var pearl in pearls)pearl.StopDriving();
-            CreatorReadingPresentation.Clear(oracle);
+            if(shared)CreatorDialogueActions.For(oracle).Cancel();
+            if(reader!=null)reader.Cancel(shared,CanClearHud);
+            if(dialogue!=null)dialogue.Suspend(shared,CanClearHud);
+            foreach(var pearl in pearls)if(pearl.room==room)pearl.StopDriving();
+            if(shared){CreatorReadingPresentation.Clear(oracle);currentOwners.Remove(oracle);}
             base.Destroy();
-            CreatorOracleLifecycle.ReleaseEncounter(oracle);
+            CreatorOracleLifecycle.ReleaseEncounter(oracle,room);
         }
         public override void Update(bool eu)
         {
             base.Update(eu);
             if(oracle.slatedForDeletetion)
             {
-                CreatorDialogueActions.For(oracle).Cancel();
                 foreach(var g in labels)g.Destroy();
                 Destroy();
                 return;
             }
+            if(!OwnerPresent||room.game==null||!CreatorOracleLifecycle.ControlsRoom(oracle))
+            {
+                if(!suspended)
+                {
+                    suspended=true;
+                    bool shared=OwnsOracleState;
+                    music.Stop();
+                    if(shared)CreatorDialogueActions.For(oracle).Cancel();
+                    reader.Cancel(shared,CanClearHud);
+                    dialogue.Suspend(shared,CanClearHud);
+                    foreach(var pearl in pearls)if(pearl.room==room)pearl.StopDriving();
+                    foreach(var label in labels)label.setScale=0;
+                    CreatorOracleLifecycle.ReleaseEncounter(oracle,room);
+                }
+                if(oracle.room!=null&&oracle.room!=room)
+                {
+                    foreach(var label in labels)label.Destroy();
+                    Destroy();
+                }
+                return;
+            }
+            suspended=false;
             CreatorDialogueActions.For(oracle).Update();
             CreatorPearlOffers.Pending(oracle); // Invalidate queued offers even while encounter playback is paused.
             if(CreatorRuntime.Paused){music.Update(room,CreatorMusicSettings.Select(D,Working,reader.Active||reader.Receiving),true);return;}

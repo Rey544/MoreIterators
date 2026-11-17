@@ -173,24 +173,73 @@ window.MI18n = (() => {
     const diagnostics = document.createElement('button'); diagnostics.type = 'button'; diagnostics.textContent = '导出 log';
     holder.after(diagnostics);
     const dialog = document.createElement('dialog'), heading = document.createElement('h2'); heading.textContent = '导出 log';
+    const logSource = document.createElement('select'); logSource.setAttribute('aria-label', '日志来源');
+    logSource.append(new Option('编辑器日志', 'editor'), new Option('游戏日志', 'game'));
     const state = document.createElement('p'), path = content(document.createElement('p')), list = content(document.createElement('pre'));
     const tail = content(document.createElement('pre')), actions = document.createElement('div'); actions.className = 'tools';
-    dialog.className = 'mi-diagnostics'; dialog.append(heading, state, path, list, tail, actions);
+    dialog.className = 'mi-diagnostics'; dialog.append(heading, logSource, state, path, list, tail, actions);
     const download = document.createElement('button'), close = document.createElement('button');
     download.type = close.type = 'button'; download.textContent = '导出 log'; close.textContent = '关闭';
     actions.append(download, close); document.body.append(dialog); close.onclick = () => dialog.close();
-    let logText = '';
-    download.onclick = () => { const url = URL.createObjectURL(new Blob([logText], {type: 'text/plain;charset=utf-8'})), link = document.createElement('a'); link.href = url; link.download = 'LogOutput.txt'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-    diagnostics.onclick = async () => {
-      dialog.showModal(); state.textContent = '正在读取错误记录…'; path.textContent = list.textContent = tail.textContent = ''; download.disabled = true;
+    let logSequence = 0, previewRequest = null, downloadRequest = null, readySource = '';
+    const cancelDiagnostics = () => {
+      logSequence++; previewRequest?.abort(); downloadRequest?.abort(); previewRequest = downloadRequest = null;
+      readySource = ''; download.disabled = true; logSource.disabled = false;
+    };
+    const unavailable = source => t(source === 'editor' ? 'diagnostics.editorUnavailable' : 'diagnostics.unavailable');
+    const logFailure = (key, failure) => {
+      const known = match(failure.message);
+      return t(key, {detail: known ? {key: known.key, params: known.params} : failure.message});
+    };
+    const loadDiagnostics = async () => {
+      const sequence = ++logSequence, source = logSource.value;
+      previewRequest?.abort(); const request = previewRequest = new AbortController();
+      readySource = ''; state.textContent = t('diagnostics.loading'); path.textContent = list.textContent = tail.textContent = ''; download.disabled = true;
       try {
-        const response = await fetch('/api/diagnostics'), result = await response.json();
+        const response = await fetch('/api/diagnostics?source=' + source, {signal: request.signal}), result = await response.json();
+        if (sequence !== logSequence || !dialog.open) return;
         if (!response.ok) throw Error(error(result, response.statusText));
-        state.textContent = result.available ? '日志尾部（可能不是完整日志）' : '尚未找到游戏日志';
+        const available = !!result.available;
+        state.textContent = available ? t('diagnostics.tail') : unavailable(source);
         path.textContent = String(result.logPath || '') + (result.modified ? '\n' + result.modified : '');
         list.textContent = (result.errors || []).map(item => String(item.source || '') + '\n' + String(item.text || '')).join('\n\n');
-        logText = String(result.tail || ''); tail.textContent = logText; download.disabled = !logText;
-      } catch (failure) { state.textContent = text('读取错误记录失败：{detail}'.replace('{detail}', failure.message)); }
+        tail.textContent = String(result.tail || ''); readySource = available ? source : ''; download.disabled = !available;
+      } catch (failure) {
+        if (sequence === logSequence && dialog.open && failure.name !== 'AbortError') state.textContent = logFailure('diagnostics.failed', failure);
+      } finally { if (previewRequest === request) previewRequest = null; }
+    };
+    download.onclick = async () => {
+      if (download.disabled || downloadRequest) return;
+      const source = logSource.value, sequence = logSequence, request = downloadRequest = new AbortController();
+      download.disabled = true; logSource.disabled = true;
+      try {
+        const response = await fetch('/api/diagnostics/download?source=' + source, {signal: request.signal});
+        if (!response.ok) {
+          const result = await response.json().catch(() => ({}));
+          throw Error(error(result, response.statusText));
+        }
+        const data = await response.blob();
+        if (sequence !== logSequence || !dialog.open) return;
+        if (!data.size) { readySource = ''; state.textContent = unavailable(source); return; }
+        const url = URL.createObjectURL(data), link = document.createElement('a');
+        link.href = url; link.download = source === 'editor' ? 'studio-errors.log' : 'LogOutput.txt'; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        state.textContent = t('diagnostics.tail');
+      } catch (failure) {
+        if (sequence === logSequence && dialog.open && failure.name !== 'AbortError') state.textContent = logFailure('diagnostics.downloadFailed', failure);
+      } finally {
+        if (downloadRequest === request) { downloadRequest = null; logSource.disabled = false; download.disabled = !dialog.open || readySource !== logSource.value; }
+      }
+    };
+    dialog.addEventListener('close', () => {
+      if (dialog.open) return;
+      cancelDiagnostics();
+    });
+    dialog.addEventListener('cancel', cancelDiagnostics);
+    logSource.onchange = loadDiagnostics;
+    diagnostics.onclick = async () => {
+      cancelDiagnostics();
+      logSource.value = 'editor'; dialog.showModal(); await loadDiagnostics();
     };
     observer = new MutationObserver(records => {
       if (changing) return;

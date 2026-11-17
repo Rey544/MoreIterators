@@ -59,6 +59,7 @@
 @media(max-width:760px){#overseerFields{grid-template-columns:1fr;gap:20px}.overseer-setup{max-width:380px}.overseer-editor{grid-template-columns:minmax(120px,160px) minmax(0,1fr);gap:14px;max-width:620px}.overseer-preview{width:100%}.overseer-colors{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.overseer-actions{margin-top:14px}}
 @media(max-width:480px){.overseer-editor{grid-template-columns:1fr}.overseer-preview{width:180px}.overseer-colors{max-width:320px}.overseer-probabilities{max-width:320px}.overseer-heading{grid-template-columns:minmax(0,1fr) 116px}}
 .binding-pairs{margin:0 0 18px;padding:11px;border:1px solid #555;border-radius:4px;font-size:12px;overflow-wrap:anywhere}.binding-pairs>div+div{margin-top:12px}.binding-pairs dt{color:var(--muted);margin-bottom:4px}.binding-pairs dd{margin:0;line-height:1.7}.binding-pairs #draftPairRow{border-top:1px dashed #666;padding-top:10px}.preview-pair{font-size:13px;line-height:1.8;overflow-wrap:anywhere;border:1px solid #777;padding:12px;border-radius:4px}.catalog-scope{display:flex;align-items:center;justify-content:space-between;gap:10px}.catalog-scope button{display:flex;gap:6px;font-size:11px;padding:5px 7px;min-height:29px}.room-links p{margin:5px 0;line-height:1.65}
+.binding-panel .field-error{font-size:11px;line-height:1.5;color:#e0a09a;margin-top:4px}.binding-panel .field-error:empty{display:none}.binding-panel input[aria-invalid=true]{border-color:#bb817b}
 .cleanup-panel{grid-column:1/-1}.cleanup-panel>details>summary{cursor:pointer;font-size:14px;font-weight:500}.cleanup-toolbar{display:flex;gap:14px;align-items:center;margin:18px 0;font-size:12px;color:var(--muted)}.cleanup-toolbar button,.cleanup-panel button{font-size:12px;min-height:32px}.cleanup-room{padding:13px 0;border-top:1px solid #444;font-size:12px}.cleanup-room header{display:flex;gap:12px;align-items:center;justify-content:space-between}.cleanup-room header span,.cleanup-room p{color:var(--muted)}.cleanup-room details{margin-top:9px}.cleanup-room li{overflow-wrap:anywhere;margin:6px 0;line-height:1.7}.cleanup-room p{margin:7px 0}.cleanup-confirm{padding:14px;margin-top:14px;border:1px solid #999;border-radius:4px;background:#202020;font-size:12px}.cleanup-confirm>div{display:flex;gap:10px}.cleanup-confirm ul{line-height:1.8}.cleanup-panel #cleanupNotice{margin:12px 0}.cleanup-panel #prepareCleanup{margin-top:12px}
 
 /* Keep the connection form and its result together; avoid an empty third column. */
@@ -85,8 +86,74 @@ body.mi-studio .binding-object{min-width:0}
 body.mi-studio .binding-object>h2{font-size:13px;margin:0 0 8px}
 body.mi-studio .binding-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
 body.mi-studio .binding-field-grid>label{min-width:0}
-body.mi-studio #bindingIdentity label:has(#oracleId),body.mi-studio #bindingConnections .binding-field-grid>label{grid-column:1/-1}
+body.mi-studio #bindingIdentity label:has(#region),body.mi-studio #bindingConnections .binding-field-grid>label{grid-column:1/-1}
+body.mi-studio .room-layout{display:grid;grid-template-columns:minmax(0,1fr);max-width:1120px;gap:12px}
+body.mi-studio .room-layout>.panel{padding:0;margin:0}
+body.mi-studio .binding-panel>.section-heading{max-width:760px}
+body.mi-studio #bindingForm{max-width:760px}
+body.mi-studio #bindingIdentity .binding-field-grid{grid-template-columns:minmax(110px,.65fr) repeat(2,minmax(150px,1fr))}
+body.mi-studio #bindingIdentity label:has(#region){grid-column:auto}
+body.mi-studio .room-secondary{margin-top:12px}
+body.mi-studio .room-secondary>summary,body.mi-studio #bindingAdvanced>summary,body.mi-studio #catalogDetails>summary{cursor:pointer;font-size:13px;width:fit-content}
+body.mi-studio .connection-workspace{display:grid;grid-template-columns:minmax(250px,.8fr) minmax(320px,1.2fr);gap:28px;margin-top:18px}
+body.mi-studio #connectionFields{grid-template-columns:minmax(0,1fr);gap:18px;margin-top:18px}
+body.mi-studio #bindingAdvanced[open]>summary{margin-bottom:12px}
+body.mi-studio #bindingAdvanced .binding-field-grid{grid-template-columns:minmax(0,1fr)}
+body.mi-studio #bindingAdvanced .binding-pairs{margin:16px 0 0}
+body.mi-studio #bindingAdvanced .warning-list{margin:12px 0 0}
+body.mi-studio #bindingAdvanced .cleanup-panel{margin-top:12px}
+body.mi-studio #bindingCheck{margin-top:12px;font-size:12px;overflow-wrap:anywhere}
+body.mi-studio #bindingCheck pre{max-height:200px;overflow:auto;white-space:pre-wrap}
+body.mi-studio #catalogDetails{margin-bottom:12px}
+body.mi-studio #catalogDetails[open]>summary{margin-bottom:10px}
+body.mi-studio .overseer-workspace:not([open]) #overseerState{display:none}
+@media(max-width:760px){body.mi-studio #bindingIdentity .binding-field-grid,body.mi-studio .connection-workspace{grid-template-columns:minmax(0,1fr)}body.mi-studio #bindingForm{max-width:100%}}
 body.mi-studio .overseer-workspace>summary{display:list-item;cursor:pointer;width:fit-content;margin-bottom:14px}
 body.mi-studio .overseer-workspace>summary h2{display:inline;font-size:15px}
 body.mi-studio .overseer-workspace>summary [role=status]{margin-left:12px}
 body.mi-studio .overseer-workspace:not([open])>summary{margin-bottom:0}
+
+body.mi-studio .room-layout{gap:24px;max-width:1120px}
+body.mi-studio .connection-panel{border-top:1px solid #444;padding-top:22px!important}
+body.mi-studio .binding-panel>.section-heading h1,body.mi-studio .binding-panel>.section-heading h2{font-size:16px;font-weight:500}
+body.mi-studio #bindingForm,body.mi-studio #connectionForm{max-width:820px}
+body.mi-studio #connectionFields{display:block;margin:0}
+body.mi-studio .room-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+body.mi-studio .room-actions [role=status]{font-size:12px;color:var(--muted)}
+body.mi-studio .connection-choice-grid{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:16px;align-items:start}
+body.mi-studio .connection-choice{display:grid;gap:10px;min-width:0;font-size:12px;color:var(--muted)}
+body.mi-studio .connection-choice>label{display:flex;flex-direction:column;gap:6px}
+body.mi-studio .connection-choice select{width:100%;min-width:0}
+body.mi-studio .connection-choice .connection-arrow{align-self:center}
+body.mi-studio .own-room-choices{display:flex;flex-wrap:wrap;gap:8px}
+body.mi-studio .own-room-choices button{min-width:100px;max-width:100%;overflow-wrap:anywhere;font-size:12px;text-align:left}
+body.mi-studio .own-room-choices button[aria-pressed=true]{border-color:#ddd;background:#292929}
+body.mi-studio .own-room-choices small{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+body.mi-studio .connection-preview-host:has(>button[hidden]){display:none}
+body.mi-studio .connection-preview-host{max-width:320px}
+body.mi-studio .current-connections{display:flex;flex-wrap:wrap;gap:10px 16px;margin-bottom:14px;font-size:12px;overflow-wrap:anywhere}
+body.mi-studio .current-connections>span{color:var(--muted)}
+body.mi-studio #currentConnectionList p,body.mi-studio #priorConnectionList p{margin:0 0 6px}
+body.mi-studio #priorConnections,body.mi-studio #pendingConnectionNote{font-size:12px;color:var(--muted);margin-top:12px}
+body.mi-studio #priorConnectionList{margin-top:8px;overflow-wrap:anywhere}
+body.mi-studio #requiredConnectionField{margin-bottom:14px;max-width:440px}
+body.mi-studio #nameError,body.mi-studio #connectionError{margin:10px 0 0;overflow-wrap:anywhere}
+body.mi-studio .connection-panel #connectionExtras{margin-top:18px}
+@media(max-width:600px){body.mi-studio .connection-choice-grid{grid-template-columns:minmax(0,1fr);gap:16px}body.mi-studio .connection-choice-grid>.connection-arrow{display:none}body.mi-studio .connection-preview-host{max-width:100%}body.mi-studio .room-layout{padding:16px;gap:22px}body.mi-studio .room-card-header{flex-wrap:wrap}body.mi-studio .room-card-header strong{flex-basis:100%}}
+
+body.mi-studio .connection-choice-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-height:26px}
+body.mi-studio .connection-choice-heading #catalogMapPicker{font-size:11px;min-height:24px;padding:2px 7px}
+body.mi-studio .own-room-choices button{display:grid;min-width:0;min-height:34px;flex:0 1 auto}
+body.mi-studio .own-room-choices button>span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media(min-width:601px){
+ body.mi-studio .connection-choice-grid{grid-template-rows:auto auto auto auto;row-gap:10px}
+ body.mi-studio .connection-choice{grid-row:1/5;grid-template-rows:subgrid}
+ body.mi-studio .connection-choice:first-child{grid-column:1}
+ body.mi-studio .connection-choice:last-child{grid-column:3}
+ body.mi-studio .connection-choice-grid>.connection-arrow{grid-column:2;grid-row:1/5;align-self:center}
+ body.mi-studio .connection-choice-heading{grid-row:1}
+ body.mi-studio .own-room-choices,body.mi-studio #targetRoom{grid-row:2;align-self:start}
+ body.mi-studio .connection-preview-host{grid-row:3}
+ body.mi-studio .connection-choice>label{grid-row:4}
+}

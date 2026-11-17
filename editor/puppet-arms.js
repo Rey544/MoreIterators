@@ -150,12 +150,12 @@ const PuppetArms=(()=>{
    const raw=shape(source.sleeve,d,index,map,legacy).xy,root=[(raw[4]+raw[6])*.5,(raw[5]+raw[7])*.5],xy=raw.slice();
    for(let v=0;v<xy.length;v+=4){const center=[(raw[v]+raw[v+2])*.5,(raw[v+1]+raw[v+3])*.5],t=Math.floor(v/8)/(raw.length/8-1);for(let k=0;k<4;k+=2){const pt=[center[0]+(raw[v+k]-center[0])*a.widthScale,center[1]+(raw[v+k+1]-center[1])*a.widthScale];[xy[v+k],xy[v+k+1]]=move(pt,root,a,d.puppetScale,t);}}
    const material=sleeveAppearance(d,index),uv=d.sleeveMapping==='front'?sleeveFrontUV(side===1):Array.from({length:xy.length},(_,i)=>i%2?Math.floor(i/4)/(xy.length/4-1):side?1-Math.floor(i/2)%2:Math.floor(i/2)%2);
-   if(d.layers.sleeves&&a.sleeveEnabled&&(index>=2||(side?d.sleeveRightEnabled:d.sleeveLeftEnabled)))queue.add('sleeves',()=>meshDraw(source.sleeve,xy,material,d.clothTopColor,uv));
+   if(d.layers.sleeves&&a.sleeveEnabled&&(index>=2||(side?d.sleeveRightEnabled:d.sleeveLeftEnabled)))queue.add('sleeves',()=>meshDraw(source.sleeve,xy,material,d.clothTopColor,uv,sleeveKey(index)));
    if(index<2)anchors['sleeve'+(side?'R':'L')]=wardrobeNativeAnchor(xy,'strip');
    const hand=shape(source.hand,d,index,map,legacy).xy,center=[hand.filter((_,i)=>i%2===0).reduce((a,b)=>a+b,0)/(hand.length/2),hand.filter((_,i)=>i%2).reduce((a,b)=>a+b,0)/(hand.length/2)],hp=move(center,root,a,d.puppetScale),hxy=[];
    for(let i=0;i<hand.length;i+=2)hxy.push(hp[0]+(hand[i]-center[0])*a.handSize,hp[1]+(hand[i+1]-center[1])*a.handSize);
    let im=a.handTextureEnabled?handMaterial('puppetHand'+index):source.hand.png?tintImage(source.hand.png,a.handOwnColor?a.handColor:d.headColor):null;
-   if(d.layers.hands)queue.add('sleeves',()=>meshDraw(source.hand,hxy,im,a.handOwnColor?a.handColor:d.headColor,[0,0,1,0,1,1,0,1]));
+   if(d.layers.hands)queue.add('sleeves',()=>meshDraw(source.hand,hxy,im,a.handOwnColor?a.handColor:d.headColor,[0,0,1,0,1,1,0,1],'puppetHand'+index));
    if(index<2)anchors['hand'+(side?'R':'L')]=wardrobeNativeAnchor(hxy,'bounds');
   }
  }

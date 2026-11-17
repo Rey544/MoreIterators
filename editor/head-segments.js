@@ -85,8 +85,8 @@ const HeadSegments=(()=>{
  function draw(ctx,d,material){
   for(const s of specs){if(!d[s.prefix+'Enabled']||d.layers[s.prefix==='antennaLower'?'antenna':'ears']===false)continue;
    for(const side of [-1,1]){const width=d[s.prefix+'Width'],height=d[s.prefix+'Height'],x=side*d[s.prefix+'Spread']-width/2,y=-d[s.prefix+'OffsetY']-height/2;
-    if(d[s.prefix+'Custom'])ctx.drawImage(material(s.prefix+(side<0?'L':'R')),x,y,width,height);
-    else{ctx.fillStyle=d[s.prefix+'Color'];ctx.fillRect(x,y,width,height);}
+    if(d[s.prefix+'Custom']){const key=s.prefix+(side<0?'L':'R'),image=material(key);PreviewSelection.rect(key,image,x,y,width,height,ctx);ctx.drawImage(image,x,y,width,height);}
+    else{PreviewSelection.rect(s.prefix+(side<0?'L':'R'),null,x,y,width,height,ctx);ctx.fillStyle=d[s.prefix+'Color'];ctx.fillRect(x,y,width,height);}
    }
   }
  }

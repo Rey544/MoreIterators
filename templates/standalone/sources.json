@@ -9,10 +9,12 @@
     "src/CreatorArmAppearance.cs",
     "src/CreatorArms.cs",
     "src/CreatorAudio.cs",
+    "src/CreatorBackgroundCoordinates.cs",
     "src/CreatorBroadcastDisplay.cs",
     "templates/standalone/CreatorBroadcastGallery.cs",
     "src/CreatorBroadcasts.cs",
     "src/CreatorCableColors.cs",
+    "src/CreatorChamberMotion.cs",
     "src/CreatorCloth.cs",
     "src/CreatorColorGradient.cs",
     "src/CreatorControlPanel.cs",
@@ -92,6 +94,7 @@
     "encounter": "src/CreatorRuntime.cs"
   },
   "excluded": {
+    "src/LegacyCatalogCache.cs": "Core compatibility for previously exported runtimes.",
     "src/MiOptions.cs": "Core Remix diagnostics settings; standalone playback defaults to info.",
     "src/StudioLauncher.cs": "Editor launcher; already excluded from standalone compilation.",
     "src/RoomCatalogSnapshot.cs": "Editor room discovery; already excluded from standalone compilation.",

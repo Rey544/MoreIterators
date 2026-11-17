@@ -134,7 +134,7 @@ def _isolated_pair(pid, ai, entry):
     return True
 
 
-def prepare(project):
+def prepare(project, _preview=False):
     """Seed a fresh default, or archive and replace a proven old default.
 
     Call while holding the studio write lock. Returns the authoritative project.
@@ -142,9 +142,10 @@ def prepare(project):
     """
     import room_bindings
     import room_migration
+    def unchanged():return (project,None) if _preview else project
     pid = project['projectId']
     if storage.binding(pid) or storage.settings.get('entryRoomTemplate') or project.get(FIELD) == ID:
-        return project
+        return unchanged()
     binding = room_bindings.binding(project)
     explicit = bool(project.get('roomBinding'))
     if explicit:
@@ -152,19 +153,19 @@ def prepare(project):
         legacy_binding = dict(region='TEST', ai='TEST_' + key + '_AI', entry='TEST_' + key + '_ENTRY',
                               oracleId='test_' + key.lower(), entryMode='copy', aiNode=1, entryNode=1)
         if binding != legacy_binding:
-            return project
+            return unchanged()
     ai, entry = binding['ai'], binding['entry']
     source_file = storage.project_file(pid).parent / 'rooms' / (entry + '.txt')
     if source_file.exists() or source_file.with_suffix('.png').exists():
-        return project
+        return unchanged()
     bases = _bases(pid, entry)
     occupied = [base for base in bases if _files(base)]
     value = manifest()
     if explicit and not occupied:
-        return project
+        return unchanged()
     if occupied:
         if not all(_legacy(base, value['legacy']) for base in occupied):
-            return project
+            return unchanged()
         if not _isolated_pair(pid, ai, entry):
             raise ValueError('旧等待房间存在额外连接，未自动替换；请先在房间工程中确认并保存连接。')
     changed = copy.deepcopy(project)
@@ -174,7 +175,7 @@ def prepare(project):
         ai_source = room_bindings.source_for(project, 'ai')
         ai_exits = room_bindings.geometry(ai_source.with_suffix('.txt'))['exitCount']
         if ai_exits < 2:
-            return project
+            return unchanged()
     template = ROOT / value['renderedBase']
     editable = ROOT / value['sourceBase']
     writes = {source_file: editable.with_suffix('.txt').read_bytes(),
@@ -188,6 +189,7 @@ def prepare(project):
         for suffix in ('_1.png', '_settings.txt'):
             writes[Path(str(base) + suffix)] = Path(str(template) + suffix).read_bytes()
     writes[storage.project_file(pid)] = json.dumps(changed, ensure_ascii=False, indent=2).encode('utf-8')
+    plan = None
     if explicit:
         ai_links = ['DISCONNECTED'] * ai_exits
         ai_links[1] = entry
@@ -196,6 +198,9 @@ def prepare(project):
                     roomCopies=[dict(kind='ai', name=ai, source=str(ai_source)), dict(kind='entry', name=entry, source=str(bases[0]))],
                     connectionChanges=[dict(room=entry, node=1, fromRoom=ai, to='DISCONNECTED'), dict(room=entry, node=0, fromRoom='DISCONNECTED', to=ai)])
         writes[storage.project_file(pid).parent / 'room-binding-plan.json'] = json.dumps(plan, ensure_ascii=False, indent=2).encode('utf-8')
+    if _preview:
+        if plan is not None:plan['roomCopies'][1]['source']=str(template)
+        return changed,plan
     removes = []
     for base in occupied:
         removes.extend(_files(base))
