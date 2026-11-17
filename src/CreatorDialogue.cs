@@ -3,6 +3,7 @@ namespace MoreIterators
     using System;
     using System.IO;
     using System.Collections.Generic;
+    using System.Runtime.CompilerServices;
     using UnityEngine;
 
     [Serializable]
@@ -54,6 +55,40 @@ namespace MoreIterators
             returning = new List<List<CreatorDialogueLine>>();
         static readonly Dictionary<string, CreatorDialogueProfile> cache =
             new Dictionary<string, CreatorDialogueProfile>();
+
+        sealed class CachedProfile
+        {
+            public string json,
+                language,
+                oracleId,
+                first,
+                repeat;
+            public CreatorDialogueProfile profile;
+
+            public CachedProfile()
+            {
+            }
+        }
+
+        static readonly ConditionalWeakTable<IteratorDesign, CachedProfile> designCache =
+            new ConditionalWeakTable<IteratorDesign, CachedProfile>();
+
+        static CreatorDialogueProfile Remember(
+            CachedProfile entry,
+            IteratorDesign design,
+            string json,
+            string language,
+            CreatorDialogueProfile profile
+        )
+        {
+            entry.json = json;
+            entry.language = language;
+            entry.oracleId = design.oracleId;
+            entry.first = design.firstDialogue;
+            entry.repeat = design.repeatDialogue;
+            entry.profile = profile;
+            return profile;
+        }
 
         static T Val<T>(Dictionary<string, object> d, string k, T fallback)
         {
@@ -133,19 +168,32 @@ namespace MoreIterators
         {
             d.RefreshDefaults();
             string json = d.dialogueJson ?? "",
-                key =
-                    (String.IsNullOrEmpty(json) ? d.oracleId + ":" + d.firstDialogue + ":" + d.repeatDialogue : json)
-                    + "\0"
-                    + UiText.LanguageKey;
+                language = UiText.LanguageKey;
+            var entry = designCache.GetOrCreateValue(d);
+            if (
+                entry.profile != null
+                && entry.json == json
+                && entry.language == language
+                && (
+                    !String.IsNullOrEmpty(json)
+                    || entry.oracleId == d.oracleId
+                        && entry.first == d.firstDialogue
+                        && entry.repeat == d.repeatDialogue
+                )
+            )
+                return entry.profile;
+            string key =
+                (String.IsNullOrEmpty(json) ? d.oracleId + ":" + d.firstDialogue + ":" + d.repeatDialogue : json)
+                + "\0"
+                + language;
             CreatorDialogueProfile p;
             if (cache.TryGetValue(key, out p))
-                return p;
+                return Remember(entry, d, json, language, p);
             p = new CreatorDialogueProfile();
+            Dictionary<string, object> data = null;
             try
             {
-                var data = String.IsNullOrWhiteSpace(json)
-                    ? null
-                    : Json.Deserialize(json) as Dictionary<string, object>;
+                data = String.IsNullOrWhiteSpace(json) ? null : Json.Deserialize(json) as Dictionary<string, object>;
                 if (data != null)
                 {
                     p.enabled = Val(data, "enabled", false);
@@ -194,13 +242,9 @@ namespace MoreIterators
             catch (Exception e)
             {
                 MiDiagnostics.Report("MI_DIALOGUE_PROFILE_READ", "CreatorDialogueProfile.For", e, d.oracleId);
-                Debug.LogWarning("[Creator dialogue] " + e.Message);
             }
             try
             {
-                var data = String.IsNullOrWhiteSpace(json)
-                    ? null
-                    : Json.Deserialize(json) as Dictionary<string, object>;
                 object rules;
                 if (data != null && data.TryGetValue("pearlReading", out rules))
                     p.pearlReading = PearlProjectCodec.ReadObject<CreatorPearlRules>(rules);
@@ -208,7 +252,6 @@ namespace MoreIterators
             catch (Exception e)
             {
                 MiDiagnostics.Report("MI_PEARL_RULES_READ", "CreatorDialogueProfile.For", e, d.oracleId);
-                Debug.LogWarning("[Creator pearl rules] " + e.Message);
             }
             p.requireMark = true;
             if (String.IsNullOrEmpty(json))
@@ -231,7 +274,7 @@ namespace MoreIterators
             if (cache.Count > 64)
                 cache.Clear();
             cache[key] = p;
-            return p;
+            return Remember(entry, d, json, language, p);
         }
     }
 
@@ -440,7 +483,9 @@ namespace MoreIterators
             public Oracle owner;
         }
 
-        static readonly Dictionary<string, Session> sessions = new Dictionary<string, Session>();
+        static readonly ConditionalWeakTable<RainWorldGame, Dictionary<string, Session>> sessions =
+            new ConditionalWeakTable<RainWorldGame, Dictionary<string, Session>>();
+        static readonly List<WeakReference> sessionGames = new List<WeakReference>();
         readonly CreatorSpeech speech;
         readonly CreatorVoice unmarkedVoice;
         readonly Oracle oracle;
@@ -465,6 +510,7 @@ namespace MoreIterators
         string mode = "",
             config = "";
         int restart;
+        int exitRetry;
         public bool Speaking
         {
             get
@@ -499,7 +545,18 @@ namespace MoreIterators
 
         public static void Reset(string id)
         {
-            sessions.Remove(id);
+            for (int i = sessionGames.Count - 1; i >= 0; i--)
+            {
+                var game = sessionGames[i].Target as RainWorldGame;
+                if (game == null)
+                {
+                    sessionGames.RemoveAt(i);
+                    continue;
+                }
+                Dictionary<string, Session> map;
+                if (sessions.TryGetValue(game, out map))
+                    map.Remove(id);
+            }
         }
 
         public CreatorDialogue(Oracle o)
@@ -517,14 +574,24 @@ namespace MoreIterators
         void Attach()
         {
             string id = IteratorDesign.ForRoom(oracle.room).oracleId;
-            if (!sessions.TryGetValue(id, out session) || session.game != oracle.room.game)
+            Dictionary<string, Session> map;
+            if (!sessions.TryGetValue(oracle.room.game, out map))
+            {
+                map = new Dictionary<string, Session>();
+                sessions.Add(oracle.room.game, map);
+                for (int i = sessionGames.Count - 1; i >= 0; i--)
+                    if (sessionGames[i].Target == null)
+                        sessionGames.RemoveAt(i);
+                sessionGames.Add(new WeakReference(oracle.room.game));
+            }
+            if (!map.TryGetValue(id, out session) || session.game != oracle.room.game)
             {
                 session = new Session
                 {
                     game = oracle.room.game,
                     firstComplete = CreatorPearlReader.CompletedStory(oracle, id)
                 };
-                sessions[id] = session;
+                map[id] = session;
             }
             if (session.owner != oracle)
             {
@@ -838,6 +905,45 @@ namespace MoreIterators
             }
         }
 
+        bool NearExit(Player player)
+        {
+            bool transit = player.enteringShortCut.HasValue || player.inShortcut;
+            if (exitRetry > 0)
+            {
+                exitRetry--;
+                return transit;
+            }
+            try
+            {
+                var room = oracle.room;
+                if (room == null || room.abstractRoom == null || !room.shortCutsReady || player.mainBodyChunk == null)
+                    return transit;
+                int node = CreatorLaunch.ExitNode(room.abstractRoom.name);
+                if (
+                    node < 0
+                    || room.abstractRoom.connections == null
+                    || node >= room.abstractRoom.connections.Length
+                    || room.abstractRoom.nodes == null
+                    || node >= room.abstractRoom.nodes.Length
+                    || room.abstractRoom.nodes[node].type != AbstractRoomNode.Type.Exit
+                )
+                    return transit;
+                var shortcut = room.ShortcutLeadingToNode(node);
+                if (shortcut.shortCutType != ShortcutData.Type.RoomExit || shortcut.destNode != node)
+                    return transit;
+                Vector2 exit = room.MiddleOfTile(shortcut.StartTile);
+                float dist = Vector2.Distance(player.mainBodyChunk.pos, exit);
+                if (dist > 85)
+                    walkedIn = true;
+                return walkedIn && (dist < 42 || player.enteringShortCut.HasValue || player.inShortcut);
+            }
+            catch
+            {
+                exitRetry = 40;
+                return transit;
+            }
+        }
+
         public void Update(Player player, List<CreatorWorkPearl> pearls, IteratorDesign d)
         {
             // Clear any translated/delayed line before it can tick under the new policy.
@@ -893,6 +999,7 @@ namespace MoreIterators
                 mode = CreatorRuntime.Mode;
                 restart = CreatorEncounter.Restart;
                 config = d.dialogueJson;
+                exitRetry = 0;
             }
             if (!enabled)
             {
@@ -985,24 +1092,7 @@ namespace MoreIterators
                 state.Finish();
             bool nearExit = false;
             if (inRoom)
-            {
-                try
-                {
-                    Vector2 exit = oracle.room.MiddleOfTile(
-                        oracle
-                            .room.ShortcutLeadingToNode(CreatorLaunch.ExitNode(oracle.room.abstractRoom.name))
-                            .StartTile
-                    );
-                    float dist = Vector2.Distance(player.mainBodyChunk.pos, exit);
-                    if (dist > 85)
-                        walkedIn = true;
-                    nearExit = walkedIn && (dist < 42 || player.enteringShortCut.HasValue || player.inShortcut);
-                }
-                catch
-                {
-                    nearExit = player.enteringShortCut.HasValue || player.inShortcut;
-                }
-            }
+                nearExit = NearExit(player);
             if (present && state.MainPending && (!inRoom || nearExit) && !departed)
             {
                 departed = true;
