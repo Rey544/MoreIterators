@@ -123,17 +123,36 @@ namespace MoreIterators
 
     public static class CreatorBroadcastCatalog
     {
+        sealed class Cached
+        {
+            public long stamp,
+                length;
+            public BroadcastProject project;
+        }
+
         static float next;
+        static int generation = -1;
+        static readonly Dictionary<string, Cached> files = new Dictionary<string, Cached>(
+            StringComparer.OrdinalIgnoreCase
+        );
         static List<BroadcastProject> items = new List<BroadcastProject>();
 
         public static List<BroadcastProject> All()
         {
             if (ModManager.ActiveMods == null)
                 return items;
+            int currentGeneration = ContentAssets.Generation;
+            if (generation != currentGeneration)
+            {
+                files.Clear();
+                next = 0;
+                generation = currentGeneration;
+            }
             if (Time.realtimeSinceStartup < next)
                 return items;
             next = Time.realtimeSinceStartup + 1;
             var found = new Dictionary<string, BroadcastProject>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             try
             {
                 foreach (
@@ -144,7 +163,7 @@ namespace MoreIterators
                     )
                 )
                     if (ContentAssets.Managed(asset.owner))
-                        ReadFile(asset.path, found, false);
+                        ReadFile(asset.path, found, false, seen);
             }
             catch (Exception error)
             {
@@ -156,13 +175,19 @@ namespace MoreIterators
                 );
             }
             if (!PlaybackMode.Enabled)
-                Read(Path.Combine(RuntimePaths.DataDirectory, "broadcasts"), found);
+                Read(Path.Combine(RuntimePaths.DataDirectory, "broadcasts"), found, seen);
+            foreach (string file in new List<string>(files.Keys))
+                if (!seen.Contains(file))
+                    files.Remove(file);
+            foreach (string id in found.Keys)
+                if (ChatlogData.ChatlogID.values == null || !ChatlogData.ChatlogID.values.entries.Contains(id))
+                    new ChatlogData.ChatlogID(id, true);
             items = new List<BroadcastProject>(found.Values);
             items.Sort((a, b) => String.CompareOrdinal(a.id, b.id));
             return items;
         }
 
-        static void Read(string dir, Dictionary<string, BroadcastProject> found)
+        static void Read(string dir, Dictionary<string, BroadcastProject> found, HashSet<string> seen)
         {
             if (!Directory.Exists(dir))
                 return;
@@ -177,14 +202,31 @@ namespace MoreIterators
                 return;
             }
             foreach (string file in files)
-                ReadFile(file, found, true);
+                ReadFile(file, found, true, seen);
         }
 
-        static void ReadFile(string file, Dictionary<string, BroadcastProject> found, bool replace)
+        static void ReadFile(
+            string file,
+            Dictionary<string, BroadcastProject> found,
+            bool replace,
+            HashSet<string> seen
+        )
         {
             try
             {
-                var p = PearlProjectCodec.ReadObject<BroadcastProject>(Json.Deserialize(File.ReadAllText(file)));
+                file = Path.GetFullPath(file);
+                seen.Add(file);
+                var info = new FileInfo(file);
+                Cached cached;
+                BroadcastProject p;
+                if (
+                    files.TryGetValue(file, out cached)
+                    && cached.stamp == info.LastWriteTimeUtc.Ticks
+                    && cached.length == info.Length
+                )
+                    p = cached.project;
+                else
+                    p = PearlProjectCodec.ReadObject<BroadcastProject>(Json.Deserialize(File.ReadAllText(file)));
                 if (
                     p == null
                     || p.schema != "moreiterators.broadcast.v1"
@@ -195,10 +237,15 @@ namespace MoreIterators
                     || p.pages.Length == 0
                 )
                     throw new InvalidDataException("Unsupported broadcast schema, runtime identity or page list.");
+                files[file] = new Cached
+                {
+                    stamp = info.LastWriteTimeUtc.Ticks,
+                    length = info.Length,
+                    project = p
+                };
                 if (!replace && found.ContainsKey(p.runtimeId))
                     return;
                 found[p.runtimeId] = p;
-                new ChatlogData.ChatlogID(p.runtimeId, true);
             }
             catch (FileNotFoundException)
             { /* The editor may remove a file after enumeration. */
@@ -235,7 +282,13 @@ namespace MoreIterators
 
         public static void Tick(Room room)
         {
-            if (!ModManager.MSC || room.game == null || !room.game.IsStorySession)
+            if (
+                room == null
+                || room.abstractRoom == null
+                || !ModManager.MSC
+                || room.game == null
+                || !room.game.IsStorySession
+            )
                 return;
             var state = rooms.GetOrCreateValue(room);
             if (Time.realtimeSinceStartup < state.next)
@@ -253,8 +306,7 @@ namespace MoreIterators
                     {
                         if (state.tokens.TryGetValue(p.runtimeId, out previous))
                         {
-                            previous.stalk.Destroy();
-                            previous.Destroy();
+                            RemoveToken(previous);
                             state.tokens.Remove(p.runtimeId);
                         }
                         sessions.GetOrCreateValue(room.game).collected.Remove(p.runtimeId);
@@ -284,12 +336,23 @@ namespace MoreIterators
             foreach (var pair in state.tokens)
                 if (!wanted.Contains(pair.Key))
                 {
-                    pair.Value.stalk.Destroy();
-                    pair.Value.Destroy();
+                    RemoveToken(pair.Value);
                     remove.Add(pair.Key);
                 }
             foreach (string key in remove)
                 state.tokens.Remove(key);
+            foreach (string key in new List<string>(state.revisions.Keys))
+                if (!wanted.Contains(key))
+                    state.revisions.Remove(key);
+        }
+
+        static void RemoveToken(CollectToken token)
+        {
+            if (token == null)
+                return;
+            if (token.stalk != null)
+                token.stalk.Destroy();
+            token.Destroy();
         }
 
         public static void Process(On.Player.orig_ProcessChatLog orig, Player player)

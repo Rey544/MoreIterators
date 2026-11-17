@@ -37,7 +37,9 @@ public class DataPearl {
 namespace MoreSlugcats {public class ChatlogData {
  public class ChatlogID {
   public static readonly List<string> Registered=new List<string>();
-  public ChatlogID(string id,bool register){if(register)Registered.Add(id);}
+  public class Values {public readonly List<string> entries=Registered;}
+  public static readonly Values values=new Values();
+  public ChatlogID(string id,bool register){if(register&&!values.entries.Contains(id))values.entries.Add(id);}
  }
 }}
 

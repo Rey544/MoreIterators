@@ -17,14 +17,24 @@ namespace MoreIterators
         }
 
         static ConditionalWeakTable<BackgroundScene, State> scenes = new ConditionalWeakTable<BackgroundScene, State>();
+        static object subscription;
 
         public static void Install(List<Action> remove)
         {
+            if (remove == null)
+                throw new ArgumentNullException("remove");
+            if (subscription != null)
+                return;
+            object token = new object();
             On.BackgroundScene.RoomToWorldPos += RoomToWorldPos;
+            subscription = token;
             remove.Add(
                 delegate
                 {
+                    if (!ReferenceEquals(subscription, token))
+                        return;
                     On.BackgroundScene.RoomToWorldPos -= RoomToWorldPos;
+                    subscription = null;
                     scenes = new ConditionalWeakTable<BackgroundScene, State>();
                 }
             );

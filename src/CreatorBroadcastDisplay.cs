@@ -220,7 +220,10 @@ namespace MoreIterators
             var current = rows[lineIndex];
             if (shown < current.chars.Length)
             {
-                elapsed += dt * Mathf.Clamp(current.style.speed, .25f, 4) * (Input.GetKey(KeyCode.Space) ? 5 : 1);
+                var controls = hud.rainWorld.options.controls;
+                bool accelerate =
+                    controls != null && controls.Length > 0 && controls[0] != null && controls[0].GetButton(0);
+                elapsed += dt * Mathf.Clamp(current.style.speed, .25f, 4) * (accelerate ? 5 : 1);
                 float step = (HUD.DialogBox.GetDelay() + 1) / 60f;
                 while (elapsed >= step && shown < current.chars.Length)
                 {

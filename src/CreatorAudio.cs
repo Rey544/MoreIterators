@@ -13,6 +13,19 @@ namespace MoreIterators
     public static class CreatorAudio
     {
         static readonly List<CreatorAudioChannel> channels = new List<CreatorAudioChannel>();
+        static CreatorAudioChannel[] channelSnapshot;
+
+        sealed class VerifiedAsset
+        {
+            public long stamp,
+                length;
+            public string asset;
+        }
+
+        static readonly Dictionary<string, VerifiedAsset> verified = new Dictionary<string, VerifiedAsset>(
+            StringComparer.OrdinalIgnoreCase
+        );
+        static int assetGeneration = -1;
         static bool installed;
         public static bool Enabled
         {
@@ -48,6 +61,8 @@ namespace MoreIterators
                 foreach (var channel in channels.ToArray())
                     channel.Stop();
                 channels.Clear();
+                channelSnapshot = null;
+                verified.Clear();
             }
         }
 
@@ -57,13 +72,17 @@ namespace MoreIterators
                 return false;
             Install();
             if (!channels.Contains(channel))
+            {
                 channels.Add(channel);
+                channelSnapshot = null;
+            }
             return true;
         }
 
         internal static void Remove(CreatorAudioChannel channel)
         {
-            channels.Remove(channel);
+            if (channels.Remove(channel))
+                channelSnapshot = null;
         }
 
         public static bool ValidAsset(string asset)
@@ -75,7 +94,32 @@ namespace MoreIterators
         {
             if (!ValidAsset(asset))
                 throw new InvalidDataException("Invalid custom audio asset ID.");
-            string path = AssetManager.ResolveFilePath(Path.Combine("mi_audio", asset + ".mp3"));
+            int generation = ContentAssets.Generation;
+            if (assetGeneration != generation)
+            {
+                verified.Clear();
+                assetGeneration = generation;
+            }
+            string path = null;
+            foreach (
+                var candidate in ContentAssets.Files(
+                    "mi_audio",
+                    ".mp3",
+                    PlaybackMode.Enabled ? RuntimePaths.ModId : null
+                )
+            )
+                if (
+                    ContentAssets.Managed(candidate.owner)
+                    && String.Equals(
+                        Path.GetFileName(candidate.path),
+                        asset + ".mp3",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    path = Path.GetFullPath(candidate.path);
+                    break;
+                }
             if (!File.Exists(path))
                 throw new FileNotFoundException(
                     "The referenced MP3 is missing from the enabled content package.",
@@ -84,10 +128,26 @@ namespace MoreIterators
             var info = new FileInfo(path);
             if (info.Length < 12 || info.Length > 10 * 1024 * 1024)
                 throw new InvalidDataException("Custom MP3 exceeds the permitted size.");
+            VerifiedAsset cached;
+            if (
+                verified.TryGetValue(path, out cached)
+                && cached.asset == asset
+                && cached.stamp == info.LastWriteTimeUtc.Ticks
+                && cached.length == info.Length
+            )
+                return path;
             using (var hash = SHA256.Create())
             using (var stream = File.OpenRead(path))
                 if (BitConverter.ToString(hash.ComputeHash(stream)).Replace("-", "").ToLowerInvariant() != asset)
                     throw new InvalidDataException("Custom MP3 hash does not match its asset ID.");
+            if (verified.Count >= 128)
+                verified.Clear();
+            verified[path] = new VerifiedAsset
+            {
+                asset = asset,
+                stamp = info.LastWriteTimeUtc.Ticks,
+                length = info.Length
+            };
             return path;
         }
 
@@ -97,7 +157,9 @@ namespace MoreIterators
             try
             {
                 CreatorAudioChannel winner = null;
-                var snapshot = channels.ToArray();
+                if (channelSnapshot == null)
+                    channelSnapshot = channels.ToArray();
+                var snapshot = channelSnapshot;
                 foreach (var channel in snapshot)
                 {
                     if (!channel.Live(player))
