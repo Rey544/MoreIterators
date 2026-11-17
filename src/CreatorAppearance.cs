@@ -121,6 +121,26 @@ namespace MoreIterators
             return c.key == null ? null : Futile.atlasManager.GetElementWithName(c.key);
         }
 
+        internal static void ReleaseTextures()
+        {
+            if (Futile.atlasManager == null)
+                return;
+            foreach (string slot in new List<string>(textures.Keys))
+            {
+                Cached cached = textures[slot];
+                try
+                {
+                    if (cached.key != null && Futile.atlasManager.DoesContainAtlas(cached.key))
+                        Futile.atlasManager.UnloadAtlas(cached.key);
+                    textures.Remove(slot);
+                }
+                catch (Exception error)
+                {
+                    MiDiagnostics.Report("MI-TEXTURE-RELEASE", "CreatorAppearance.ReleaseTextures", error, slot);
+                }
+            }
+        }
+
         public static void PaintMesh(TriangleMesh mesh, FAtlasElement e, bool grid, bool flipU = false)
         {
             if (mesh == null)
@@ -322,7 +342,7 @@ namespace MoreIterators
             PaintMesh(gown, Texture(d.gownBasePng, d.oracleId + "-gown-base"), true, true);
             if (gown != null)
             {
-                string[] profile = d.hemProfile.Split(',');
+                string[] profile = (d.hemProfile ?? "").Split(',');
                 int grid = (int)Mathf.Sqrt(gown.vertices.Length);
                 for (int x = 0; x < grid; x++)
                 {

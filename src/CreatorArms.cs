@@ -143,7 +143,12 @@ namespace MoreIterators
         static TriangleMesh CopyMesh(RoomCamera.SpriteLeaser s, int slot, TriangleMesh source)
         {
             var mesh = s.sprites[slot] as TriangleMesh;
-            if (mesh == null || mesh.vertices.Length != source.vertices.Length)
+            if (
+                mesh == null
+                || mesh.vertices.Length != source.vertices.Length
+                || mesh.verticeColors == null
+                || mesh.verticeColors.Length != source.vertices.Length
+            )
             {
                 var container = s.sprites[slot].container;
                 s.sprites[slot].RemoveFromContainer();

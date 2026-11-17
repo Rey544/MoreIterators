@@ -237,7 +237,9 @@ namespace MoreIterators
                         continue;
                     Color c = t.GetPixel(x, y);
                     float v = c.grayscale;
-                    t.SetPixel(x, y, Color.Lerp(new Color(v, v, v, c.a), theme * v * 1.6f, .55f));
+                    Color tint = Color.Lerp(new Color(v, v, v, c.a), theme * v * 1.6f, .55f);
+                    tint.a = c.a;
+                    t.SetPixel(x, y, tint);
                 }
             t.Apply(false);
         }

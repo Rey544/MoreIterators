@@ -100,6 +100,12 @@ namespace MoreIterators
                 MiDiagnostics.Cleanup("MI-HOOK-REMOVE", "OnDisable", removeHooks[i], "index=" + i);
             removeHooks.Clear();
             hooksInstalled = false;
+            MiDiagnostics.Cleanup(
+                "MI-TEXTURE-SHUTDOWN",
+                "RemoveHooks",
+                CreatorAppearance.ReleaseTextures,
+                "Releasing owned appearance textures."
+            );
         }
 
         void OnDisable()
