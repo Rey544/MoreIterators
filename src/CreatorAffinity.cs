@@ -54,6 +54,8 @@ namespace MoreIterators
         public string Hit(CreatorAffinityRules rules, bool spear)
         {
             string tier = Tier;
+            if (rules == null || !rules.enabled)
+                return tier;
             if (rules.attackMode == "gradual")
                 value = Clamp(value - Math.Max(0, spear ? rules.spearPenalty : rules.rockPenalty));
             else
@@ -209,8 +211,19 @@ namespace MoreIterators
 
         public static string Hit(Oracle o, IteratorDesign d, bool spear)
         {
+            if (o == null || o.room == null || o.room.game == null || d == null)
+                return CreatorAffinityState.TierOf(0);
+            var rules = CreatorDialogueProfile.For(d).affinity;
+            if (!rules.enabled)
+            {
+                Dictionary<string, CreatorAffinityState> map;
+                CreatorAffinityState existing;
+                if (all.TryGetValue(o.room.game, out map) && map.TryGetValue(d.oracleId, out existing))
+                    return existing.Tier;
+                return CreatorAffinityState.TierOf(CreatorAffinityState.Clamp(rules.initial));
+            }
             var state = Get(o, d);
-            string tier = state.Hit(CreatorDialogueProfile.For(d).affinity, spear);
+            string tier = state.Hit(rules, spear);
             Save(o, d, state);
             return tier;
         }
